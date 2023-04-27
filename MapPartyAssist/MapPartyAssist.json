@@ -1,0 +1,14 @@
+{
+  "Author": "Sarah Montcroix",
+  "Name": "MapPartyAssist",
+  "Punchline": "Map party features",
+  "Description": "A description that shows up in /xlplugins. List any major slash-command(s).",
+  "InternalName": "mapPartyAssist",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "treasure maps",
+    "maps",
+    "achievements",
+    "plugin"
+  ]
+}
