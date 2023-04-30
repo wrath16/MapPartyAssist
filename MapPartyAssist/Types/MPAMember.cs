@@ -1,9 +1,6 @@
-﻿using Dalamud.Game.Text.SeStringHandling;
+﻿using Dalamud.Game.Text.SeStringHandling.Payloads;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MapPartyAssist.Types {
     public class MPAMember {
@@ -12,7 +9,7 @@ namespace MapPartyAssist.Types {
         public List<MPAMap> Maps { get; set; }
         public bool IsSelf { get; set; }
         public DateTime LastJoined { get; set; }
-        public SeString MapLink { get; set; }
+        public MapLinkPayload MapLink { get; set; }
 
         public MPAMember(string name, string homeWorld, bool isSelf = false) {
             Name = name;

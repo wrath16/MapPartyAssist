@@ -17,7 +17,7 @@ namespace MapPartyAssist {
         private DalamudPluginInterface? PluginInterface;
 
         public Configuration() {
-            RecentPartyList= new Dictionary<string, MPAMember>();
+            RecentPartyList = new Dictionary<string, MPAMember>();
         }
 
         public void Initialize(DalamudPluginInterface pluginInterface) {

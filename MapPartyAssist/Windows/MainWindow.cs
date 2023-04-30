@@ -1,17 +1,14 @@
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
-using Dalamud.Interface.Components;
 using Dalamud.Interface.Windowing;
 using Dalamud.Logging;
 using Dalamud.Utility;
 using ImGuiNET;
-using ImGuiScene;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-//using static TitleRoulette.Configuration;
 
 namespace MapPartyAssist.Windows;
 
@@ -23,7 +20,7 @@ public class MainWindow : Window, IDisposable {
     public MainWindow(Plugin plugin) : base(
         "Map Party Assist") {
         this.SizeConstraints = new WindowSizeConstraints {
-            MinimumSize = new Vector2(500, 350),
+            MinimumSize = new Vector2(500, 250),
             MaximumSize = new Vector2(500, 350)
         };
         this.Plugin = plugin;
@@ -33,109 +30,50 @@ public class MainWindow : Window, IDisposable {
     }
 
     public override void Draw() {
+        //if(ImGui.Button("Test Function")) {
+        //    this.Plugin.TestFunction();
+        //}
+        //if(ImGui.Button("Test Function2")) {
+        //    this.Plugin.TestFunction2();
+        //}
 
-
-        //ImGui.Text($"The random config bool is {this.Plugin.Configuration.SomePropertyToBeSavedAndWithADefault}");
-        ImGui.CreateContext();
-        if(ImGui.Button("Test Function")) {
-            this.Plugin.TestFunction();
+        if(ImGui.Button("Clear All")) {
+            Plugin.ForceArchiveAllMaps(Plugin.Configuration.RecentPartyList);
+            Plugin.ForceArchiveAllMaps(Plugin.FakePartyList);
+            Plugin.Configuration.Save();
         }
-        if(ImGui.BeginPopupContextItem()) {
-            ImGui.Text("Test Function");
-            ImGui.EndPopup();
-        }
-        if(ImGui.Button("Test Function2")) {
-            this.Plugin.TestFunction2();
-        }
-        ImGui.PushFont(UiBuilder.IconFont);
-        ImGui.TextColored(ImGuiColors.ParsedGreen, FontAwesomeIcon.Check.ToIconString());
-        ImGui.PopFont();
 
 
         if(Plugin.CurrentPartyList.Count <= 0) {
             ImGui.Text("No party members currently.");
         } else {
             MapTable(Plugin.CurrentPartyList);
-            ////int maxMaps = 5;
-            //ImGui.Columns(_maxMaps + 2, "###MapPartyAssist_Maps_Table", false);
-            //var baseWidth = ImGui.GetWindowSize().X / 4 * ImGuiHelpers.GlobalScale;
-            //ImGui.SetColumnWidth(0, baseWidth + 100f);                 // name
-            //for(int i = 1; i <= _maxMaps; i++) {
-            //    ImGui.SetColumnWidth(i, ImGuiHelpers.GlobalScale * 30f);
-            //}
-            //ImGui.SetColumnWidth(_maxMaps + 1, ImGuiHelpers.GlobalScale * 40f);
-
-            //foreach(var player in this.Plugin.CurrentPartyList) {
-            //    ImGui.Text($"{player.Value.Name}");
-            //    //ImGui.Text($"{player.Value.HomeWorld}");
-            //    ImGui.NextColumn();
-            //    int count = 0;
-            //    //var map in player.Value.Maps.Where(m => !m.IsDeleted && !m.IsArchived)
-            //    var maps = player.Value.Maps.Where(m => !m.IsDeleted && !m.IsArchived);
-            //    for(int i = 0; i < maps.Count() && i < _maxMaps; i++) {
-            //        ImGui.PushFont(UiBuilder.IconFont);
-            //        ImGui.TextColored(ImGuiColors.ParsedGreen, FontAwesomeIcon.Check.ToIconString());
-            //        ImGui.PopFont();
-            //        ImGui.NextColumn();
-            //    }
-
-            //    for(int i = maps.Count(); i < _maxMaps; i++) {
-            //        //ImGui.PushFont(UiBuilder.IconFont);
-            //        //ImGui.TextColored(ImGuiColors.DalamudRed, FontAwesomeIcon.Check.ToIconString());
-            //        //ImGui.PopFont();
-            //        ImGui.NextColumn();
-            //    }
-
-            //    if(maps.Count() > _maxMaps) {
-            //        ImGui.TextColored(ImGuiColors.ParsedGreen, $" +{maps.Count() - _maxMaps}");
-            //    }
-            //    ImGui.NextColumn();
-            //}
-
-            
-
-
-
-            //foreach(var map in maps) {
-            //    ImGui.PushFont(UiBuilder.IconFont);
-            //    ImGui.TextColored(ImGuiColors.ParsedGreen, FontAwesomeIcon.Check.ToIconString());
-            //    ImGui.PopFont();
-            //    ImGui.NextColumn();
-            //    count++;
-            //}
-            //for(int i = count; i <= maxMaps; i++) {
-            //    ImGui.PushFont(UiBuilder.IconFont);
-            //    ImGui.TextColored(ImGuiColors.DalamudRed, FontAwesomeIcon.Check.ToIconString());
-            //    //ImGui.Text("xx");
-            //    ImGui.PopFont();
-            //    ImGui.NextColumn();
-            //}
         }
 
-        MapTable(Plugin.FakePartyList);
-
-        //if(ImGui.BeginTable("testTAble", 4, ImGuiTableFlags.Borders)) {
-        //    ImGui.TableSetupColumn("ass", ImGuiTableColumnFlags.WidthStretch, 50f);
-        //    ImGui.TableSetupColumn("penis", ImGuiTableColumnFlags.WidthFixed, 20f);
-        //    ImGui.TableSetupColumn("vagina", ImGuiTableColumnFlags.WidthFixed, 20f);
-        //    ImGui.TableSetupColumn("boobs", ImGuiTableColumnFlags.WidthFixed, 20f);
-        //    ImGui.TableHeadersRow();
-        //    for(int i = 0; i < 4; i++) {
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text("spankable");
-
+        //var recentPartyList = Plugin.Configuration.RecentPartyList.Where(p => {
+        //    TimeSpan timeSpan = DateTime.Now - p.Value.LastJoined;
+        //    var isRecent = timeSpan.TotalHours <= Plugin.Configuration.ArchiveThresholdHours;
+        //    var hasMaps = false;
+        //    foreach(var m in p.Value.Maps) {
+        //        if(!m.IsArchived && !m.IsDeleted) {
+        //            hasMaps = true;
+        //            break;
+        //        }
         //    }
-        //}
+        //    var notCurrent = !Plugin.CurrentPartyList.ContainsKey(p.Key);
+        //    var notSelf = !p.Value.IsSelf;
+        //    return isRecent && hasMaps && notCurrent && notSelf;
+        //}).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        //ImGui.Spacing();
+        if(Plugin.RecentPartyList.Count > 0) {
+            ImGui.Text("Recent party members:");
+            MapTable(Plugin.RecentPartyList);
+        }
 
-        //ImGui.Text("Have a goat:");
-        //ImGui.Indent(55);
-        //ImGui.Image(this.GoatImage.ImGuiHandle, new Vector2(this.GoatImage.Width, this.GoatImage.Height));
-        //ImGui.Unindent(55);
+        //MapTable(Plugin.FakePartyList);
     }
 
-    private void MapTable(Dictionary<string, MPAMember> list) {
+    private void MapTable(Dictionary<string, MPAMember> list, bool readOnly = false) {
 
         if(ImGui.BeginTable($"##{list.GetHashCode()}_Maps_Table", _maxMaps + 4, ImGuiTableFlags.Borders)) {
             List<MPAMap> toArchive = new();
@@ -155,7 +93,7 @@ public class MainWindow : Window, IDisposable {
                 ImGui.PushFont(UiBuilder.IconFont);
                 if(ImGui.Button($"{FontAwesomeIcon.Plus.ToIconString()}##{player.GetHashCode()}--AddMap")) {
                     PluginLog.Log($"Adding new map to {player.Key}");
-                    var newMap = new MPAMap("Manually-added map", DateTime.Now, "", true);
+                    var newMap = new MPAMap("Manually-added map", DateTime.Now, "", false, true);
                     player.Value.Maps.Add(newMap);
                     this.Plugin.Configuration.Save();
                 }
@@ -167,7 +105,18 @@ public class MainWindow : Window, IDisposable {
                 }
                 ImGui.TableNextColumn();
                 if(player.Value.MapLink != null) {
+                    ImGui.PushFont(UiBuilder.IconFont);
+                    ImGui.TextColored(ImGuiColors.DalamudGrey, FontAwesomeIcon.Search.ToIconString());
+                    ImGui.PopFont();
+                    if(ImGui.IsItemHovered()) {
+                        ImGui.BeginTooltip();
+                        ImGui.Text($"{player.Value.MapLink.PlaceName} {player.Value.MapLink.CoordinateString}");
+                        ImGui.EndTooltip();
+                    }
+                    if(ImGui.IsItemClicked()) {
 
+                        Plugin.OpenMap(player.Value.MapLink);
+                    }
                 }
                 ImGui.TableNextColumn();
                 //int count = 0;
@@ -202,25 +151,22 @@ public class MainWindow : Window, IDisposable {
                     ImGui.TableNextColumn();
                 }
                 for(int i = maps.Count(); i < _maxMaps; i++) {
-                    //ImGui.PushFont(UiBuilder.IconFont);
-                    //ImGui.TextColored(ImGuiColors.DalamudRed, FontAwesomeIcon.Letter.ToIconString());
-                    //ImGui.PopFont();
                     ImGui.TableNextColumn();
                 }
 
                 if(maps.Count() > _maxMaps) {
                     ImGui.TextColored(ImGuiColors.ParsedGreen, $" +{maps.Count() - _maxMaps}");
                 }
-                //ImGui.TextColored(ImGuiColors.ParsedGreen, $" +{maps.Count() - _maxMaps}");
-                //ImGui.TableNextRow();
             }
 
             foreach(var map in toArchive) {
                 map.IsArchived = true;
+                Plugin.Configuration.Save();
             }
 
             foreach(var map in toDelete) {
                 map.IsDeleted = true;
+                Plugin.Configuration.Save();
             }
 
             ImGui.EndTable();

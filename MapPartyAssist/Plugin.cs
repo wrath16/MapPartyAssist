@@ -11,13 +11,11 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
-using FFXIVClientStructs.FFXIV.Client.UI;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Types;
 using MapPartyAssist.Windows;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -33,6 +31,7 @@ namespace MapPartyAssist {
         private ClientState ClientState { get; init; }
         private PartyList PartyList { get; init; }
         private ChatGui ChatGui { get; init; }
+        private GameGui GameGui { get; init; }
         private Framework Framework { get; init; }
 
         public Configuration Configuration { get; init; }
@@ -47,7 +46,28 @@ namespace MapPartyAssist {
         private int _lastPartySize;
 
         public Dictionary<string, MPAMember> CurrentPartyList { get; set; }
-        //public Dictionary<string, MPAMember> RecentPartyList { get; set; }
+        public Dictionary<string, MPAMember> RecentPartyList { get; set; }
+        //    get {
+        //        Dictionary<string, MPAMember> newList = new();
+        //        foreach(var player in this.Configuration.RecentPartyList) {
+        //            TimeSpan timeSpan = DateTime.Now - player.Value.LastJoined;
+        //            var isRecent = timeSpan.TotalHours <= Configuration.ArchiveThresholdHours;
+        //            var hasMaps = false;
+        //            foreach(var map in player.Value.Maps) {
+        //                if(!map.IsArchived && !map.IsDeleted) {
+        //                    hasMaps = true;
+        //                    break;
+        //                }
+        //            }
+        //            var notCurrent = !CurrentPartyList.ContainsKey(player.Key);
+        //            var notSelf = !player.Value.IsSelf;
+        //            if(isRecent && hasMaps && notCurrent && notSelf) {
+        //                newList.Add(player.Key, player.Value);
+        //            }
+        //        }
+        //        return newList;
+        //    }
+        //}
 
         //TODO delete (for testing only!)
         public Dictionary<string, MPAMember> FakePartyList { get; set; }
@@ -70,6 +90,7 @@ namespace MapPartyAssist {
             [RequiredVersion("1.0")] ClientState clientState,
             [RequiredVersion("1.0")] PartyList partyList,
             [RequiredVersion("1.0")] ChatGui chatGui,
+            [RequiredVersion("1.0")] GameGui gameGui,
             [RequiredVersion("1.0")] Framework framework) {
             this.PluginInterface = pluginInterface;
             this.CommandManager = commandManager;
@@ -77,6 +98,7 @@ namespace MapPartyAssist {
             this.ClientState = clientState;
             this.PartyList = partyList;
             this.ChatGui = chatGui;
+            this.GameGui = gameGui;
             this.Framework = framework;
 
             this.Functions = new GameFunctions();
@@ -104,8 +126,11 @@ namespace MapPartyAssist {
                 this._worlds[world.RowId] = world;
             }
 
-            //build current partyList
-            CurrentPartyList = new();
+            //build current and recent party lists
+            //CurrentPartyList = new();
+            //RecentPartyList = new();
+            BuildCurrentPartyList();
+            BuildRecentPartyList();
 
             //setup fake party list doggo!
             FakePartyList = new();
@@ -117,6 +142,8 @@ namespace MapPartyAssist {
             FakePartyList.Add("Test Party5 Cactuar", new MPAMember("Test Party5", "Cactuar"));
             FakePartyList.Add("Test Party6 Lamia", new MPAMember("Test Party6", "Lamia"));
             FakePartyList.Add("Test Party7 Balmung", new MPAMember("Test Party7", "Balmung"));
+            //FakePartyList["Test Party1 Siren"].MapLink = new MapLinkPayload(23, 23, 22f, 22f);
+            FakePartyList["Test Party1 Siren"].MapLink = (MapLinkPayload)SeString.CreateMapLink("Upper La Noscea", 22f, 22f).Payloads.ElementAt(0);
             FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 12, 8, 30, 11), "The Ruby Sea"));
             FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("", new DateTime(2023, 4, 12, 9, 30, 11)));
             FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("", new DateTime(2023, 4, 12, 10, 30, 11)));
@@ -144,7 +171,7 @@ namespace MapPartyAssist {
             this.CommandManager.RemoveHandler(CommandName);
 
             this.Framework.Update -= this.OnFrameworkUpdate;
-            this.ChatGui.ChatMessage-= this.OnChatMessage;
+            this.ChatGui.ChatMessage -= this.OnChatMessage;
 
             this.ClientState.Login -= this.OnLogin;
             this.ClientState.Logout -= this.OnLogout;
@@ -174,6 +201,7 @@ namespace MapPartyAssist {
             if(playerJob != null && currentPartySize != _lastPartySize) {
                 PluginLog.Debug($"Party size has changed.");
                 BuildCurrentPartyList();
+                BuildRecentPartyList();
                 //this.Configuration.Save();
                 _lastPartySize = currentPartySize;
             }
@@ -181,10 +209,14 @@ namespace MapPartyAssist {
 
         private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled) {
 
-            PluginLog.Debug($"Message received: {type} {message.ToString()} from {sender.ToString()}");
+            //PluginLog.Debug($"Message received: {type} {message.ToString()} from {sender.ToString()}");
+            //foreach(Payload payload in message.Payloads) {
+            //    PluginLog.Debug($"payload: {payload}");
+            //}
 
             bool newMapFound = false;
             string key = "";
+            string mapType = "";
 
             //party member portals
             if((int)type == 2361) {
@@ -208,13 +240,18 @@ namespace MapPartyAssist {
                 //    CurrentPartyList[key].MapLink = null;
                 //    this.Configuration.Save();
                 //}
-            //self map detection
+                //self map detection
             } else if((int)type == 2105 || (int)type == 2233) {
                 PluginLog.Debug($"Type {type} message occurred!");
+
+                foreach(Payload payload in message.Payloads) {
+                    PluginLog.Debug($"payload: {payload.ToString()}");
+                }
 
                 Regex toMatch = new Regex(@"map crumbles into dust.$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
                 MatchCollection matchCollection = toMatch.Matches(message.ToString());
                 newMapFound = matchCollection.Count > 0;
+                mapType = Regex.Match(message.ToString(), @"\w* [\w']* map(?=\scrumbles into dust)").ToString();
                 key = $"{ClientState.LocalPlayer.Name} {ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
 
                 //if(matchCollection.Count > 0) {
@@ -227,11 +264,38 @@ namespace MapPartyAssist {
                 //    CurrentPartyList[key].MapLink = null;
                 //    this.Configuration.Save();
                 //}
+            } else if(type == XivChatType.Party) {
+                //getting map link
+
+                //foreach(Payload payload in sender.Payloads) {
+                //    PluginLog.Debug($"sender payload: {payload}");
+                //}
+
+                var mapPayload = (MapLinkPayload)message.Payloads.FirstOrDefault(p => p.Type == PayloadType.MapLink);
+                var senderPayload = (PlayerPayload)sender.Payloads.FirstOrDefault(p => p.Type == PayloadType.Player);
+
+                if(senderPayload == null) {
+                    PluginLog.Debug("senderPayload null!");
+                    //regex
+                    string matchName = Regex.Match(sender.TextValue, @"[A-Za-z-']*\s[A-Za-z-']*$").ToString();
+                    key = $"{matchName} {ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
+                } else {
+                    PluginLog.Debug("senderPayload not null!");
+                    key = $"{senderPayload.PlayerName} {senderPayload.World.Name}";
+                }
+                if(mapPayload != null) {
+                    PluginLog.Debug("map payload found!");
+                    //CurrentPartyList[key].MapLink = SeString.CreateMapLink(mapPayload.TerritoryType.RowId, mapPayload.Map.RowId, mapPayload.XCoord, mapPayload.YCoord);
+                    CurrentPartyList[key].MapLink = mapPayload;
+                    Configuration.Save();
+                }
             }
 
-            if(newMapFound) {
+            //var mapPayload = PayloadType.MapLink
+
+            if(newMapFound && CurrentPartyList.Count > 0) {
                 PluginLog.Debug("Match was found!");
-                var newMap = new MPAMap("Unknown Map", DateTime.Now, DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name);
+                var newMap = new MPAMap(mapType, DateTime.Now, DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name);
                 PluginLog.Debug($"Adding new map to {key}");
                 CurrentPartyList[key].Maps.Add(newMap);
                 CurrentPartyList[key].MapLink = null;
@@ -246,12 +310,12 @@ namespace MapPartyAssist {
             //2091 my actions
             //4139 party actions
 
-            //foreach(Payload payload in message.Payloads.Where(p => p.Type == PayloadType.Player)) {
-            //    PluginLog.Debug($"payload: {payload.DataResolver.}");
-            //}
+
             //string s = message.ToJson();
 
             //PluginLog.Debug($"Message received: {type} {message.ToJson()}");
+            //PluginLog.Debug($"Sender: {type} {sender.ToJson()}");
+
 
 
             //if(type == XivChatType.Notice) {
@@ -263,6 +327,7 @@ namespace MapPartyAssist {
 
         private void OnLogin(object? sender, EventArgs e) {
             BuildCurrentPartyList();
+            BuildRecentPartyList();
             CheckAndArchiveMaps(Configuration.RecentPartyList);
             //this.Configuration.Save();
         }
@@ -271,14 +336,14 @@ namespace MapPartyAssist {
             //remove all party members
             this.CurrentPartyList = new();
         }
-        
+
         //builds current party list, from scratch
         private void BuildCurrentPartyList() {
             string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
             string currentPlayerWorld = ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
             this.CurrentPartyList = new();
 
-            foreach (PartyMember p in this.PartyList) {
+            foreach(PartyMember p in this.PartyList) {
                 string partyMemberName = p.Name.ToString();
                 string partyMemberWorld = p.World.GameData.Name.ToString();
                 string key = $"{partyMemberName} {partyMemberWorld}";
@@ -299,11 +364,31 @@ namespace MapPartyAssist {
             this.Configuration.Save();
         }
 
+        private void BuildRecentPartyList() {
+            this.RecentPartyList = new();
+            foreach(var player in this.Configuration.RecentPartyList) {
+                TimeSpan timeSpan = DateTime.Now - player.Value.LastJoined;
+                var isRecent = timeSpan.TotalHours <= Configuration.ArchiveThresholdHours;
+                var hasMaps = false;
+                foreach(var map in player.Value.Maps) {
+                    if(!map.IsArchived && !map.IsDeleted) {
+                        hasMaps = true;
+                        break;
+                    }
+                }
+                var notCurrent = !CurrentPartyList.ContainsKey(player.Key);
+                var notSelf = !player.Value.IsSelf;
+                if(isRecent && hasMaps && notCurrent && notSelf) {
+                    this.RecentPartyList.Add(player.Key, player.Value);
+                }
+            }
+        }
+
         private void CheckAndArchiveMaps(Dictionary<string, MPAMember> list) {
             DateTime currentTime = DateTime.Now;
             foreach(MPAMember player in list.Values) {
                 foreach(MPAMap map in player.Maps) {
-                    TimeSpan timeSpan= currentTime - map.Time;
+                    TimeSpan timeSpan = currentTime - map.Time;
                     if(timeSpan.TotalHours > Configuration.ArchiveThresholdHours) {
                         map.IsArchived = true;
                     }
@@ -322,18 +407,33 @@ namespace MapPartyAssist {
         }
 
         public void TestFunction() {
-            PluginLog.Debug($"Current party members: {PartyList.Length}");
-            foreach(var player in PartyList) {
-                PluginLog.Debug($"Party Member: {player.Name} {player.World.GameData.Name}");
-            }
+            Functions.OpenMap(19);
+            //FFXIVClientStructs.FFXIV.Application.OpenMap();
+            //AgentMap* agont = FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentMap.Instance();
+            //FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentMap.MemberFunctionPointers.OpenMapByMapId(19);
+            //PluginLog.Debug($"Current party members: {PartyList.Length}");
+            //foreach(var player in PartyList) {
+            //    PluginLog.Debug($"Party Member: {player.Name} {player.World.GameData.Name}");
+            //}
 
-            PluginLog.Debug($"{ClientState.LocalPlayer.Name} {ClientState.LocalPlayer!.HomeWorld.GameData!.Name}");
+            //PluginLog.Debug($"{ClientState.LocalPlayer.Name} {ClientState.LocalPlayer!.HomeWorld.GameData!.Name}");
         }
 
         public void TestFunction2() {
-            foreach(var world in _worlds) {
-                PluginLog.Debug($"World: {world.Key} {world.Value.Name}");
+            //foreach(var world in _worlds) {
+            //    PluginLog.Debug($"World: {world.Key} {world.Value.Name}");
+            //}
+            foreach(var map in this.DataManager.GetExcelSheet<Map>()!) {
+                PluginLog.Debug($"{map.RowId} {map.PlaceName.Value.Name}");
             }
+        }
+
+        public void OpenMap(MapLinkPayload mapLink) {
+            GameGui.OpenMapWithMapLink(mapLink);
+            //var mapPayload = (MapLinkPayload)mapLink.Payloads.FirstOrDefault(p => p.Type == PayloadType.MapLink);
+            //Functions.SetFlagMarkers(mapPayload.TerritoryType.RowId, mapPayload.Map.RowId, mapPayload.XCoord, mapPayload.YCoord);
+            //Functions.OpenMap(mapPayload.Map.RowId);
+            //FFXIVClientStructs.FFXIV.Application.OpenMap();
         }
     }
 }
