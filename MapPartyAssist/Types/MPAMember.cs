@@ -9,7 +9,7 @@ namespace MapPartyAssist.Types {
         public List<MPAMap> Maps { get; set; }
         public bool IsSelf { get; set; }
         public DateTime LastJoined { get; set; }
-        public MapLinkPayload MapLink { get; set; }
+        public MapLinkPayload? MapLink { get; set; }
 
         public MPAMember(string name, string homeWorld, bool isSelf = false) {
             Name = name;

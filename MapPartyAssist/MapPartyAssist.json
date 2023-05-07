@@ -1,9 +1,9 @@
 {
   "Author": "Sarah Montcroix",
-  "Name": "MapPartyAssist",
-  "Punchline": "Map party features",
-  "Description": "A description that shows up in /xlplugins. List any major slash-command(s).",
-  "InternalName": "mapPartyAssist",
+  "Name": "Map Party Assist",
+  "Punchline": "Keep track of treasure maps opened by party members.",
+  "Description": "Helpful tool for keeping track of maps opened by players in your party.",
+  "InternalName": "MapPartyAssist",
   "ApplicableVersion": "any",
   "Tags": [
     "treasure maps",

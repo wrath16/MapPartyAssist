@@ -1,5 +1,6 @@
 using Dalamud.Configuration;
 using Dalamud.Plugin;
+using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
@@ -26,6 +27,16 @@ namespace MapPartyAssist {
 
         public void Save() {
             this.PluginInterface!.SavePluginConfig(this);
+        }
+
+        //removes players who have 0 maps and last joined >24 hours
+        public void PruneRecentPartyList() {
+            foreach(var player in RecentPartyList) {
+                if(player.Value.Maps.Count <= 0 && (DateTime.Now - player.Value.LastJoined).TotalHours >= ArchiveThresholdHours) {
+                    RecentPartyList.Remove(player.Key);
+                }
+            }
+            Save();
         }
     }
 }

@@ -19,6 +19,7 @@ public class MainWindow : Window, IDisposable {
 
     public MainWindow(Plugin plugin) : base(
         "Map Party Assist") {
+        this.ForceMainWindow = true;
         this.SizeConstraints = new WindowSizeConstraints {
             MinimumSize = new Vector2(500, 250),
             MaximumSize = new Vector2(500, 350)
@@ -31,16 +32,14 @@ public class MainWindow : Window, IDisposable {
 
     public override void Draw() {
         //if(ImGui.Button("Test Function")) {
-        //    this.Plugin.TestFunction();
+        //    this.Plugin.TestFunction3();
         //}
         //if(ImGui.Button("Test Function2")) {
         //    this.Plugin.TestFunction2();
         //}
 
         if(ImGui.Button("Clear All")) {
-            Plugin.ForceArchiveAllMaps(Plugin.Configuration.RecentPartyList);
-            Plugin.ForceArchiveAllMaps(Plugin.FakePartyList);
-            Plugin.Configuration.Save();
+            Plugin.ClearAllMaps();
         }
 
 
@@ -70,7 +69,7 @@ public class MainWindow : Window, IDisposable {
             MapTable(Plugin.RecentPartyList);
         }
 
-        //MapTable(Plugin.FakePartyList);
+        MapTable(Plugin.FakePartyList);
     }
 
     private void MapTable(Dictionary<string, MPAMember> list, bool readOnly = false) {
@@ -84,7 +83,13 @@ public class MainWindow : Window, IDisposable {
             for(int i = 0; i < _maxMaps; i++) {
                 ImGui.TableSetupColumn($"map{i + 3}", ImGuiTableColumnFlags.WidthFixed, 15f);
             }
-            foreach(var player in list) {
+            foreach(var player in list.OrderBy(kvp => {
+                if(kvp.Value.IsSelf) {
+                    return "";
+                } else {
+                    return kvp.Key;
+                }
+            })) {
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
                 ImGui.Text($"{player.Value.Name}");
@@ -92,10 +97,11 @@ public class MainWindow : Window, IDisposable {
                 ImGui.TableNextColumn();
                 ImGui.PushFont(UiBuilder.IconFont);
                 if(ImGui.Button($"{FontAwesomeIcon.Plus.ToIconString()}##{player.GetHashCode()}--AddMap")) {
-                    PluginLog.Log($"Adding new map to {player.Key}");
-                    var newMap = new MPAMap("Manually-added map", DateTime.Now, "", false, true);
-                    player.Value.Maps.Add(newMap);
-                    this.Plugin.Configuration.Save();
+                    //PluginLog.Log($"Adding new map to {player.Key}");
+                    Plugin.AddMap(player.Value, "", "Manually-added map.", true);
+                    //var newMap = new MPAMap("Manually-added map", DateTime.Now, "", false, true);
+                    //player.Value.Maps.Add(newMap);
+                    //this.Plugin.Configuration.Save();
                 }
                 ImGui.PopFont();
                 if(ImGui.IsItemHovered()) {
@@ -115,7 +121,7 @@ public class MainWindow : Window, IDisposable {
                     }
                     if(ImGui.IsItemClicked()) {
 
-                        Plugin.OpenMap(player.Value.MapLink);
+                        Plugin.OpenMapLink(player.Value.MapLink);
                     }
                 }
                 ImGui.TableNextColumn();
@@ -123,7 +129,12 @@ public class MainWindow : Window, IDisposable {
                 List<MPAMap> maps = player.Value.Maps.Where(m => !m.IsDeleted && !m.IsArchived).ToList();
                 for(int i = 0; i < maps.Count() && i < _maxMaps; i++) {
                     ImGui.PushFont(UiBuilder.IconFont);
-                    ImGui.TextColored(ImGuiColors.ParsedGreen, FontAwesomeIcon.Check.ToIconString());
+                    if(maps.ElementAt(i).IsManual) {
+                        ImGui.TextColored(ImGuiColors.DalamudYellow, FontAwesomeIcon.Check.ToIconString());
+                    } else {
+                        ImGui.TextColored(ImGuiColors.ParsedGreen, FontAwesomeIcon.Check.ToIconString());
+                    }
+                    //ImGui.TextColored(ImGuiColors.ParsedGreen, FontAwesomeIcon.Check.ToIconString());
                     ImGui.PopFont();
                     if(ImGui.IsItemHovered()) {
                         ImGui.BeginTooltip();
@@ -140,12 +151,6 @@ public class MainWindow : Window, IDisposable {
                         if(ImGui.MenuItem($"Remove##{maps.ElementAt(i).GetHashCode()}")) {
                             toArchive.Add(maps[i]);
                         }
-                        //if(ImGui.MenuItem($"Delete##{maps.ElementAt(i).GetHashCode()}")) {
-                        //    maps.RemoveAt(i);
-                        //    toDelete.Add(maps[i]);
-                        //}
-                        //ImGui.Text($"testing{i}");
-                        //ImGui.Text($"{maps.ElementAt(i).Time.ToString()}");
                         ImGui.EndPopup();
                     }
                     ImGui.TableNextColumn();
@@ -156,6 +161,13 @@ public class MainWindow : Window, IDisposable {
 
                 if(maps.Count() > _maxMaps) {
                     ImGui.TextColored(ImGuiColors.ParsedGreen, $" +{maps.Count() - _maxMaps}");
+                    if(ImGui.BeginPopupContextItem($"##{player.Value.GetHashCode()}--ExtraMapsContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
+                        if(ImGui.MenuItem($"Remove Last##{player.Value.GetHashCode()}--ExtraMapsRemove")) {
+                            Plugin.RemoveLastMap(player.Value);
+                        }
+                        ImGui.EndPopup();
+                    }
+
                 }
             }
 
