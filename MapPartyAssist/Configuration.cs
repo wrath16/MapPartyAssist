@@ -1,6 +1,5 @@
 using Dalamud.Configuration;
 using Dalamud.Plugin;
-using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;

@@ -11,6 +11,11 @@ namespace MapPartyAssist.Types {
         public DateTime LastJoined { get; set; }
         public MapLinkPayload? MapLink { get; set; }
 
+        public string Key {
+            get {
+                return $"{Name} {HomeWorld}";
+            }
+        }
         public MPAMember(string name, string homeWorld, bool isSelf = false) {
             Name = name;
             HomeWorld = homeWorld;

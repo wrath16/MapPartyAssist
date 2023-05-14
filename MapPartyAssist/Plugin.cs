@@ -20,7 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist {
     public sealed class Plugin : IDalamudPlugin {
@@ -49,19 +49,21 @@ namespace MapPartyAssist {
         //private string _playerName;
         //private string _playerWorld;
         private int _lastPartySize;
+        //public string _lastMapPlayerKey = "";
 
         private string _diggerKey = "";
         private DateTime _digTime = DateTime.UnixEpoch;
         private bool _isDigLockedIn = false;
         private DateTime _portalBlockUntil = DateTime.UnixEpoch;
 
-        private static int _digThresholdSeconds = 15; //window within which to block subsequent dig while awaiting treasure coffer message
+        private static int _digThresholdSeconds = 8; //window within which to block subsequent dig while awaiting treasure coffer message
         private static int _digFallbackSeconds = 60 * 10; //if no treasure coffer opened after this time of dig locking in, unlock and allow digging
         private static int _portalBlockSeconds = 60; //timer to block portal from adding a duplicate map after finishing a chest
         private static int _addMapDelaySeconds = 5; //delay added onto adding a map to avoid double-counting self maps with another player using dig at same time
 
         public Dictionary<string, MPAMember> CurrentPartyList { get; set; }
         public Dictionary<string, MPAMember> RecentPartyList { get; set; }
+        public string LastMapPlayerKey { get; private set; } = "";
         //    get {
         //        Dictionary<string, MPAMember> newList = new();
         //        foreach(var player in this.Configuration.RecentPartyList) {
@@ -95,9 +97,6 @@ namespace MapPartyAssist {
         //    }
         //}
 
-
-        private string _digMatchPattern = @"use[s]? Dig.";
-
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
             [RequiredVersion("1.0")] CommandManager commandManager,
@@ -128,7 +127,7 @@ namespace MapPartyAssist {
             WindowSystem.AddWindow(new MainWindow(this));
 
             this.CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand) {
-                HelpMessage = "Opens map party assist"
+                HelpMessage = "Opens map party assist."
             });
 
             this.PluginInterface.UiBuilder.Draw += DrawUI;
@@ -160,13 +159,14 @@ namespace MapPartyAssist {
             FakePartyList.Add("Test Party1 Siren", new MPAMember("Test Party1", "Siren"));
             FakePartyList.Add("Sarah Montcroix Siren", new MPAMember("Sarah Montcroix", "Siren", true));
             FakePartyList.Add("Test Party2 Gilgamesh", new MPAMember("Test Party2", "Gilgamesh"));
-            FakePartyList.Add("Test Party3 Coeurl", new MPAMember("Test Party3", "Coeurl"));
+            FakePartyList.Add("KillerDog Matmaster Coeurl", new MPAMember("Killerdog Matmaster", "Coeurl"));
             FakePartyList.Add("Test Party4 Siren", new MPAMember("Test Party4", "Siren"));
             FakePartyList.Add("Test Party5 Cactuar", new MPAMember("Test Party5", "Cactuar"));
             FakePartyList.Add("Test Party6 Lamia", new MPAMember("Test Party6", "Lamia"));
             FakePartyList.Add("Test Party7 Balmung", new MPAMember("Test Party7", "Balmung"));
             //FakePartyList["Test Party1 Siren"].MapLink = new MapLinkPayload(23, 23, 22f, 22f);
-            FakePartyList["Test Party1 Siren"].MapLink = (MapLinkPayload)SeString.CreateMapLink("Upper La Noscea", 22f, 24f).Payloads.ElementAt(0);
+            var mapLinkPayload = SeString.CreateMapLink("Upper La Noscea", 22f, 24f).Payloads.ElementAt(0) as MapLinkPayload;
+            FakePartyList["Test Party1 Siren"].MapLink = mapLinkPayload;
             FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 12, 8, 30, 11), "The Ruby Sea"));
             FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("", new DateTime(2023, 4, 12, 9, 30, 11)));
             FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("", new DateTime(2023, 4, 12, 10, 30, 11)));
@@ -272,13 +272,16 @@ namespace MapPartyAssist {
                     newMapFound = true;
                     mapType = Regex.Match(message.ToString(), @"\w* [\w']* map(?=\scrumbles into dust)").ToString();
                     key = $"{ClientState.LocalPlayer!.Name} {ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
-                    //clear dig info just in case to prevent double-adding map
+                    //clear dig info just in case to prevent double-adding map if another player uses dig at the same time
                     ResetDigStatus();
                     PluginLog.Debug($"_diggerKey: {_diggerKey} _digTime: {_digTime}  _isDigLockedIn: {_isDigLockedIn} _portalBlockUntil: {_portalBlockUntil} ");
                 } else if(Regex.IsMatch(message.ToString(), @"discover a treasure coffer!$")) {
                     PluginLog.Debug($"Message received: {type} {message} from {sender}");
                     foreach(Payload payload in message.Payloads) {
                         PluginLog.Debug($"payload: {payload}");
+                    }
+                    if(!_diggerKey.IsNullOrEmpty()) {
+                        PluginLog.Debug($"Time since dig: {(DateTime.Now - _digTime).TotalMilliseconds} ms");
                     }
                     //lock in dig only if we have a recent digger
                     _isDigLockedIn = !_diggerKey.IsNullOrEmpty() && ((DateTime.Now - _digTime).TotalSeconds < _digThresholdSeconds);
@@ -289,13 +292,18 @@ namespace MapPartyAssist {
                         PluginLog.Debug($"payload: {payload}");
                     }
                     //delay registering the new map to avoid double counting with self maps if someone uses dig at same time
-                    Thread.Sleep(_addMapDelaySeconds * 1000);
-                    if(_isDigLockedIn) {
-                        newMapFound = true;
-                        key = _diggerKey;
-                    }
-                    //have to reset here in case you fail to defeat the treasure chest enemies -_-
-                    ResetDigStatus();
+                    //Thread.Sleep(_addMapDelaySeconds * 1000);
+                    Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
+                        AddMap(CurrentPartyList[_diggerKey], DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name!);
+                        //have to reset here in case you fail to defeat the treasure chest enemies -_ -
+                        ResetDigStatus();
+                    });
+
+                    //if(_isDigLockedIn) {
+                    //    newMapFound = true;
+                    //    key = _diggerKey;
+                    //}
+
                 } else if(Regex.IsMatch(message.ToString(), @"defeat all the enemies drawn by the trap!$")) {
                     PluginLog.Debug($"Message received: {type} {message} from {sender}");
                     foreach(Payload payload in message.Payloads) {
@@ -340,16 +348,16 @@ namespace MapPartyAssist {
                 var senderPayload = (PlayerPayload)sender.Payloads.FirstOrDefault(p => p.Type == PayloadType.Player);
 
                 if(senderPayload == null) {
-                    PluginLog.Debug("senderPayload null!");
+                    //PluginLog.Debug("senderPayload null!");
                     //regex
                     string matchName = Regex.Match(sender.TextValue, @"[A-Za-z-']*\s[A-Za-z-']*$").ToString();
                     key = $"{matchName} {ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
                 } else {
-                    PluginLog.Debug("senderPayload not null!");
+                    //PluginLog.Debug("senderPayload not null!");
                     key = $"{senderPayload.PlayerName} {senderPayload.World.Name}";
                 }
                 if(mapPayload != null) {
-                    PluginLog.Debug("map payload found!");
+                    //PluginLog.Debug("map payload found!");
                     //CurrentPartyList[key].MapLink = SeString.CreateMapLink(mapPayload.TerritoryType.RowId, mapPayload.Map.RowId, mapPayload.XCoord, mapPayload.YCoord);
                     CurrentPartyList[key].MapLink = mapPayload;
                     Configuration.Save();
@@ -432,7 +440,7 @@ namespace MapPartyAssist {
                 }
                 var notCurrent = !CurrentPartyList.ContainsKey(player.Key);
                 var notSelf = !player.Value.IsSelf;
-                if(isRecent && hasMaps && notCurrent && notSelf) {
+                if(isRecent && hasMaps && notCurrent) {
                     this.RecentPartyList.Add(player.Key, player.Value);
                 }
             }
@@ -479,7 +487,10 @@ namespace MapPartyAssist {
             PluginLog.Debug($"Adding new map to {player.Name} {player.HomeWorld}");
             var newMap = new MPAMap(type, DateTime.Now, zone, false, isManual);
             player.Maps.Add(newMap);
-            player.MapLink = null;
+            if(!isManual) {
+                player.MapLink = null;
+            }
+            LastMapPlayerKey = player.Key;
             Configuration.Save();
         }
 

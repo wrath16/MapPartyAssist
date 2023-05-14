@@ -1,7 +1,6 @@
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
-using Dalamud.Logging;
 using Dalamud.Utility;
 using ImGuiNET;
 using MapPartyAssist.Types;
@@ -15,7 +14,7 @@ namespace MapPartyAssist.Windows;
 public class MainWindow : Window, IDisposable {
     private Plugin Plugin;
 
-    private int _maxMaps = 10;
+    private static int _maxMaps = 11;
 
     public MainWindow(Plugin plugin) : base(
         "Map Party Assist") {
@@ -40,6 +39,23 @@ public class MainWindow : Window, IDisposable {
 
         if(ImGui.Button("Clear All")) {
             Plugin.ClearAllMaps();
+        }
+
+        int totalMapsCurrent = 0;
+        int totalMapsRecent = 0;
+        foreach(var p in Plugin.CurrentPartyList) {
+            totalMapsCurrent += p.Value.Maps.Where(m => !m.IsDeleted && !m.IsArchived).ToList().Count;
+        }
+        foreach(var p in Plugin.RecentPartyList) {
+            totalMapsRecent += p.Value.Maps.Where(m => !m.IsDeleted && !m.IsArchived).ToList().Count;
+        }
+
+        ImGui.SameLine();
+        ImGui.Text($"Total Maps: {totalMapsCurrent}");
+        if(ImGui.IsItemHovered()) {
+            ImGui.BeginTooltip();
+            ImGui.Text($"Including recent party members: {totalMapsCurrent + totalMapsRecent}");
+            ImGui.EndTooltip();
         }
 
 
@@ -69,20 +85,21 @@ public class MainWindow : Window, IDisposable {
             MapTable(Plugin.RecentPartyList);
         }
 
-        MapTable(Plugin.FakePartyList);
+        //MapTable(Plugin.FakePartyList);
     }
 
     private void MapTable(Dictionary<string, MPAMember> list, bool readOnly = false) {
 
-        if(ImGui.BeginTable($"##{list.GetHashCode()}_Maps_Table", _maxMaps + 4, ImGuiTableFlags.Borders)) {
+        if(ImGui.BeginTable($"##{list.GetHashCode()}_Maps_Table", _maxMaps + 2, ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX)) {
             List<MPAMap> toArchive = new();
             List<MPAMap> toDelete = new();
-            ImGui.TableSetupColumn("name", ImGuiTableColumnFlags.WidthStretch, 6f);
-            ImGui.TableSetupColumn("addNew", ImGuiTableColumnFlags.WidthFixed, 22f);
-            ImGui.TableSetupColumn("mapLink", ImGuiTableColumnFlags.WidthFixed, 15f);
+            ImGui.TableSetupColumn("name", ImGuiTableColumnFlags.WidthFixed, 158f);
+            //ImGui.TableSetupColumn("addNew", ImGuiTableColumnFlags.WidthFixed, 22f);
+            //ImGui.TableSetupColumn("mapLink", ImGuiTableColumnFlags.WidthFixed, 15f);
             for(int i = 0; i < _maxMaps; i++) {
-                ImGui.TableSetupColumn($"map{i + 3}", ImGuiTableColumnFlags.WidthFixed, 15f);
+                ImGui.TableSetupColumn($"map{i + 1}", ImGuiTableColumnFlags.WidthFixed, 15f);
             }
+            ImGui.TableSetupColumn($"extraMaps", ImGuiTableColumnFlags.WidthFixed, 20f);
             foreach(var player in list.OrderBy(kvp => {
                 if(kvp.Value.IsSelf) {
                     return "";
@@ -92,25 +109,21 @@ public class MainWindow : Window, IDisposable {
             })) {
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
-                ImGui.Text($"{player.Value.Name}");
+                if(player.Key.Equals(Plugin.LastMapPlayerKey)) {
+                    ImGui.TextColored(ImGuiColors.DalamudYellow, $"{player.Value.Name.PadRight(20)}");
+                } else {
+                    ImGui.Text($"{player.Value.Name.PadRight(20)}");
+                }
+                //ImGui.Text($"{player.Value.Name.PadRight(20)}");
+                if(ImGui.BeginPopupContextItem($"##{player.Value.GetHashCode()}--NameContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
+                    if(ImGui.MenuItem($"Add map manually##{player.Value.GetHashCode()}--NameAddMap")) {
+                        Plugin.AddMap(player.Value, "", "Manually-added map.", true);
+                    }
+                    ImGui.EndPopup();
+                }
                 //ImGui.Text($"{player.Value.HomeWorld}");
-                ImGui.TableNextColumn();
-                ImGui.PushFont(UiBuilder.IconFont);
-                if(ImGui.Button($"{FontAwesomeIcon.Plus.ToIconString()}##{player.GetHashCode()}--AddMap")) {
-                    //PluginLog.Log($"Adding new map to {player.Key}");
-                    Plugin.AddMap(player.Value, "", "Manually-added map.", true);
-                    //var newMap = new MPAMap("Manually-added map", DateTime.Now, "", false, true);
-                    //player.Value.Maps.Add(newMap);
-                    //this.Plugin.Configuration.Save();
-                }
-                ImGui.PopFont();
-                if(ImGui.IsItemHovered()) {
-                    ImGui.BeginTooltip();
-                    ImGui.Text("Add map manually.");
-                    ImGui.EndTooltip();
-                }
-                ImGui.TableNextColumn();
                 if(player.Value.MapLink != null) {
+                    ImGui.SameLine(151);
                     ImGui.PushFont(UiBuilder.IconFont);
                     ImGui.TextColored(ImGuiColors.DalamudGrey, FontAwesomeIcon.Search.ToIconString());
                     ImGui.PopFont();
@@ -125,6 +138,36 @@ public class MainWindow : Window, IDisposable {
                     }
                 }
                 ImGui.TableNextColumn();
+                //ImGui.PushFont(UiBuilder.IconFont);
+                //if(ImGui.Button($"{FontAwesomeIcon.Plus.ToIconString()}##{player.GetHashCode()}--AddMap")) {
+                //    //PluginLog.Log($"Adding new map to {player.Key}");
+                //    Plugin.AddMap(player.Value, "", "Manually-added map.", true);
+                //    //var newMap = new MPAMap("Manually-added map", DateTime.Now, "", false, true);
+                //    //player.Value.Maps.Add(newMap);
+                //    //this.Plugin.Configuration.Save();
+                //}
+                //ImGui.PopFont();
+                //if(ImGui.IsItemHovered()) {
+                //    ImGui.BeginTooltip();
+                //    ImGui.Text("Add map manually.");
+                //    ImGui.EndTooltip();
+                //}
+                //ImGui.TableNextColumn();
+                //if(player.Value.MapLink != null) {
+                //    ImGui.PushFont(UiBuilder.IconFont);
+                //    ImGui.TextColored(ImGuiColors.DalamudGrey, FontAwesomeIcon.Search.ToIconString());
+                //    ImGui.PopFont();
+                //    if(ImGui.IsItemHovered()) {
+                //        ImGui.BeginTooltip();
+                //        ImGui.Text($"{player.Value.MapLink.PlaceName} {player.Value.MapLink.CoordinateString}");
+                //        ImGui.EndTooltip();
+                //    }
+                //    if(ImGui.IsItemClicked()) {
+
+                //        Plugin.OpenMapLink(player.Value.MapLink);
+                //    }
+                //}
+                //ImGui.TableNextColumn();
                 //int count = 0;
                 List<MPAMap> maps = player.Value.Maps.Where(m => !m.IsDeleted && !m.IsArchived).ToList();
                 for(int i = 0; i < maps.Count() && i < _maxMaps; i++) {
