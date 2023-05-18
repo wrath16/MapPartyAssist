@@ -32,7 +32,6 @@ namespace MapPartyAssist {
         private CommandManager CommandManager { get; init; }
         private DataManager DataManager { get; init; }
         private ClientState ClientState { get; init; }
-
         private DutyState DutyState { get; init; }
         private PartyList PartyList { get; init; }
         private ChatGui ChatGui { get; init; }
@@ -41,11 +40,16 @@ namespace MapPartyAssist {
 
         public Configuration Configuration { get; init; }
         internal GameFunctions Functions { get; }
-
         public WindowSystem WindowSystem = new("Map Party Assist");
 
+        public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
+        public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
+        public string LastMapPlayerKey { get; private set; } = "";
 
-        private Dictionary<uint, World> _worlds = new();
+        //TODO delete (for testing only!)
+        public Dictionary<string, MPAMember> FakePartyList { get; private set; }
+
+        //private Dictionary<uint, World> _worlds = new();
         //private string _playerName;
         //private string _playerWorld;
         private int _lastPartySize;
@@ -56,46 +60,10 @@ namespace MapPartyAssist {
         private bool _isDigLockedIn = false;
         private DateTime _portalBlockUntil = DateTime.UnixEpoch;
 
-        private static int _digThresholdSeconds = 8; //window within which to block subsequent dig while awaiting treasure coffer message
+        private static int _digThresholdSeconds = 3; //window within which to block subsequent dig while awaiting treasure coffer message
         private static int _digFallbackSeconds = 60 * 10; //if no treasure coffer opened after this time of dig locking in, unlock and allow digging
         private static int _portalBlockSeconds = 60; //timer to block portal from adding a duplicate map after finishing a chest
-        private static int _addMapDelaySeconds = 5; //delay added onto adding a map to avoid double-counting self maps with another player using dig at same time
-
-        public Dictionary<string, MPAMember> CurrentPartyList { get; set; }
-        public Dictionary<string, MPAMember> RecentPartyList { get; set; }
-        public string LastMapPlayerKey { get; private set; } = "";
-        //    get {
-        //        Dictionary<string, MPAMember> newList = new();
-        //        foreach(var player in this.Configuration.RecentPartyList) {
-        //            TimeSpan timeSpan = DateTime.Now - player.Value.LastJoined;
-        //            var isRecent = timeSpan.TotalHours <= Configuration.ArchiveThresholdHours;
-        //            var hasMaps = false;
-        //            foreach(var map in player.Value.Maps) {
-        //                if(!map.IsArchived && !map.IsDeleted) {
-        //                    hasMaps = true;
-        //                    break;
-        //                }
-        //            }
-        //            var notCurrent = !CurrentPartyList.ContainsKey(player.Key);
-        //            var notSelf = !player.Value.IsSelf;
-        //            if(isRecent && hasMaps && notCurrent && notSelf) {
-        //                newList.Add(player.Key, player.Value);
-        //            }
-        //        }
-        //        return newList;
-        //    }
-        //}
-
-        //TODO delete (for testing only!)
-        public Dictionary<string, MPAMember> FakePartyList { get; set; }
-        //public Dictionary<string, MPAMember> FakePartyList {
-        //    get {
-        //        return Configuration.RecentPartyList.Where(p => p.Value.Maps.Count > 0 || p.Value.IsSelf).Take(8).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-        //    }
-        //    set {
-        //        FakePartyList = value;
-        //    }
-        //}
+        private static int _addMapDelaySeconds = 2; //delay added onto adding a map to avoid double-counting self maps with another player using dig at same time
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -107,42 +75,42 @@ namespace MapPartyAssist {
             [RequiredVersion("1.0")] ChatGui chatGui,
             [RequiredVersion("1.0")] GameGui gameGui,
             [RequiredVersion("1.0")] Framework framework) {
-            this.PluginInterface = pluginInterface;
-            this.CommandManager = commandManager;
-            this.DataManager = dataManager;
-            this.ClientState = clientState;
-            this.DutyState = dutyState;
-            this.PartyList = partyList;
-            this.ChatGui = chatGui;
-            this.GameGui = gameGui;
-            this.Framework = framework;
+            PluginInterface = pluginInterface;
+            CommandManager = commandManager;
+            DataManager = dataManager;
+            ClientState = clientState;
+            DutyState = dutyState;
+            PartyList = partyList;
+            ChatGui = chatGui;
+            GameGui = gameGui;
+            Framework = framework;
 
-            this.Functions = new GameFunctions();
+            Functions = new GameFunctions();
 
             PluginLog.Log("Begin Config loading");
-            this.Configuration = this.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-            this.Configuration.Initialize(this.PluginInterface);
+            Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+            Configuration.Initialize(PluginInterface);
             PluginLog.Log("Done Config loading");
 
             WindowSystem.AddWindow(new MainWindow(this));
 
-            this.CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand) {
+            CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand) {
                 HelpMessage = "Opens map party assist."
             });
 
-            this.PluginInterface.UiBuilder.Draw += DrawUI;
-            this.PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
+            PluginInterface.UiBuilder.Draw += DrawUI;
+            PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
 
-            this.Framework.Update += this.OnFrameworkUpdate;
-            this.ChatGui.ChatMessage += this.OnChatMessage;
-            this.ClientState.Login += this.OnLogin;
-            this.ClientState.Logout += this.OnLogout;
-            this.ClientState.TerritoryChanged += this.OnTerritoryChanged;
-            this.DutyState.DutyStarted += this.OnDutyStart;
+            Framework.Update += OnFrameworkUpdate;
+            ChatGui.ChatMessage += OnChatMessage;
+            ClientState.Login += OnLogin;
+            ClientState.Logout += OnLogout;
+            ClientState.TerritoryChanged += OnTerritoryChanged;
+            DutyState.DutyStarted += OnDutyStart;
 
-            foreach(var world in this.DataManager.GetExcelSheet<World>()!) {
-                this._worlds[world.RowId] = world;
-            }
+            //foreach(var world in DataManager.GetExcelSheet<World>()!) {
+            //    _worlds[world.RowId] = world;
+            //}
 
             //build current and recent party lists
             if(ClientState.IsLoggedIn) {
@@ -190,17 +158,17 @@ namespace MapPartyAssist {
         public void Dispose() {
             PluginLog.Debug("disposing...");
 
-            this.WindowSystem.RemoveAllWindows();
-            this.CommandManager.RemoveHandler(CommandName);
+            WindowSystem.RemoveAllWindows();
+            CommandManager.RemoveHandler(CommandName);
 
-            this.Framework.Update -= this.OnFrameworkUpdate;
-            this.ChatGui.ChatMessage -= this.OnChatMessage;
+            Framework.Update -= OnFrameworkUpdate;
+            ChatGui.ChatMessage -= OnChatMessage;
 
-            this.ClientState.Login -= this.OnLogin;
-            this.ClientState.Logout -= this.OnLogout;
-            this.ClientState.TerritoryChanged -= this.OnTerritoryChanged;
+            ClientState.Login -= OnLogin;
+            ClientState.Logout -= OnLogout;
+            ClientState.TerritoryChanged -= OnTerritoryChanged;
 
-            this.DutyState.DutyStarted -= this.OnDutyStart;
+            DutyState.DutyStarted -= OnDutyStart;
 
             Configuration.PruneRecentPartyList();
 
@@ -213,7 +181,7 @@ namespace MapPartyAssist {
         }
 
         private void DrawUI() {
-            this.WindowSystem.Draw();
+            WindowSystem.Draw();
         }
 
         public void DrawConfigUI() {
@@ -254,9 +222,9 @@ namespace MapPartyAssist {
                 //party member opens portal, after block time
                 if(_portalBlockUntil < DateTime.Now && Regex.IsMatch(message.ToString(), @"complete[s]? preparations to enter the portal.$")) {
                     PluginLog.Debug($"Message received: {type} {message} from {sender}");
-                    foreach(Payload payload in message.Payloads) {
-                        PluginLog.Debug($"payload: {payload}");
-                    }
+                    //foreach(Payload payload in message.Payloads) {
+                    //    PluginLog.Debug($"payload: {payload}");
+                    //}
                     var playerPayload = (PlayerPayload)message.Payloads.First(p => p.Type == PayloadType.Player);
                     key = $"{playerPayload.PlayerName} {playerPayload.World.Name}";
                     newMapFound = true;
@@ -266,9 +234,9 @@ namespace MapPartyAssist {
             } else if((int)type == 2105 || (int)type == 2233) {
                 if(Regex.IsMatch(message.ToString(), @"map crumbles into dust.$")) {
                     PluginLog.Debug($"Message received: {type} {message} from {sender}");
-                    foreach(Payload payload in message.Payloads) {
-                        PluginLog.Debug($"payload: {payload}");
-                    }
+                    //foreach(Payload payload in message.Payloads) {
+                    //    PluginLog.Debug($"payload: {payload}");
+                    //}
                     newMapFound = true;
                     mapType = Regex.Match(message.ToString(), @"\w* [\w']* map(?=\scrumbles into dust)").ToString();
                     key = $"{ClientState.LocalPlayer!.Name} {ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
@@ -277,9 +245,9 @@ namespace MapPartyAssist {
                     PluginLog.Debug($"_diggerKey: {_diggerKey} _digTime: {_digTime}  _isDigLockedIn: {_isDigLockedIn} _portalBlockUntil: {_portalBlockUntil} ");
                 } else if(Regex.IsMatch(message.ToString(), @"discover a treasure coffer!$")) {
                     PluginLog.Debug($"Message received: {type} {message} from {sender}");
-                    foreach(Payload payload in message.Payloads) {
-                        PluginLog.Debug($"payload: {payload}");
-                    }
+                    //foreach(Payload payload in message.Payloads) {
+                    //    PluginLog.Debug($"payload: {payload}");
+                    //}
                     if(!_diggerKey.IsNullOrEmpty()) {
                         PluginLog.Debug($"Time since dig: {(DateTime.Now - _digTime).TotalMilliseconds} ms");
                     }
@@ -288,9 +256,9 @@ namespace MapPartyAssist {
                     PluginLog.Debug($"_diggerKey: {_diggerKey} _digTime: {_digTime}  _isDigLockedIn: {_isDigLockedIn} _portalBlockUntil: {_portalBlockUntil} ");
                 } else if(Regex.IsMatch(message.ToString(), @"releasing a powerful musk into the air!$")) {
                     PluginLog.Debug($"Message received: {type} {message} from {sender}");
-                    foreach(Payload payload in message.Payloads) {
-                        PluginLog.Debug($"payload: {payload}");
-                    }
+                    //foreach(Payload payload in message.Payloads) {
+                    //    PluginLog.Debug($"payload: {payload}");
+                    //}
                     //delay registering the new map to avoid double counting with self maps if someone uses dig at same time
                     //Thread.Sleep(_addMapDelaySeconds * 1000);
                     Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
@@ -306,9 +274,9 @@ namespace MapPartyAssist {
 
                 } else if(Regex.IsMatch(message.ToString(), @"defeat all the enemies drawn by the trap!$")) {
                     PluginLog.Debug($"Message received: {type} {message} from {sender}");
-                    foreach(Payload payload in message.Payloads) {
-                        PluginLog.Debug($"payload: {payload}");
-                    }
+                    //foreach(Payload payload in message.Payloads) {
+                    //    PluginLog.Debug($"payload: {payload}");
+                    //}
                     ResetDigStatus();
                     //block portals from adding maps for a brief period to avoid double counting
                     _portalBlockUntil = DateTime.Now.AddSeconds(_portalBlockSeconds);
@@ -322,9 +290,9 @@ namespace MapPartyAssist {
                 //party member uses dig
                 if(Regex.IsMatch(message.ToString(), @"uses Dig.$")) {
                     PluginLog.Debug($"Message received: {type} {message} from {sender}");
-                    foreach(Payload payload in message.Payloads) {
-                        PluginLog.Debug($"payload: {payload}");
-                    }
+                    //foreach(Payload payload in message.Payloads) {
+                    //    PluginLog.Debug($"payload: {payload}");
+                    //}
                     PluginLog.Debug($"_diggerKey: {_diggerKey} _digTime: {_digTime}  _isDigLockedIn: {_isDigLockedIn} _portalBlockUntil: {_portalBlockUntil} ");
                     var playerPayload = (PlayerPayload)message.Payloads.First(p => p.Type == PayloadType.Player);
                     var newDigTime = DateTime.Now;
@@ -385,7 +353,7 @@ namespace MapPartyAssist {
 
         private void OnLogout(object? sender, EventArgs e) {
             //remove all party members
-            this.CurrentPartyList = new();
+            CurrentPartyList = new();
             ResetDigStatus();
             Configuration.PruneRecentPartyList();
         }
@@ -404,31 +372,31 @@ namespace MapPartyAssist {
         private void BuildCurrentPartyList() {
             string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
             string currentPlayerWorld = ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
-            this.CurrentPartyList = new();
+            CurrentPartyList = new();
 
-            foreach(PartyMember p in this.PartyList) {
+            foreach(PartyMember p in PartyList) {
                 string partyMemberName = p.Name.ToString();
                 string partyMemberWorld = p.World.GameData.Name.ToString();
                 string key = $"{partyMemberName} {partyMemberWorld}";
                 bool isCurrentPlayer = partyMemberName.Equals(currentPlayerName) && partyMemberWorld.Equals(currentPlayerWorld);
 
                 //new player!
-                if(!this.Configuration.RecentPartyList.ContainsKey(key)) {
+                if(!Configuration.RecentPartyList.ContainsKey(key)) {
                     var newPlayer = new MPAMember(partyMemberName, partyMemberWorld, isCurrentPlayer);
                     Configuration.RecentPartyList.Add(key, newPlayer);
-                    this.CurrentPartyList.Add(key, newPlayer);
+                    CurrentPartyList.Add(key, newPlayer);
                 } else {
                     //find existing player
-                    this.Configuration.RecentPartyList[key].LastJoined = DateTime.Now;
-                    this.CurrentPartyList.Add(key, this.Configuration.RecentPartyList[key]);
+                    Configuration.RecentPartyList[key].LastJoined = DateTime.Now;
+                    CurrentPartyList.Add(key, Configuration.RecentPartyList[key]);
                 }
             }
-            this.Configuration.Save();
+            Configuration.Save();
         }
 
         private void BuildRecentPartyList() {
-            this.RecentPartyList = new();
-            foreach(var player in this.Configuration.RecentPartyList) {
+            RecentPartyList = new();
+            foreach(var player in Configuration.RecentPartyList) {
                 TimeSpan timeSpan = DateTime.Now - player.Value.LastJoined;
                 var isRecent = timeSpan.TotalHours <= Configuration.ArchiveThresholdHours;
                 var hasMaps = false;
@@ -441,7 +409,7 @@ namespace MapPartyAssist {
                 var notCurrent = !CurrentPartyList.ContainsKey(player.Key);
                 var notSelf = !player.Value.IsSelf;
                 if(isRecent && hasMaps && notCurrent) {
-                    this.RecentPartyList.Add(player.Key, player.Value);
+                    RecentPartyList.Add(player.Key, player.Value);
                 }
             }
         }
@@ -456,7 +424,7 @@ namespace MapPartyAssist {
                     }
                 }
             }
-            this.Configuration.Save();
+            Configuration.Save();
         }
 
         //archive all of the maps for the given list
@@ -515,7 +483,7 @@ namespace MapPartyAssist {
             //foreach(var world in _worlds) {
             //    PluginLog.Debug($"World: {world.Key} {world.Value.Name}");
             //}
-            foreach(var map in this.DataManager.GetExcelSheet<Map>()!) {
+            foreach(var map in DataManager.GetExcelSheet<Map>()!) {
                 PluginLog.Debug($"{map.RowId} {map.PlaceName.Value.Name}");
             }
         }
@@ -542,7 +510,3 @@ namespace MapPartyAssist {
         }
     }
 }
-
-//partial class PartyList {
-
-//}

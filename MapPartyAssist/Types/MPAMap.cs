@@ -10,21 +10,6 @@ namespace MapPartyAssist.Types {
         public bool IsManual { get; set; }
         public bool IsDeleted { get; set; }
         public bool IsArchived { get; set; }
-        //public bool IsArchived {
-        //    get {
-        //        if(!IsArchived) {
-        //            DateTime dateTime = DateTime.Now;
-        //            TimeSpan timeDiff = dateTime - Time;
-
-        //            //if(timeDiff.TotalHours > )
-        //        } else {
-        //            return true;
-        //        }
-        //    }
-        //    set {
-        //        IsArchived = value;
-        //    }
-        //}
         public SeString? MapLink { get; set; }
 
         public MPAMap(string name, DateTime datetime, string zone = "", bool isPending = false, bool isManual = false) {
