@@ -1,12 +1,11 @@
 {
-  "Author": "Sarah Montcroix",
+  "Author": "SaMo",
   "Name": "Map Party Assist",
   "Punchline": "Keep track of treasure maps opened by party members.",
   "Description": "Helpful tool for keeping track of treasure maps opened by players in your party. Automatic and manual tracking available.",
   "InternalName": "MapPartyAssist",
   "RepoUrl": "https://github.com/wrath16/MapPartyAssist",
   "ApplicableVersion": "any",
-  "DalamudApiLevel": 8,
   "Tags": [
     "treasure maps",
     "maps",
