@@ -19,4 +19,5 @@ Usage instructions:
 
 ## Installation
 
-1. Tbd
+1. Add "https://raw.githubusercontent.com/wrath16/DalamudPluginRepo/main/pluginmaster.json" to your Custom Plugin Repositories under Settings -> Experimental, then save.
+2. Plugin should now appear in the available plugins list and be installable.
