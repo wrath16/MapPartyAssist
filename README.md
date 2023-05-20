@@ -9,7 +9,7 @@ Helpful tool for keeping track of treasure maps opened by players in your party.
 ## Usage instructions 
 
 * Enter '/mparty' into chat to open the window.
-* When a player opens a map, it will be automatically recorded with a checkmark.
+* When a player uses a map by touching a treasure chest or entering a portal, it will be automatically recorded with a checkmark.
 * Maps can be manually added and removed by right-clicking on each party member's name or checkmarks.
 * If someone links a waymark in party chat, it will be noted with a magnifying glass next to their name that you can hover over or click on to open your map with the waymark.
 * The most recent party member to use a map will be highlighted in yellow.
