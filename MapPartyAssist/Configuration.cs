@@ -11,6 +11,8 @@ namespace MapPartyAssist {
         public bool MasterSwitch { get; set; } = true;
         public uint ArchiveThresholdHours { get; set; } = 24;
         public Dictionary<string, MPAMember> RecentPartyList { get; set; }
+        public bool ShowZoneTable { get; set; } = false;
+        public bool EnableWhileSolo { get; set; } = true;
 
         // the below exist just to make saving less cumbersome
         [NonSerialized]

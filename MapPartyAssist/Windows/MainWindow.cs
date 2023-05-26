@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace MapPartyAssist.Windows;
 
@@ -16,11 +17,15 @@ public class MainWindow : Window, IDisposable {
 
     private static int _maxMaps = 11;
 
+    public Vector2 CurrentPosition { get; private set; }
+    public Vector2 CurrentSize { get; private set; }
+
     public MainWindow(Plugin plugin) : base(
         "Map Party Assist") {
         this.ForceMainWindow = true;
+        this.PositionCondition = ImGuiCond.Always;
         this.SizeConstraints = new WindowSizeConstraints {
-            MinimumSize = new Vector2(500, 250),
+            MinimumSize = new Vector2(500, 260),
             MaximumSize = new Vector2(500, 350)
         };
         this.Plugin = plugin;
@@ -29,7 +34,21 @@ public class MainWindow : Window, IDisposable {
     public void Dispose() {
     }
 
+    public override void OnClose() {
+        Plugin.WindowSystem.GetWindow("Map Links by Zone").IsOpen = false;
+        base.OnClose();
+    }
+
+    public override void PreDraw() {
+        base.PreDraw();
+        Plugin.WindowSystem.GetWindow("Map Links by Zone").IsOpen = false;
+        //CurrentPosition = ImGui.GetWindowPos();
+        //CurrentSize = ImGui.GetWindowSize();
+    }
+
     public override void Draw() {
+        CurrentPosition = ImGui.GetWindowPos();
+        CurrentSize = ImGui.GetWindowSize();
         //if(ImGui.Button("Test Function")) {
         //    this.Plugin.TestFunction3();
         //}
@@ -43,11 +62,15 @@ public class MainWindow : Window, IDisposable {
 
         int totalMapsCurrent = 0;
         int totalMapsRecent = 0;
+        int totalPortalsCurrent = 0;
+        int totalPortalsRecent = 0;
         foreach(var p in Plugin.CurrentPartyList) {
             totalMapsCurrent += p.Value.Maps.Where(m => !m.IsDeleted && !m.IsArchived).ToList().Count;
+            totalPortalsCurrent += p.Value.Maps.Where(m => !m.IsDeleted && !m.IsArchived && m.IsPortal).ToList().Count;
         }
         foreach(var p in Plugin.RecentPartyList) {
             totalMapsRecent += p.Value.Maps.Where(m => !m.IsDeleted && !m.IsArchived).ToList().Count;
+            totalPortalsRecent += p.Value.Maps.Where(m => !m.IsDeleted && !m.IsArchived && m.IsPortal).ToList().Count;
         }
 
         ImGui.SameLine();
@@ -57,13 +80,23 @@ public class MainWindow : Window, IDisposable {
             ImGui.Text($"Including recent party members: {totalMapsCurrent + totalMapsRecent}");
             ImGui.EndTooltip();
         }
-
+        ImGui.SameLine();
+        ImGui.Text($"Total Portals: {totalPortalsCurrent}");
+        if(ImGui.IsItemHovered()) {
+            ImGui.BeginTooltip();
+            ImGui.Text($"Including recent party members: {totalPortalsCurrent + totalPortalsRecent}");
+            ImGui.EndTooltip();
+        }
 
         if(Plugin.CurrentPartyList.Count <= 0) {
             ImGui.Text("No party members currently.");
         } else {
             MapTable(Plugin.CurrentPartyList);
         }
+
+
+        //Plugin.WindowSystem.GetWindow("Map Links by Zone").IsOpen = Plugin.CurrentPartyList.Count > 0;
+        Plugin.WindowSystem.GetWindow("Map Links by Zone").IsOpen = true;
 
         //var recentPartyList = Plugin.Configuration.RecentPartyList.Where(p => {
         //    TimeSpan timeSpan = DateTime.Now - p.Value.LastJoined;
@@ -85,7 +118,14 @@ public class MainWindow : Window, IDisposable {
             MapTable(Plugin.RecentPartyList);
         }
 
+        //ImGui.BeginChildFrame(111, new Vector2(200, 50), ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoTitleBar);
+        //ImGui.Text("Test2");
+        ////ImGui.EndChild();
+        //ImGui.EndChildFrame();
+
+        //Plugin.WindowSystem.GetWindow("Map Links").IsOpen = true;
         //MapTable(Plugin.FakePartyList);
+        //ZoneCountTable(Plugin.FakePartyList);
     }
 
     private void MapTable(Dictionary<string, MPAMember> list, bool readOnly = false) {
@@ -138,37 +178,6 @@ public class MainWindow : Window, IDisposable {
                     }
                 }
                 ImGui.TableNextColumn();
-                //ImGui.PushFont(UiBuilder.IconFont);
-                //if(ImGui.Button($"{FontAwesomeIcon.Plus.ToIconString()}##{player.GetHashCode()}--AddMap")) {
-                //    //PluginLog.Log($"Adding new map to {player.Key}");
-                //    Plugin.AddMap(player.Value, "", "Manually-added map.", true);
-                //    //var newMap = new MPAMap("Manually-added map", DateTime.Now, "", false, true);
-                //    //player.Value.Maps.Add(newMap);
-                //    //this.Plugin.Configuration.Save();
-                //}
-                //ImGui.PopFont();
-                //if(ImGui.IsItemHovered()) {
-                //    ImGui.BeginTooltip();
-                //    ImGui.Text("Add map manually.");
-                //    ImGui.EndTooltip();
-                //}
-                //ImGui.TableNextColumn();
-                //if(player.Value.MapLink != null) {
-                //    ImGui.PushFont(UiBuilder.IconFont);
-                //    ImGui.TextColored(ImGuiColors.DalamudGrey, FontAwesomeIcon.Search.ToIconString());
-                //    ImGui.PopFont();
-                //    if(ImGui.IsItemHovered()) {
-                //        ImGui.BeginTooltip();
-                //        ImGui.Text($"{player.Value.MapLink.PlaceName} {player.Value.MapLink.CoordinateString}");
-                //        ImGui.EndTooltip();
-                //    }
-                //    if(ImGui.IsItemClicked()) {
-
-                //        Plugin.OpenMapLink(player.Value.MapLink);
-                //    }
-                //}
-                //ImGui.TableNextColumn();
-                //int count = 0;
                 List<MPAMap> maps = player.Value.Maps.Where(m => !m.IsDeleted && !m.IsArchived).ToList();
                 for(int i = 0; i < maps.Count() && i < _maxMaps; i++) {
                     ImGui.PushFont(UiBuilder.IconFont);
@@ -181,6 +190,9 @@ public class MainWindow : Window, IDisposable {
                     ImGui.PopFont();
                     if(ImGui.IsItemHovered()) {
                         ImGui.BeginTooltip();
+                        if(!maps.ElementAt(i).DutyName.IsNullOrEmpty()) {
+                            ImGui.Text($"{maps.ElementAt(i).DutyName}");
+                        }
                         if(!maps.ElementAt(i).Name.IsNullOrEmpty()) {
                             ImGui.Text($"{maps.ElementAt(i).Name}");
                         }
@@ -224,6 +236,30 @@ public class MainWindow : Window, IDisposable {
                 Plugin.Configuration.Save();
             }
 
+            ImGui.EndTable();
+        }
+    }
+
+    private void ZoneCountTable(Dictionary<string, MPAMember> list) {
+        Dictionary<string, int> zones = new();
+        foreach(MPAMember player in list.Values.Where(p => p.MapLink != null)) {
+            if(zones.ContainsKey(player.MapLink!.PlaceName)) {
+                zones[player.MapLink.PlaceName] += 1;
+            } else {
+                zones.Add(player.MapLink.PlaceName, 1);
+            }
+        }
+
+        if(ImGui.BeginTable($"##{list.GetHashCode()}_Zone_Table", 2, ImGuiTableFlags.NoHostExtendX)) {
+            ImGui.TableSetupColumn("name", ImGuiTableColumnFlags.WidthFixed, 158f);
+            ImGui.TableSetupColumn("count", ImGuiTableColumnFlags.WidthFixed, 15);
+            foreach(var zone in zones) {
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.Text($"{zone.Key}");
+                ImGui.TableNextColumn();
+                ImGui.Text($"{zone.Value}");
+            }
             ImGui.EndTable();
         }
     }

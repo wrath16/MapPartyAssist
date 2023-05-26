@@ -6,20 +6,23 @@ namespace MapPartyAssist.Types {
         public string Name { get; set; }
         public string Zone { get; set; }
         public DateTime Time { get; init; }
+        public bool IsPortal { get; set; }
+        public string DutyName { get; set; }
         public bool IsPending { get; set; }
         public bool IsManual { get; set; }
         public bool IsDeleted { get; set; }
         public bool IsArchived { get; set; }
         public SeString? MapLink { get; set; }
 
-        public MPAMap(string name, DateTime datetime, string zone = "", bool isPending = false, bool isManual = false) {
-            this.Name = name;
-            this.Time = datetime;
-            this.IsPending = isPending;
-            this.IsManual = isManual;
-            this.IsDeleted = false;
-            this.IsArchived = false;
-            this.Zone = zone;
+        public MPAMap(string name, DateTime datetime, string zone = "", bool isManual = false, bool isPortal = false) {
+            Name = name;
+            Time = datetime;
+            IsPortal = isPortal;
+            IsManual = isManual;
+            IsDeleted = false;
+            IsArchived = false;
+            Zone = zone;
+
         }
 
         //public static MapType NameToType(string name) {
