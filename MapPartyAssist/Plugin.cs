@@ -377,7 +377,7 @@ namespace MapPartyAssist {
             PluginLog.Debug($"Duty Name: {duty?.Name}");
 
             //should do this in a more robust way...
-            if(Regex.IsMatch(duty.Name.ToString(), @"uznair|aquapolis|lyhe ghiah|gymnasion agonon|excitaron 6000$", RegexOptions.IgnoreCase)) {
+            if(Regex.IsMatch(duty.Name.ToString(), @"uznair|aquapolis|lyhe ghiah|gymnasion agonon|excitatron 6000$", RegexOptions.IgnoreCase)) {
                 //fallback for cases where we miss the map
                 if(CurrentPartyList.Count > 0 && !LastMapPlayerKey.IsNullOrEmpty() && (DateTime.Now - CurrentPartyList[LastMapPlayerKey].Maps.Last().Time).TotalSeconds < _digFallbackSeconds) {
                     CurrentPartyList[LastMapPlayerKey].Maps.Last().IsPortal = true;

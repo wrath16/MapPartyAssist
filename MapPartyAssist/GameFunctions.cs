@@ -86,7 +86,7 @@ internal unsafe class GameFunctions {
     internal string testfunc(nint ptr) {
         var toDoListBasePtr = (AtkUnitBase*)ptr;
         AtkComponentNode* x = (AtkComponentNode*)toDoListBasePtr->RootNode;
-        AtkTextNode* y = (AtkTextNode*)(x->Component)->UldManager.RootNode;
+        AtkTextNode* y = (AtkTextNode*)x->Component->UldManager.RootNode;
         string z = Marshal.PtrToStringAnsi((new IntPtr(y->NodeText.StringPtr)));
         return z;
     }
