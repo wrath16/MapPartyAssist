@@ -164,6 +164,7 @@ public class MainWindow : Window, IDisposable {
                 //ImGui.Text($"{player.Value.HomeWorld}");
                 if(player.Value.MapLink != null) {
                     //ImGui.SameLine(ImGuiHelpers.GlobalScale * 151);
+                    //need to fix this for larger scales...
                     ImGui.SameLine(ImGui.GetColumnWidth() - (158 - 151) * ImGuiHelpers.GlobalScale * ImGuiHelpers.GlobalScale);
 
                     ImGui.PushFont(UiBuilder.IconFont);
