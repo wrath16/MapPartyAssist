@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 
 namespace MapPartyAssist.Windows;
 
@@ -25,8 +24,8 @@ public class MainWindow : Window, IDisposable {
         this.ForceMainWindow = true;
         this.PositionCondition = ImGuiCond.Always;
         this.SizeConstraints = new WindowSizeConstraints {
-            MinimumSize = new Vector2(500, 260),
-            MaximumSize = new Vector2(500, 350)
+            MinimumSize = new Vector2(ImGuiHelpers.GlobalScale * 300, ImGuiHelpers.GlobalScale * 260),
+            MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
         };
         this.Plugin = plugin;
     }
@@ -55,6 +54,7 @@ public class MainWindow : Window, IDisposable {
         //if(ImGui.Button("Test Function2")) {
         //    this.Plugin.TestFunction2();
         //}
+
 
         if(ImGui.Button("Clear All")) {
             Plugin.ClearAllMaps();
@@ -87,6 +87,7 @@ public class MainWindow : Window, IDisposable {
             ImGui.Text($"Including recent party members: {totalPortalsCurrent + totalPortalsRecent}");
             ImGui.EndTooltip();
         }
+        //ImGui.Text($"{ImGuiHelpers.GlobalScale.ToString()}");
 
         if(Plugin.CurrentPartyList.Count <= 0) {
             ImGui.Text("No party members currently.");
@@ -125,7 +126,6 @@ public class MainWindow : Window, IDisposable {
 
         //Plugin.WindowSystem.GetWindow("Map Links").IsOpen = true;
         //MapTable(Plugin.FakePartyList);
-        //ZoneCountTable(Plugin.FakePartyList);
     }
 
     private void MapTable(Dictionary<string, MPAMember> list, bool readOnly = false) {
@@ -133,13 +133,13 @@ public class MainWindow : Window, IDisposable {
         if(ImGui.BeginTable($"##{list.GetHashCode()}_Maps_Table", _maxMaps + 2, ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX)) {
             List<MPAMap> toArchive = new();
             List<MPAMap> toDelete = new();
-            ImGui.TableSetupColumn("name", ImGuiTableColumnFlags.WidthFixed, 158f);
+            ImGui.TableSetupColumn("name", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 158f);
             //ImGui.TableSetupColumn("addNew", ImGuiTableColumnFlags.WidthFixed, 22f);
             //ImGui.TableSetupColumn("mapLink", ImGuiTableColumnFlags.WidthFixed, 15f);
             for(int i = 0; i < _maxMaps; i++) {
-                ImGui.TableSetupColumn($"map{i + 1}", ImGuiTableColumnFlags.WidthFixed, 15f);
+                ImGui.TableSetupColumn($"map{i + 1}", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 15f);
             }
-            ImGui.TableSetupColumn($"extraMaps", ImGuiTableColumnFlags.WidthFixed, 20f);
+            ImGui.TableSetupColumn($"extraMaps", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 20f);
             foreach(var player in list.OrderBy(kvp => {
                 if(kvp.Value.IsSelf) {
                     return "";
@@ -163,7 +163,9 @@ public class MainWindow : Window, IDisposable {
                 }
                 //ImGui.Text($"{player.Value.HomeWorld}");
                 if(player.Value.MapLink != null) {
-                    ImGui.SameLine(151);
+                    //ImGui.SameLine(ImGuiHelpers.GlobalScale * 151);
+                    ImGui.SameLine(ImGui.GetColumnWidth() - (158 - 151) * ImGuiHelpers.GlobalScale * ImGuiHelpers.GlobalScale);
+
                     ImGui.PushFont(UiBuilder.IconFont);
                     ImGui.TextColored(ImGuiColors.DalamudGrey, FontAwesomeIcon.Search.ToIconString());
                     ImGui.PopFont();

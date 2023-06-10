@@ -67,7 +67,7 @@ namespace MapPartyAssist {
         private static int _addMapDelaySeconds = 2; //delay added onto adding a map to avoid double-counting self maps with another player using dig at same time
 
         private static TextInfo _textInfo = new CultureInfo("en-US", false).TextInfo;
-        
+
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
             [RequiredVersion("1.0")] CommandManager commandManager,
@@ -215,7 +215,7 @@ namespace MapPartyAssist {
 
         private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled) {
 
-            //PluginLog.Debug($"Message received: {type} {message} from {sender}");
+            PluginLog.Debug($"Message received: {type} {message} from {sender}");
             //foreach(Payload payload in message.Payloads) {
             //    PluginLog.Debug($"payload: {payload}");
             //}
@@ -514,7 +514,7 @@ namespace MapPartyAssist {
         }
 
         public void TestFunction() {
-            Functions.OpenMap(19);
+            //Functions.OpenMap(19);
             //FFXIVClientStructs.FFXIV.Application.OpenMap();
             //AgentMap* agont = FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentMap.Instance();
             //FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentMap.MemberFunctionPointers.OpenMapByMapId(19);

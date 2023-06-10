@@ -1,13 +1,7 @@
 ﻿using Dalamud.Interface.Windowing;
 using ImGuiNET;
-using MapPartyAssist.Types;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
-using static Dalamud.Interface.Windowing.Window;
 
 namespace MapPartyAssist.Windows {
     public class ConfigWindow : Window, IDisposable {

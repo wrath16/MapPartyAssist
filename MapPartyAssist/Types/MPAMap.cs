@@ -13,6 +13,7 @@ namespace MapPartyAssist.Types {
         public bool IsDeleted { get; set; }
         public bool IsArchived { get; set; }
         public SeString? MapLink { get; set; }
+        public DutyResults? Results { get; set; }
 
         public MPAMap(string name, DateTime datetime, string zone = "", bool isManual = false, bool isPortal = false) {
             Name = name;
@@ -22,7 +23,6 @@ namespace MapPartyAssist.Types {
             IsDeleted = false;
             IsArchived = false;
             Zone = zone;
-
         }
 
         //public static MapType NameToType(string name) {

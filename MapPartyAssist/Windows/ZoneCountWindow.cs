@@ -1,13 +1,11 @@
-﻿using Dalamud.Interface.Windowing;
-using Dalamud.Logging;
+﻿using Dalamud.Interface;
+using Dalamud.Interface.Windowing;
 using ImGuiNET;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows {
     public class ZoneCountWindow : Window, IDisposable {
@@ -20,8 +18,8 @@ namespace MapPartyAssist.Windows {
             this.Flags = Flags | ImGuiWindowFlags.AlwaysAutoResize;
             this.PositionCondition = ImGuiCond.Always;
             this.SizeConstraints = new WindowSizeConstraints {
-                MinimumSize = new Vector2(150, 50),
-                MaximumSize = new Vector2(500, 500)
+                MinimumSize = new Vector2(ImGuiHelpers.GlobalScale * 150, ImGuiHelpers.GlobalScale * 50),
+                MaximumSize = new Vector2(ImGuiHelpers.GlobalScale * 500, ImGuiHelpers.GlobalScale * 500)
             };
             this.MainWindow = mainWindow;
             this.Plugin = plugin;
@@ -35,6 +33,7 @@ namespace MapPartyAssist.Windows {
 
             //PluginLog.Debug($"{ImGui.GetWindowPos()}");
             ZoneCountTable(Plugin.CurrentPartyList);
+            //ZoneCountTable(Plugin.FakePartyList);
             //this.Position.
         }
 
@@ -55,8 +54,8 @@ namespace MapPartyAssist.Windows {
             }
 
             if(ImGui.BeginTable($"##{list.GetHashCode()}_Zone_Table", 2, ImGuiTableFlags.NoHostExtendX)) {
-                ImGui.TableSetupColumn("name", ImGuiTableColumnFlags.WidthStretch, 158f);
-                ImGui.TableSetupColumn("count", ImGuiTableColumnFlags.WidthFixed, 15);
+                ImGui.TableSetupColumn("name", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 158f);
+                ImGui.TableSetupColumn("count", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 15);
                 foreach(var zone in zones.OrderBy(kvp => kvp.Key)) {
                     ImGui.TableNextRow();
                     ImGui.TableNextColumn();
