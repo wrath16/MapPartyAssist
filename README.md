@@ -17,6 +17,7 @@ Helpful tool for keeping track of treasure maps opened by players in your party.
 
 ### Important note:
 * The plugin works by parsing system chat messages. I haven't verified that every map uses the same suite of messages, so let me know if it doesn't work for some. Also, it's not always possible to tell who exactly opened a map, so it might get confused if multiple people are using Dig at the same time. It might also fail if you're too far away from the party member who uses Dig. In these cases, you can manually add or remove. Thief's Maps, thankfully, are very reliable since they always generate a portal.
+* Also on that note, it only works with the English language client!
 
 ## Installation
 
