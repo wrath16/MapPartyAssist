@@ -24,8 +24,8 @@ public class MainWindow : Window, IDisposable {
         this.ForceMainWindow = true;
         this.PositionCondition = ImGuiCond.Always;
         this.SizeConstraints = new WindowSizeConstraints {
-            MinimumSize = new Vector2(ImGuiHelpers.GlobalScale * 500, ImGuiHelpers.GlobalScale * 260),
-            MaximumSize = new Vector2(ImGuiHelpers.GlobalScale * 500, ImGuiHelpers.GlobalScale * 350)
+            MinimumSize = new Vector2(500, 260),
+            MaximumSize = new Vector2(500, 350)
         };
         this.Plugin = plugin;
     }
@@ -57,7 +57,7 @@ public class MainWindow : Window, IDisposable {
 
 
         if(ImGui.Button("Clear All")) {
-            Plugin.ClearAllMaps();
+            Plugin.MapManager.ClearAllMaps();
         }
 
         int totalMapsCurrent = 0;
@@ -157,7 +157,7 @@ public class MainWindow : Window, IDisposable {
                 //ImGui.Text($"{player.Value.Name.PadRight(20)}");
                 if(ImGui.BeginPopupContextItem($"##{player.Value.GetHashCode()}--NameContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
                     if(ImGui.MenuItem($"Add map manually##{player.Value.GetHashCode()}--NameAddMap")) {
-                        Plugin.AddMap(player.Value, "", "Manually-added map.", true);
+                        Plugin.MapManager.AddMap(player.Value, "", "Manually-added map.", true);
                     }
                     ImGui.EndPopup();
                 }
@@ -221,7 +221,7 @@ public class MainWindow : Window, IDisposable {
                     ImGui.TextColored(ImGuiColors.ParsedGreen, $" +{maps.Count() - _maxMaps}");
                     if(ImGui.BeginPopupContextItem($"##{player.Value.GetHashCode()}--ExtraMapsContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
                         if(ImGui.MenuItem($"Remove Last##{player.Value.GetHashCode()}--ExtraMapsRemove")) {
-                            Plugin.RemoveLastMap(player.Value);
+                            Plugin.MapManager.RemoveLastMap(player.Value);
                         }
                         ImGui.EndPopup();
                     }

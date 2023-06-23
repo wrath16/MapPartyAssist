@@ -1,13 +1,13 @@
 ﻿using System.Collections.Generic;
 
 namespace MapPartyAssist.Types {
-    public class HiddenCanalsOfUznairResults : DutyResults {
-        public HiddenCanalsOfUznairResults(Dictionary<string, MPAMember> players, string owner) : base(players, owner) {
-            //DutyName = "The Hidden Canals of Uznair";
+    public class LostCanalsOfUznairResults : DutyResults {
+        public LostCanalsOfUznairResults(Dictionary<string, MPAMember> players, string owner) : base(players, owner) {
+            //DutyName = "The Lost Canals of Uznair";
         }
 
-        static HiddenCanalsOfUznairResults() {
-            DutyName = "The Hidden Canals of Uznair";
+        static LostCanalsOfUznairResults() {
+            DutyName = "The Lost Canals of Uznair";
             FailureMessage = "A trap is triggered! You are expelled from the area!";
             //setup checkpoints
             Checkpoints.Add(new Checkpoint("Clear 1st chamber", "The First Sluice is no longer sealed!"));

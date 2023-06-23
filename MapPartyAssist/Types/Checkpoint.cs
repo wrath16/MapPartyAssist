@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace MapPartyAssist.Types {
+﻿namespace MapPartyAssist.Types {
     public class Checkpoint {
         public string Name { get; init; }
         public string Message { get; init; }

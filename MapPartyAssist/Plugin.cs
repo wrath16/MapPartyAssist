@@ -12,16 +12,14 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
-using Dalamud.Utility;
 using Lumina.Excel.GeneratedSheets;
+using MapPartyAssist.Services;
 using MapPartyAssist.Types;
 using MapPartyAssist.Windows;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace MapPartyAssist {
     public sealed class Plugin : IDalamudPlugin {
@@ -31,14 +29,15 @@ namespace MapPartyAssist {
         //Dalamud services
         private DalamudPluginInterface PluginInterface { get; init; }
         private CommandManager CommandManager { get; init; }
-        private DataManager DataManager { get; init; }
-        private ClientState ClientState { get; init; }
-        private DutyState DutyState { get; init; }
+        internal DataManager DataManager { get; init; }
+        internal ClientState ClientState { get; init; }
+        internal DutyState DutyState { get; init; }
         private PartyList PartyList { get; init; }
-        private ChatGui ChatGui { get; init; }
+        internal ChatGui ChatGui { get; init; }
         private GameGui GameGui { get; init; }
         private Framework Framework { get; init; }
-
+        internal DutyManager DutyManager { get; init; }
+        internal MapManager MapManager { get; init; }
         public Configuration Configuration { get; init; }
         internal GameFunctions Functions { get; }
         public WindowSystem WindowSystem = new("Map Party Assist");
@@ -50,11 +49,7 @@ namespace MapPartyAssist {
         //TODO delete (for testing only!)
         public Dictionary<string, MPAMember> FakePartyList { get; private set; }
 
-        //private Dictionary<uint, World> _worlds = new();
-        //private string _playerName;
-        //private string _playerWorld;
         private int _lastPartySize;
-        //public string _lastMapPlayerKey = "";
 
         private string _diggerKey = "";
         private DateTime _digTime = DateTime.UnixEpoch;
@@ -67,6 +62,8 @@ namespace MapPartyAssist {
         private static int _addMapDelaySeconds = 2; //delay added onto adding a map to avoid double-counting self maps with another player using dig at same time
 
         private static TextInfo _textInfo = new CultureInfo("en-US", false).TextInfo;
+
+        private DutyResults _currentDutyResults;
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -89,6 +86,8 @@ namespace MapPartyAssist {
             Framework = framework;
 
             Functions = new GameFunctions();
+            DutyManager = new DutyManager(this);
+            MapManager = new MapManager(this);
 
             PluginLog.Log("Begin Config loading");
             Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
@@ -111,8 +110,11 @@ namespace MapPartyAssist {
             ChatGui.ChatMessage += OnChatMessage;
             ClientState.Login += OnLogin;
             ClientState.Logout += OnLogout;
-            ClientState.TerritoryChanged += OnTerritoryChanged;
-            DutyState.DutyStarted += OnDutyStart;
+            //ClientState.TerritoryChanged += OnTerritoryChanged;
+            //DutyState.DutyStarted += OnDutyStart;
+            //DutyState.DutyCompleted += OnDutyCompleted;
+            //DutyState.DutyWiped += OnDutyWiped;
+            //DutyState.DutyCompleted += OnDutyRecommenced;
 
             //foreach(var world in DataManager.GetExcelSheet<World>()!) {
             //    _worlds[world.RowId] = world;
@@ -126,7 +128,7 @@ namespace MapPartyAssist {
                 CurrentPartyList = new();
                 RecentPartyList = new();
             }
-            ResetDigStatus();
+
 
             //setup fake party list!
             FakePartyList = new();
@@ -158,7 +160,6 @@ namespace MapPartyAssist {
             FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 11, 11, 30, 11)));
             FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 12, 11, 30, 11)));
             FakePartyList["Test Party6 Lamia"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 3, 12, 13, 30, 11)));
-
         }
 
         public void Dispose() {
@@ -169,12 +170,13 @@ namespace MapPartyAssist {
 
             Framework.Update -= OnFrameworkUpdate;
             ChatGui.ChatMessage -= OnChatMessage;
-
             ClientState.Login -= OnLogin;
             ClientState.Logout -= OnLogout;
-            ClientState.TerritoryChanged -= OnTerritoryChanged;
-
-            DutyState.DutyStarted -= OnDutyStart;
+            //ClientState.TerritoryChanged -= OnTerritoryChanged;
+            //DutyState.DutyStarted -= OnDutyStart;
+            //DutyState.DutyCompleted -= OnDutyCompleted;
+            //DutyState.DutyWiped -= OnDutyWiped;
+            //DutyState.DutyCompleted -= OnDutyRecommenced;
 
             Configuration.PruneRecentPartyList();
 
@@ -209,185 +211,277 @@ namespace MapPartyAssist {
             }
         }
 
-        private void OnTerritoryChanged(object? sender, ushort territoryId) {
-            ResetDigStatus();
-        }
+        //private void OnTerritoryChanged(object? sender, ushort territoryId) {
+        //    ResetDigStatus();
+        //}
 
         private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled) {
 
-            PluginLog.Debug($"Message received: {type} {message} from {sender}");
-            //foreach(Payload payload in message.Payloads) {
-            //    PluginLog.Debug($"payload: {payload}");
+            //filter nuisance combat messages...
+            switch((int)type) {
+                case 2091:
+                case 2219:
+                case 2221: //you recover hp
+                case 2222:
+                case 2223: //you suffer from effect
+                case 2224:
+                case 2225: //you recover from effect
+                case 2603:
+                case 2729:
+                case 2730: //self combat
+                case 2731: //self cast
+                case 2735:
+                case 2858: //enemy resists
+                case 2874: //you defeat enemy
+                case 2857: //you crit/dh dmg enemy
+                case 2863: //enemy suffers effect
+                case 4139:
+                case 4397:
+                case 4398:
+                case 4400:
+                case 4777:
+                case 8235:
+                case 8236:
+                case 8746:
+                case 8749: //other recover hp
+                case 8750:
+                case 8751: //other suffers effect
+                case 8752:
+                case 8753: //other recover from effect
+                case 9001: //other combat
+                case 10283:
+                case 10409: //you dmged by enemy
+                case 10410:
+                case 10537:
+                case 10922: //attack misses
+                case 10929:
+                case 11305: //companion
+                case 11306: //companion
+                case 12331:
+                case 12841: //other combat
+                case 13098:
+                case 13102:
+                case 13105: //enemy recovers from status
+                case 13114: //enemy defeated
+                case 13225: //npc hits enemy
+                case 13226: //npc status
+                case 13353: //companion
+                case 14379: //npc uses ability
+                case 15145: //npc takes damage
+                case 15162: //npc defeats enemy
+                case 15281: //npc recovers from status
+                case 16427:
+                case 16558: //gain choco regen
+                case 17065:
+                case 17454: //companion
+                case 17456:
+                case 18475:
+                case 18733:
+                case 22571: //other companion
+                case 23082: //other
+                case 23085: //other
+                case 23086: //other
+                    break;
+                default:
+                    PluginLog.Debug($"Message received: {type} {message} from {sender}");
+                    break;
+            }
+
+
+            ////PluginLog.Debug($"Message received: {type} {message} from {sender}");
+            ////foreach(Payload payload in message.Payloads) {
+            ////    PluginLog.Debug($"payload: {payload}");
+            ////}
+
+            //bool newMapFound = false;
+            //bool isPortal = false;
+            //string key = "";
+            //string mapType = "";
+
+            //if((int)type == 2361) {
+            //    //party member opens portal, after block time
+            //    if(Regex.IsMatch(message.ToString(), @"complete[s]? preparations to enter the portal.$")) {
+            //        //PluginLog.Debug($"Message received: {type} {message} from {sender}");
+            //        if(_portalBlockUntil > DateTime.Now) {
+            //            //CurrentPartyList[LastMapPlayerKey].Maps.Last().IsPortal = true;
+            //        } else {
+            //            //thief's maps
+            //            var playerPayload = (PlayerPayload)message.Payloads.First(p => p.Type == PayloadType.Player);
+            //            key = $"{playerPayload.PlayerName} {playerPayload.World.Name}";
+            //            newMapFound = true;
+            //            isPortal = true;
+            //            PluginLog.Debug($"_diggerKey: {_diggerKey} _digTime: {_digTime}  _isDigLockedIn: {_isDigLockedIn} _portalBlockUntil: {_portalBlockUntil} ");
+            //        }
+            //    }
+            //    //self map detection
+            //} else if((int)type == 2105 || (int)type == 2233) {
+            //    if(Regex.IsMatch(message.ToString(), @"map crumbles into dust.$")) {
+            //        //PluginLog.Debug($"Message received: {type} {message} from {sender}");
+            //        //foreach(Payload payload in message.Payloads) {
+            //        //    PluginLog.Debug($"payload: {payload}");
+            //        //}
+            //        newMapFound = true;
+            //        mapType = Regex.Match(message.ToString(), @"\w* [\w']* map(?=\scrumbles into dust)").ToString();
+            //        key = $"{ClientState.LocalPlayer!.Name} {ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
+            //        //clear dig info just in case to prevent double-adding map if another player uses dig at the same time
+            //        ResetDigStatus();
+            //        //PluginLog.Debug($"_diggerKey: {_diggerKey} _digTime: {_digTime}  _isDigLockedIn: {_isDigLockedIn} _portalBlockUntil: {_portalBlockUntil} ");
+            //    } else if(Regex.IsMatch(message.ToString(), @"discover a treasure coffer!$")) {
+            //        //PluginLog.Debug($"Message received: {type} {message} from {sender}");
+            //        //foreach(Payload payload in message.Payloads) {
+            //        //    PluginLog.Debug($"payload: {payload}");
+            //        //}
+            //        if(!_diggerKey.IsNullOrEmpty()) {
+            //            PluginLog.Debug($"Time since dig: {(DateTime.Now - _digTime).TotalMilliseconds} ms");
+            //        }
+            //        //lock in dig only if we have a recent digger
+            //        _isDigLockedIn = !_diggerKey.IsNullOrEmpty() && ((DateTime.Now - _digTime).TotalSeconds < _digThresholdSeconds);
+            //        //PluginLog.Debug($"_diggerKey: {_diggerKey} _digTime: {_digTime}  _isDigLockedIn: {_isDigLockedIn} _portalBlockUntil: {_portalBlockUntil} ");
+            //    } else if(Regex.IsMatch(message.ToString(), @"releasing a powerful musk into the air!$")) {
+            //        PluginLog.Debug($"Message received: {type} {message} from {sender}");
+            //        //foreach(Payload payload in message.Payloads) {
+            //        //    PluginLog.Debug($"payload: {payload}");
+            //        //}
+            //        //delay registering the new map to avoid double counting with self maps if someone uses dig at same time
+            //        //Thread.Sleep(_addMapDelaySeconds * 1000);
+            //        Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
+            //            if(!_diggerKey.IsNullOrEmpty()) {
+            //                AddMap(CurrentPartyList[_diggerKey], DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name!);
+            //            }
+            //            //have to reset here in case you fail to defeat the treasure chest enemies -_ -
+            //            ResetDigStatus();
+            //        });
+
+            //        //if(_isDigLockedIn) {
+            //        //    newMapFound = true;
+            //        //    key = _diggerKey;
+            //        //}
+
+            //    } else if(Regex.IsMatch(message.ToString(), @"defeat all the enemies drawn by the trap!$")) {
+            //        //PluginLog.Debug($"Message received: {type} {message} from {sender}");
+            //        //foreach(Payload payload in message.Payloads) {
+            //        //    PluginLog.Debug($"payload: {payload}");
+            //        //}
+            //        ResetDigStatus();
+            //        //block portals from adding maps for a brief period to avoid double counting
+            //        _portalBlockUntil = DateTime.Now.AddSeconds(_portalBlockSeconds);
+            //    }
+            //    //Regex toMatch = new Regex(@"map crumbles into dust.$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            //    //MatchCollection matchCollection = toMatch.Matches(message.ToString());
+            //    //newMapFound = matchCollection.Count > 0;
+            //    //mapType = Regex.Match(message.ToString(), @"\w* [\w']* map(?=\scrumbles into dust)").ToString();
+            //    //key = $"{ClientState.LocalPlayer.Name} {ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
+            //} else if((int)type == 4139) {
+            //    //party member uses dig
+            //    if(Regex.IsMatch(message.ToString(), @"uses Dig.$")) {
+            //        //PluginLog.Debug($"Message received: {type} {message} from {sender}");
+            //        //foreach(Payload payload in message.Payloads) {
+            //        //    PluginLog.Debug($"payload: {payload}");
+            //        //}
+            //        //PluginLog.Debug($"_diggerKey: {_diggerKey} _digTime: {_digTime}  _isDigLockedIn: {_isDigLockedIn} _portalBlockUntil: {_portalBlockUntil} ");
+            //        var playerPayload = (PlayerPayload)message.Payloads.First(p => p.Type == PayloadType.Player);
+            //        var newDigTime = DateTime.Now;
+            //        //register dig if no dig locked in or fallback time elapsed AND no digger registered or threshold time elapsed
+            //        if((!_isDigLockedIn || (newDigTime - _digTime).TotalSeconds > _digFallbackSeconds) && (_diggerKey.IsNullOrEmpty() || (newDigTime - _digTime).TotalSeconds > _digThresholdSeconds)) {
+            //            //PluginLog.Debug("Registering new digger!");
+            //            ResetDigStatus();
+            //            _diggerKey = $"{playerPayload.PlayerName} {playerPayload.World.Name}";
+            //            _digTime = newDigTime;
+            //        }
+            //        //PluginLog.Debug($"_diggerKey: {_diggerKey} _digTime: {_digTime}  _isDigLockedIn: {_isDigLockedIn} _portalBlockUntil: {_portalBlockUntil} ");
+            //    }
+            //} else if(type == XivChatType.Party) {
+            //    //getting map link
+
+            //    //foreach(Payload payload in sender.Payloads) {
+            //    //    PluginLog.Debug($"sender payload: {payload}");
+            //    //}
+
+            //    var mapPayload = (MapLinkPayload)message.Payloads.FirstOrDefault(p => p.Type == PayloadType.MapLink);
+            //    var senderPayload = (PlayerPayload)sender.Payloads.FirstOrDefault(p => p.Type == PayloadType.Player);
+
+            //    if(senderPayload == null) {
+            //        //PluginLog.Debug("senderPayload null!");
+            //        //regex
+            //        string matchName = Regex.Match(sender.TextValue, @"[A-Za-z-']*\s[A-Za-z-']*$").ToString();
+            //        key = $"{matchName} {ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
+            //    } else {
+            //        //PluginLog.Debug("senderPayload not null!");
+            //        key = $"{senderPayload.PlayerName} {senderPayload.World.Name}";
+            //    }
+            //    if(mapPayload != null) {
+            //        //PluginLog.Debug("map payload found!");
+            //        //CurrentPartyList[key].MapLink = SeString.CreateMapLink(mapPayload.TerritoryType.RowId, mapPayload.Map.RowId, mapPayload.XCoord, mapPayload.YCoord);
+            //        CurrentPartyList[key].MapLink = mapPayload;
+            //        Configuration.Save();
+            //    }
             //}
 
-            bool newMapFound = false;
-            bool isPortal = false;
-            string key = "";
-            string mapType = "";
-
-            if((int)type == 2361) {
-                //party member opens portal, after block time
-                if(Regex.IsMatch(message.ToString(), @"complete[s]? preparations to enter the portal.$")) {
-                    //PluginLog.Debug($"Message received: {type} {message} from {sender}");
-                    if(_portalBlockUntil > DateTime.Now) {
-                        //CurrentPartyList[LastMapPlayerKey].Maps.Last().IsPortal = true;
-                    } else {
-                        //thief's maps
-                        var playerPayload = (PlayerPayload)message.Payloads.First(p => p.Type == PayloadType.Player);
-                        key = $"{playerPayload.PlayerName} {playerPayload.World.Name}";
-                        newMapFound = true;
-                        isPortal = true;
-                        PluginLog.Debug($"_diggerKey: {_diggerKey} _digTime: {_digTime}  _isDigLockedIn: {_isDigLockedIn} _portalBlockUntil: {_portalBlockUntil} ");
-                    }
-                }
-                //self map detection
-            } else if((int)type == 2105 || (int)type == 2233) {
-                if(Regex.IsMatch(message.ToString(), @"map crumbles into dust.$")) {
-                    //PluginLog.Debug($"Message received: {type} {message} from {sender}");
-                    //foreach(Payload payload in message.Payloads) {
-                    //    PluginLog.Debug($"payload: {payload}");
-                    //}
-                    newMapFound = true;
-                    mapType = Regex.Match(message.ToString(), @"\w* [\w']* map(?=\scrumbles into dust)").ToString();
-                    key = $"{ClientState.LocalPlayer!.Name} {ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
-                    //clear dig info just in case to prevent double-adding map if another player uses dig at the same time
-                    ResetDigStatus();
-                    //PluginLog.Debug($"_diggerKey: {_diggerKey} _digTime: {_digTime}  _isDigLockedIn: {_isDigLockedIn} _portalBlockUntil: {_portalBlockUntil} ");
-                } else if(Regex.IsMatch(message.ToString(), @"discover a treasure coffer!$")) {
-                    //PluginLog.Debug($"Message received: {type} {message} from {sender}");
-                    //foreach(Payload payload in message.Payloads) {
-                    //    PluginLog.Debug($"payload: {payload}");
-                    //}
-                    if(!_diggerKey.IsNullOrEmpty()) {
-                        PluginLog.Debug($"Time since dig: {(DateTime.Now - _digTime).TotalMilliseconds} ms");
-                    }
-                    //lock in dig only if we have a recent digger
-                    _isDigLockedIn = !_diggerKey.IsNullOrEmpty() && ((DateTime.Now - _digTime).TotalSeconds < _digThresholdSeconds);
-                    //PluginLog.Debug($"_diggerKey: {_diggerKey} _digTime: {_digTime}  _isDigLockedIn: {_isDigLockedIn} _portalBlockUntil: {_portalBlockUntil} ");
-                } else if(Regex.IsMatch(message.ToString(), @"releasing a powerful musk into the air!$")) {
-                    PluginLog.Debug($"Message received: {type} {message} from {sender}");
-                    //foreach(Payload payload in message.Payloads) {
-                    //    PluginLog.Debug($"payload: {payload}");
-                    //}
-                    //delay registering the new map to avoid double counting with self maps if someone uses dig at same time
-                    //Thread.Sleep(_addMapDelaySeconds * 1000);
-                    Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
-                        AddMap(CurrentPartyList[_diggerKey], DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name!);
-                        //have to reset here in case you fail to defeat the treasure chest enemies -_ -
-                        ResetDigStatus();
-                    });
-
-                    //if(_isDigLockedIn) {
-                    //    newMapFound = true;
-                    //    key = _diggerKey;
-                    //}
-
-                } else if(Regex.IsMatch(message.ToString(), @"defeat all the enemies drawn by the trap!$")) {
-                    //PluginLog.Debug($"Message received: {type} {message} from {sender}");
-                    //foreach(Payload payload in message.Payloads) {
-                    //    PluginLog.Debug($"payload: {payload}");
-                    //}
-                    ResetDigStatus();
-                    //block portals from adding maps for a brief period to avoid double counting
-                    _portalBlockUntil = DateTime.Now.AddSeconds(_portalBlockSeconds);
-                }
-                //Regex toMatch = new Regex(@"map crumbles into dust.$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-                //MatchCollection matchCollection = toMatch.Matches(message.ToString());
-                //newMapFound = matchCollection.Count > 0;
-                //mapType = Regex.Match(message.ToString(), @"\w* [\w']* map(?=\scrumbles into dust)").ToString();
-                //key = $"{ClientState.LocalPlayer.Name} {ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
-            } else if((int)type == 4139) {
-                //party member uses dig
-                if(Regex.IsMatch(message.ToString(), @"uses Dig.$")) {
-                    //PluginLog.Debug($"Message received: {type} {message} from {sender}");
-                    //foreach(Payload payload in message.Payloads) {
-                    //    PluginLog.Debug($"payload: {payload}");
-                    //}
-                    //PluginLog.Debug($"_diggerKey: {_diggerKey} _digTime: {_digTime}  _isDigLockedIn: {_isDigLockedIn} _portalBlockUntil: {_portalBlockUntil} ");
-                    var playerPayload = (PlayerPayload)message.Payloads.First(p => p.Type == PayloadType.Player);
-                    var newDigTime = DateTime.Now;
-                    //register dig if no dig locked in or fallback time elapsed AND no digger registered or threshold time elapsed
-                    if((!_isDigLockedIn || (newDigTime - _digTime).TotalSeconds > _digFallbackSeconds) && (_diggerKey.IsNullOrEmpty() || (newDigTime - _digTime).TotalSeconds > _digThresholdSeconds)) {
-                        //PluginLog.Debug("Registering new digger!");
-                        ResetDigStatus();
-                        _diggerKey = $"{playerPayload.PlayerName} {playerPayload.World.Name}";
-                        _digTime = newDigTime;
-                    }
-                    //PluginLog.Debug($"_diggerKey: {_diggerKey} _digTime: {_digTime}  _isDigLockedIn: {_isDigLockedIn} _portalBlockUntil: {_portalBlockUntil} ");
-                }
-            } else if(type == XivChatType.Party) {
-                //getting map link
-
-                //foreach(Payload payload in sender.Payloads) {
-                //    PluginLog.Debug($"sender payload: {payload}");
-                //}
-
-                var mapPayload = (MapLinkPayload)message.Payloads.FirstOrDefault(p => p.Type == PayloadType.MapLink);
-                var senderPayload = (PlayerPayload)sender.Payloads.FirstOrDefault(p => p.Type == PayloadType.Player);
-
-                if(senderPayload == null) {
-                    //PluginLog.Debug("senderPayload null!");
-                    //regex
-                    string matchName = Regex.Match(sender.TextValue, @"[A-Za-z-']*\s[A-Za-z-']*$").ToString();
-                    key = $"{matchName} {ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
-                } else {
-                    //PluginLog.Debug("senderPayload not null!");
-                    key = $"{senderPayload.PlayerName} {senderPayload.World.Name}";
-                }
-                if(mapPayload != null) {
-                    //PluginLog.Debug("map payload found!");
-                    //CurrentPartyList[key].MapLink = SeString.CreateMapLink(mapPayload.TerritoryType.RowId, mapPayload.Map.RowId, mapPayload.XCoord, mapPayload.YCoord);
-                    CurrentPartyList[key].MapLink = mapPayload;
-                    Configuration.Save();
-                }
-            }
-
-            if(newMapFound && CurrentPartyList.Count > 0) {
-                AddMap(CurrentPartyList[key], DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name!, mapType, false, isPortal);
-                //var newMap = new MPAMap(mapType, DateTime.Now, DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name);
-                //PluginLog.Debug($"Adding new map to {key}");
-                //CurrentPartyList[key].Maps.Add(newMap);
-                //CurrentPartyList[key].MapLink = null;
-                //this.Configuration.Save();
-            }
+            //if(newMapFound && CurrentPartyList.Count > 0) {
+            //    AddMap(CurrentPartyList[key], DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name!, mapType, false, isPortal);
+            //    //var newMap = new MPAMap(mapType, DateTime.Now, DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name);
+            //    //PluginLog.Debug($"Adding new map to {key}");
+            //    //CurrentPartyList[key].Maps.Add(newMap);
+            //    //CurrentPartyList[key].MapLink = null;
+            //    //this.Configuration.Save();
+            //}
         }
 
         private void OnLogin(object? sender, EventArgs e) {
             Configuration.PruneRecentPartyList();
             BuildCurrentPartyList();
             BuildRecentPartyList();
-            CheckAndArchiveMaps(Configuration.RecentPartyList);
-            ResetDigStatus();
+            MapManager.CheckAndArchiveMaps(Configuration.RecentPartyList);
+            //ResetDigStatus();
             //this.Configuration.Save();
         }
 
         private void OnLogout(object? sender, EventArgs e) {
             //remove all party members
             CurrentPartyList = new();
-            ResetDigStatus();
+            //ResetDigStatus();
             Configuration.PruneRecentPartyList();
         }
 
         //only works on instanced duties...hmmm....
-        private void OnDutyStart(object? sender, ushort territoryId) {
-            PluginLog.Debug($"Duty has started with territory id: {territoryId} name: {DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId)?.PlaceName.Value?.Name} ");
-            var dutyId = Functions.GetCurrentDutyId();
-            PluginLog.Debug($"Current duty ID: {dutyId}");
-            var duty = DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
-            PluginLog.Debug($"Duty Name: {duty?.Name}");
+        //private void OnDutyStart(object? sender, ushort territoryId) {
+        //    PluginLog.Debug($"Duty has started with territory id: {territoryId} name: {DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId)?.PlaceName.Value?.Name} ");
+        //    var dutyId = Functions.GetCurrentDutyId();
+        //    PluginLog.Debug($"Current duty ID: {dutyId}");
+        //    var duty = DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
+        //    PluginLog.Debug($"Duty Name: {duty?.Name}");
 
-            //should do this in a more robust way...
-            if(Regex.IsMatch(duty.Name.ToString(), @"uznair|aquapolis|lyhe ghiah|gymnasion agonon|excitatron 6000$", RegexOptions.IgnoreCase)) {
-                //fallback for cases where we miss the map
-                if(CurrentPartyList.Count > 0 && !LastMapPlayerKey.IsNullOrEmpty() && (DateTime.Now - CurrentPartyList[LastMapPlayerKey].Maps.Last().Time).TotalSeconds < _digFallbackSeconds) {
-                    CurrentPartyList[LastMapPlayerKey].Maps.Last().IsPortal = true;
-                    CurrentPartyList[LastMapPlayerKey].Maps.Last().DutyName = duty.Name;
-                }
-            }
-        }
+        //    //should do this in a more robust way...
+        //    if(Regex.IsMatch(duty.Name.ToString(), @"uznair|aquapolis|lyhe ghiah|gymnasion agonon|excitatron 6000$", RegexOptions.IgnoreCase)) {
+        //        //fallback for cases where we miss the map
+        //        if(CurrentPartyList.Count > 0 && !LastMapPlayerKey.IsNullOrEmpty() && (DateTime.Now - CurrentPartyList[LastMapPlayerKey].Maps.Last().Time).TotalSeconds < _digFallbackSeconds) {
+        //            CurrentPartyList[LastMapPlayerKey].Maps.Last().IsPortal = true;
+        //            CurrentPartyList[LastMapPlayerKey].Maps.Last().DutyName = duty.Name;
+        //        }
+        //        //initialize duty results
+        //        if(Regex.IsMatch(duty.Name.ToString(), @"lost canals of uznair$", RegexOptions.IgnoreCase)) {
+        //            _currentDutyResults = new LostCanalsOfUznairResults(CurrentPartyList, LastMapPlayerKey);
+        //            //Configuration.DutyResults.Add(_currentDutyResults);
+        //        } else if(Regex.IsMatch(duty.Name.ToString(), @"hidden canals of uznair$", RegexOptions.IgnoreCase)) {
+        //            _currentDutyResults = new HiddenCanalsOfUznairResults(CurrentPartyList, LastMapPlayerKey);
+        //        }
+        //    }
+        //}
+
+        //private void OnDutyCompleted(object? sender, ushort param1) {
+        //    PluginLog.Debug("Duty completed!");
+        //}
+
+        //private void OnDutyWiped(object? sender, ushort param1) {
+        //    PluginLog.Debug("Duty wiped!");
+        //}
+
+        //private void OnDutyRecommenced(object? sender, ushort param1) {
+        //    PluginLog.Debug("Duty recommenced!");
+        //}
 
         //builds current party list, from scratch
-        private void BuildCurrentPartyList() {
+        public void BuildCurrentPartyList() {
             string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
             string currentPlayerWorld = ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
             string key = $"{currentPlayerName} {currentPlayerWorld}";
@@ -431,7 +525,7 @@ namespace MapPartyAssist {
             Configuration.Save();
         }
 
-        private void BuildRecentPartyList() {
+        public void BuildRecentPartyList() {
             RecentPartyList = new();
             foreach(var player in Configuration.RecentPartyList) {
                 TimeSpan timeSpan = DateTime.Now - player.Value.LastJoined;
@@ -451,60 +545,60 @@ namespace MapPartyAssist {
             }
         }
 
-        private void CheckAndArchiveMaps(Dictionary<string, MPAMember> list) {
-            DateTime currentTime = DateTime.Now;
-            foreach(MPAMember player in list.Values) {
-                foreach(MPAMap map in player.Maps) {
-                    TimeSpan timeSpan = currentTime - map.Time;
-                    if(timeSpan.TotalHours > Configuration.ArchiveThresholdHours) {
-                        map.IsArchived = true;
-                    }
-                }
-            }
-            Configuration.Save();
-        }
+        //private void CheckAndArchiveMaps(Dictionary<string, MPAMember> list) {
+        //    DateTime currentTime = DateTime.Now;
+        //    foreach(MPAMember player in list.Values) {
+        //        foreach(MPAMap map in player.Maps) {
+        //            TimeSpan timeSpan = currentTime - map.Time;
+        //            if(timeSpan.TotalHours > Configuration.ArchiveThresholdHours) {
+        //                map.IsArchived = true;
+        //            }
+        //        }
+        //    }
+        //    Configuration.Save();
+        //}
 
-        //archive all of the maps for the given list
-        private void ForceArchiveAllMaps(Dictionary<string, MPAMember> list) {
-            foreach(var player in list.Values) {
-                foreach(var map in player.Maps) {
-                    map.IsArchived = true;
-                }
-            }
-        }
+        ////archive all of the maps for the given list
+        //private void ForceArchiveAllMaps(Dictionary<string, MPAMember> list) {
+        //    foreach(var player in list.Values) {
+        //        foreach(var map in player.Maps) {
+        //            map.IsArchived = true;
+        //        }
+        //    }
+        //}
 
-        private void ResetDigStatus() {
-            _diggerKey = "";
-            _isDigLockedIn = false;
-            _portalBlockUntil = DateTime.UnixEpoch;
-            _digTime = DateTime.UnixEpoch;
-        }
+        //private void ResetDigStatus() {
+        //    _diggerKey = "";
+        //    _isDigLockedIn = false;
+        //    _portalBlockUntil = DateTime.UnixEpoch;
+        //    _digTime = DateTime.UnixEpoch;
+        //}
 
-        public void ClearAllMaps() {
-            ForceArchiveAllMaps(Configuration.RecentPartyList);
-            ForceArchiveAllMaps(FakePartyList);
-            BuildRecentPartyList();
-            Configuration.Save();
-        }
+        //public void ClearAllMaps() {
+        //    ForceArchiveAllMaps(Configuration.RecentPartyList);
+        //    ForceArchiveAllMaps(FakePartyList);
+        //    BuildRecentPartyList();
+        //    Configuration.Save();
+        //}
 
-        public void AddMap(MPAMember player, string zone = "", string type = "", bool isManual = false, bool isPortal = false) {
-            PluginLog.Debug($"Adding new map to {player.Name} {player.HomeWorld}");
-            //zone ??= DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name!;
-            //zone = _textInfo.ToTitleCase(zone);
-            type = _textInfo.ToTitleCase(type);
-            var newMap = new MPAMap(type, DateTime.Now, zone, isManual, isPortal);
-            player.Maps.Add(newMap);
-            if(!isManual) {
-                player.MapLink = null;
-            }
-            LastMapPlayerKey = player.Key;
-            Configuration.Save();
-        }
+        //public void AddMap(MPAMember player, string zone = "", string type = "", bool isManual = false, bool isPortal = false) {
+        //    PluginLog.Debug($"Adding new map to {player.Name} {player.HomeWorld}");
+        //    //zone ??= DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name!;
+        //    //zone = _textInfo.ToTitleCase(zone);
+        //    type = _textInfo.ToTitleCase(type);
+        //    var newMap = new MPAMap(type, DateTime.Now, zone, isManual, isPortal);
+        //    player.Maps.Add(newMap);
+        //    if(!isManual) {
+        //        player.MapLink = null;
+        //    }
+        //    LastMapPlayerKey = player.Key;
+        //    Configuration.Save();
+        //}
 
-        public void RemoveLastMap(MPAMember player) {
-            player.Maps.RemoveAt(player.Maps.Count - 1);
-            Configuration.Save();
-        }
+        //public void RemoveLastMap(MPAMember player) {
+        //    player.Maps.RemoveAt(player.Maps.Count - 1);
+        //    Configuration.Save();
+        //}
 
         public void ToggleEnableSolo(bool toSet) {
             Configuration.EnableWhileSolo = toSet;

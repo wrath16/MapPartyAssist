@@ -14,12 +14,15 @@ namespace MapPartyAssist {
         public bool ShowZoneTable { get; set; } = false;
         public bool EnableWhileSolo { get; set; } = true;
 
+        public List<DutyResults> DutyResults { get; set; }
+
         // the below exist just to make saving less cumbersome
         [NonSerialized]
         private DalamudPluginInterface? PluginInterface;
 
         public Configuration() {
             RecentPartyList = new Dictionary<string, MPAMember>();
+            DutyResults = new();
         }
 
         public void Initialize(DalamudPluginInterface pluginInterface) {
