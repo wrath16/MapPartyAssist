@@ -18,8 +18,8 @@ namespace MapPartyAssist.Windows {
             this.Flags = Flags | ImGuiWindowFlags.AlwaysAutoResize;
             this.PositionCondition = ImGuiCond.Always;
             this.SizeConstraints = new WindowSizeConstraints {
-                MinimumSize = new Vector2(ImGuiHelpers.GlobalScale * 150, ImGuiHelpers.GlobalScale * 50),
-                MaximumSize = new Vector2(ImGuiHelpers.GlobalScale * 500, ImGuiHelpers.GlobalScale * 500)
+                MinimumSize = new Vector2(150, 50),
+                MaximumSize = new Vector2(500, 500)
             };
             this.MainWindow = mainWindow;
             this.Plugin = plugin;
