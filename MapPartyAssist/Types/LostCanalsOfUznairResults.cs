@@ -2,13 +2,13 @@
 
 namespace MapPartyAssist.Types {
     public class LostCanalsOfUznairResults : DutyResults {
-        public LostCanalsOfUznairResults(Dictionary<string, MPAMember> players, string owner) : base(players, owner) {
+        public LostCanalsOfUznairResults(int dutyId, Dictionary<string, MPAMember> players, string owner) : base(dutyId, players, owner) {
             //DutyName = "The Lost Canals of Uznair";
         }
 
         static LostCanalsOfUznairResults() {
             DutyName = "The Lost Canals of Uznair";
-            FailureMessage = "A trap is triggered! You are expelled from the area!";
+            FailureCheckpoint = new Checkpoint("Failure", "The Lost Canals of Uznair has ended.", 2105);
             //setup checkpoints
             Checkpoints.Add(new Checkpoint("Clear 1st chamber", "The First Sluice is no longer sealed!"));
             Checkpoints.Add(new Checkpoint("Open 2nd chamber", "The gate to the 2nd chamber opens."));

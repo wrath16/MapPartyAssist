@@ -7,11 +7,11 @@ using System.Collections.Generic;
 namespace MapPartyAssist {
     [Serializable]
     public class Configuration : IPluginConfiguration {
-        public int Version { get; set; } = 0;
+        public int Version { get; set; } = 1;
         public bool MasterSwitch { get; set; } = true;
         public uint ArchiveThresholdHours { get; set; } = 24;
         public Dictionary<string, MPAMember> RecentPartyList { get; set; }
-        public bool ShowZoneTable { get; set; } = false;
+        public bool ShowZoneTable { get; set; } = true;
         public bool EnableWhileSolo { get; set; } = true;
 
         public List<DutyResults> DutyResults { get; set; }

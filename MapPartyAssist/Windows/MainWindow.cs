@@ -24,7 +24,7 @@ public class MainWindow : Window, IDisposable {
         this.ForceMainWindow = true;
         this.PositionCondition = ImGuiCond.Always;
         this.SizeConstraints = new WindowSizeConstraints {
-            MinimumSize = new Vector2(500, 260),
+            MinimumSize = new Vector2(500, 100),
             MaximumSize = new Vector2(500, 350)
         };
         this.Plugin = plugin;
@@ -149,7 +149,7 @@ public class MainWindow : Window, IDisposable {
             })) {
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
-                if(player.Key.Equals(Plugin.LastMapPlayerKey)) {
+                if(player.Key.Equals(Plugin.MapManager.LastMapPlayerKey)) {
                     ImGui.TextColored(ImGuiColors.DalamudYellow, $"{player.Value.Name.PadRight(20)}");
                 } else {
                     ImGui.Text($"{player.Value.Name.PadRight(20)}");

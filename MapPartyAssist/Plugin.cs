@@ -44,7 +44,7 @@ namespace MapPartyAssist {
 
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
         public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
-        public string LastMapPlayerKey { get; private set; } = "";
+        //public string LastMapPlayerKey { get; private set; } = "";
 
         //TODO delete (for testing only!)
         public Dictionary<string, MPAMember> FakePartyList { get; private set; }
@@ -177,6 +177,9 @@ namespace MapPartyAssist {
             //DutyState.DutyCompleted -= OnDutyCompleted;
             //DutyState.DutyWiped -= OnDutyWiped;
             //DutyState.DutyCompleted -= OnDutyRecommenced;
+
+            MapManager.Dispose();
+            DutyManager.Dispose();
 
             Configuration.PruneRecentPartyList();
 
