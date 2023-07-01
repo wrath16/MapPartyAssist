@@ -1,3 +1,4 @@
+using Dalamud.Configuration;
 using Dalamud.Data;
 using Dalamud.Game;
 using Dalamud.Game.ClientState;
@@ -16,16 +17,19 @@ using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Services;
 using MapPartyAssist.Types;
 using MapPartyAssist.Windows;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace MapPartyAssist {
     public sealed class Plugin : IDalamudPlugin {
         public string Name => "Map Party Assist";
         private const string CommandName = "/mparty";
-
+        
         //Dalamud services
         private DalamudPluginInterface PluginInterface { get; init; }
         private CommandManager CommandManager { get; init; }
@@ -98,9 +102,14 @@ namespace MapPartyAssist {
             WindowSystem.AddWindow(mainWindow);
             WindowSystem.AddWindow(new ZoneCountWindow(this, mainWindow));
             WindowSystem.AddWindow(new ConfigWindow(this));
+            WindowSystem.AddWindow(new StatsWindow(this));
 
             CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand) {
                 HelpMessage = "Opens map party assist."
+            });
+
+            CommandManager.AddHandler("/mpartystats", new CommandInfo(OnStatsCommand) {
+                HelpMessage = "Opens stats window."
             });
 
             PluginInterface.UiBuilder.Draw += DrawUI;
@@ -162,11 +171,24 @@ namespace MapPartyAssist {
             FakePartyList["Test Party6 Lamia"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 3, 12, 13, 30, 11)));
         }
 
+        public IPluginConfiguration? GetPluginConfig() {
+            //string pluginName = PluginInterface.InternalName;
+            FileInfo configFile = PluginInterface.ConfigFile;
+            if(!configFile.Exists) {
+                return null;
+            }
+            return JsonConvert.DeserializeObject<IPluginConfiguration>(File.ReadAllText(configFile.FullName), new JsonSerializerSettings {
+                TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Simple,
+                TypeNameHandling = TypeNameHandling.Objects
+            });
+        }
+
         public void Dispose() {
             PluginLog.Debug("disposing...");
 
             WindowSystem.RemoveAllWindows();
             CommandManager.RemoveHandler(CommandName);
+            CommandManager.RemoveHandler("/mpartystats");
 
             Framework.Update -= OnFrameworkUpdate;
             ChatGui.ChatMessage -= OnChatMessage;
@@ -187,8 +209,11 @@ namespace MapPartyAssist {
         }
 
         private void OnCommand(string command, string args) {
-            // in response to the slash command, just display our main ui
             WindowSystem.GetWindow("Map Party Assist").IsOpen = true;
+        }
+
+        private void OnStatsCommand(string command, string args) {
+            WindowSystem.GetWindow("Treasure Map Stats").IsOpen = true;
         }
 
         private void DrawUI() {
@@ -239,10 +264,17 @@ namespace MapPartyAssist {
                 case 2857: //you crit/dh dmg enemy
                 case 2863: //enemy suffers effect
                 case 4139:
+                case 4269: //critical hp from party member
+                case 4270: //gain effect from party member
+                case 4394: //party member unaffected
                 case 4397:
                 case 4398:
+                case 4399: //party member brush with death
                 case 4400:
+                case 4401: //party member recovers from detrimental effect
                 case 4777:
+                case 4783: //effect
+                case 4905: //combat
                 case 8235:
                 case 8236:
                 case 8746:
@@ -256,11 +288,14 @@ namespace MapPartyAssist {
                 case 10409: //you dmged by enemy
                 case 10410:
                 case 10537:
+                case 10538: //misses party member
                 case 10922: //attack misses
                 case 10929:
                 case 11305: //companion
                 case 11306: //companion
                 case 12331:
+                case 12457: //
+                case 12585: //hits party member
                 case 12841: //other combat
                 case 13098:
                 case 13102:
@@ -279,7 +314,11 @@ namespace MapPartyAssist {
                 case 17454: //companion
                 case 17456:
                 case 18475:
+                case 18605: //crit hp
                 case 18733:
+                case 19113: //enemy taking dmg
+                case 19241: //crit
+                case 19632: //party member companion loses beneficial effect
                 case 22571: //other companion
                 case 23082: //other
                 case 23085: //other
@@ -611,6 +650,9 @@ namespace MapPartyAssist {
         }
 
         public void TestFunction() {
+            DutyManager.StartNewDuty("the hidden canals of uznair", 276, CurrentPartyList, "Test Player TestServer");
+            Configuration.Save();
+
             //Functions.OpenMap(19);
             //FFXIVClientStructs.FFXIV.Application.OpenMap();
             //AgentMap* agont = FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentMap.Instance();

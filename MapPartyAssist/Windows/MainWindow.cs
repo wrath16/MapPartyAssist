@@ -202,12 +202,12 @@ public class MainWindow : Window, IDisposable {
                         if(!maps.ElementAt(i).Zone.IsNullOrEmpty()) {
                             ImGui.Text($"{maps.ElementAt(i).Zone}");
                         }
-                        ImGui.Text($"{maps.ElementAt(i).Time.ToString()}");
+                        ImGui.Text($"{maps.ElementAt(i).Time}");
                         ImGui.EndTooltip();
                     }
                     if(ImGui.BeginPopupContextItem($"##{maps.ElementAt(i).GetHashCode()}--ContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
                         if(ImGui.MenuItem($"Remove##{maps.ElementAt(i).GetHashCode()}")) {
-                            toArchive.Add(maps[i]);
+                            toDelete.Add(maps[i]);
                         }
                         ImGui.EndPopup();
                     }
@@ -229,6 +229,7 @@ public class MainWindow : Window, IDisposable {
                 }
             }
 
+            //todo move these to plugin layer
             foreach(var map in toArchive) {
                 map.IsArchived = true;
                 Plugin.Configuration.Save();

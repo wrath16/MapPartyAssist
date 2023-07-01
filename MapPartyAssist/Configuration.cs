@@ -1,8 +1,11 @@
 using Dalamud.Configuration;
 using Dalamud.Plugin;
 using MapPartyAssist.Types;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Runtime.ExceptionServices;
+using System.Text.Json.Serialization;
 
 namespace MapPartyAssist {
     [Serializable]

@@ -6,8 +6,6 @@ using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
-using System.Text.RegularExpressions;
 
 namespace MapPartyAssist.Services {
     internal class DutyManager : IDisposable {
@@ -17,6 +15,7 @@ namespace MapPartyAssist.Services {
 
         private static Dictionary<string, Type> DutyResultTypes = new Dictionary<string, Type>() {
             { "the lost canals of uznair", typeof(LostCanalsOfUznairResults) },
+            { "the shifting altars of uznair", typeof(ShiftingAltarsOfUznairResults) },
             { "the hidden canals of uznair", typeof(HiddenCanalsOfUznairResults) }
         };
 
@@ -52,6 +51,8 @@ namespace MapPartyAssist.Services {
                 //_currentDutyResults = typeof(DutyResultTypes[dutyName]).GetConstructor().Invoke(dutyId, players, owner);
                 object[] conParams = {dutyId, players, owner};
                 _currentDutyResults = DutyResultTypes[dutyName].GetConstructors().First().Invoke(conParams) as DutyResults;
+                //_currentDutyResults = DutyResultTypes[dutyName].GetConstructors().First().Invoke(conParams);
+                //DutyResultTypes[dutyName].Name;
                 Plugin.Configuration.DutyResults.Add(_currentDutyResults!);
             }
         }
@@ -63,7 +64,9 @@ namespace MapPartyAssist.Services {
             var duty = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
             PluginLog.Debug($"Duty Name: {duty?.Name}");
 
-            StartNewDuty(duty.Name.ToString(), dutyId, Plugin.CurrentPartyList, Plugin.MapManager.LastMapPlayerKey);
+            if(duty != null) {
+                StartNewDuty(duty.Name.ToString(), dutyId, Plugin.CurrentPartyList, Plugin.MapManager!.LastMapPlayerKey);
+            }
 
             //should do this in a more robust way...
             //if(Regex.IsMatch(duty.Name.ToString(), @"uznair|aquapolis|lyhe ghiah|gymnasion agonon|excitatron 6000$", RegexOptions.IgnoreCase)) {
