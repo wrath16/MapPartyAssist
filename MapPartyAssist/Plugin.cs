@@ -273,8 +273,11 @@ namespace MapPartyAssist {
                 case 4400:
                 case 4401: //party member recovers from detrimental effect
                 case 4777:
+                case 4778:
                 case 4783: //effect
                 case 4905: //combat
+                case 4906:
+                case 4911:
                 case 8235:
                 case 8236:
                 case 8746:
@@ -307,6 +310,8 @@ namespace MapPartyAssist {
                 case 14379: //npc uses ability
                 case 15145: //npc takes damage
                 case 15162: //npc defeats enemy
+                case 15278: //gains effect
+                case 15280: //loses effect
                 case 15281: //npc recovers from status
                 case 16427:
                 case 16558: //gain choco regen

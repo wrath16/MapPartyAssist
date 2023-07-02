@@ -2,12 +2,12 @@
 
 namespace MapPartyAssist.Types {
     public class LostCanalsOfUznairResults : DutyResults {
-        public LostCanalsOfUznairResults(int dutyId, Dictionary<string, MPAMember> players, string owner) : base(dutyId, players, owner) {
+        public LostCanalsOfUznairResults(int dutyId, string dutyName, Dictionary<string, MPAMember> players, string owner) : base(dutyId, dutyName, players, owner) {
             //DutyName = "The Lost Canals of Uznair";
         }
 
         static LostCanalsOfUznairResults() {
-            DutyName = "The Lost Canals of Uznair";
+            //DutyName = "The Lost Canals of Uznair";
             FailureCheckpoint = new Checkpoint("Failure", "The Lost Canals of Uznair has ended.", 2105);
             //setup checkpoints
             Checkpoints.Add(new Checkpoint("Clear 1st chamber", "The cages are empty."));

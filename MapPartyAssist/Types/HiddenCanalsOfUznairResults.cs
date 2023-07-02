@@ -5,12 +5,11 @@ namespace MapPartyAssist.Types {
         
 
         //putting this first...
-        public HiddenCanalsOfUznairResults(int dutyId, Dictionary<string, MPAMember> players, string owner) : base(dutyId, players, owner) {
-            //DutyName = "The Hidden Canals of Uznair";
+        public HiddenCanalsOfUznairResults(int dutyId, string dutyName, Dictionary<string, MPAMember> players, string owner) : base(dutyId, dutyName, players, owner) {
         }
 
         static HiddenCanalsOfUznairResults() {
-            DutyName = "The Hidden Canals of Uznair";
+            //DutyName = "The Hidden Canals of Uznair";
             FailureCheckpoint = new Checkpoint("Failure", "The Hidden Canals of Uznair has ended.", 2105);
             //FailureMessage = "A trap is triggered! You are expelled from the area!";
             //setup checkpoints

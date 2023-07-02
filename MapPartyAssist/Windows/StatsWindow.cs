@@ -9,11 +9,14 @@ using System.Text;
 using System.Threading.Tasks;
 using static Dalamud.Interface.Windowing.Window;
 using MapPartyAssist.Types;
+using Dalamud.Interface;
+using Dalamud.Logging;
 
 namespace MapPartyAssist.Windows {
     internal class StatsWindow : Window, IDisposable {
 
         private Plugin Plugin;
+        private bool _showRecentOnly = false;
 
         public StatsWindow(Plugin plugin) : base("Treasure Map Stats") {
             this.SizeConstraints = new WindowSizeConstraints {
@@ -28,6 +31,10 @@ namespace MapPartyAssist.Windows {
 
         public override void Draw() {
 
+            if(ImGui.Checkbox("Only Recent", ref _showRecentOnly)) {
+                
+            }
+
             if(ImGui.BeginTabBar("StatsTabBar", ImGuiTabBarFlags.None)) {
                 if(ImGui.BeginTabItem("The Hidden Canals of Uznair")) {
 
@@ -37,11 +44,13 @@ namespace MapPartyAssist.Windows {
 
 
                     var allResults = Plugin.Configuration.DutyResults.Where(dr => {
+
+                        TimeSpan timeSpan = DateTime.Now - dr.Time;
                         //only include maps with checkpoint results
                         //saving as DutyResults exactly...need to change that?
 
                         //return dr.GetType() == typeof(HiddenCanalsOfUznairResults) && dr.CheckpointResults.Count > 0;
-                        return dr.DutyId == 276;// && dr.CheckpointResults.Count > 0;
+                        return dr.IsComplete && dr.DutyId == 276 && (!_showRecentOnly || timeSpan.TotalHours <= Plugin.Configuration.ArchiveThresholdHours);// && dr.CheckpointResults.Count > 0;
                     });
                     //var allResults = Plugin.Configuration.DutyResults.Where(dr => dr.GetType() == typeof(HiddenCanalsOfUznairResults));
                     int openSecondChamber = 0;
@@ -51,7 +60,11 @@ namespace MapPartyAssist.Windows {
                     int openSixthChamber = 0;
                     int openFinalChamber = 0;
                     int totalGil = 0;
+                    int mapsSinceLastClear = 0;
+                    int totalClears = 0;
+                    List<int> clearSequence = new();
                     foreach(var result in allResults) {
+                        mapsSinceLastClear++;
                         totalGil += result.TotalGil;
 
                         if(result.CheckpointResults.Count > 0) {
@@ -92,37 +105,123 @@ namespace MapPartyAssist.Windows {
                                 openThirdChamber++;
                             } else if(lastCheckpoint.Checkpoint.Name.Equals("Open 2nd chamber")) {
                                 openSecondChamber++;
+                            } 
+                            
+                            if(result.CheckpointResults.Last().Checkpoint.Name.Equals("Clear final chamber")) {
+                                clearSequence.Add(mapsSinceLastClear);
+                                mapsSinceLastClear = 0;
+                                totalClears++;
                             }
                         } 
                     }
 
+                    float reachSecondRate = allResults.Count() > 0 ? (float) openSecondChamber / allResults.Count() : 0f;
+                    float reachThirdRate = openSecondChamber > 0 ? (float) openThirdChamber / openSecondChamber : 0f;
+                    float reachFourthRate = openThirdChamber > 0 ? (float) openFourthChamber / openThirdChamber : 0f;
+                    float reachFifthRate = openFourthChamber > 0 ? (float) openFifthChamber / openFourthChamber : 0f;
+                    float reachSixthRate = openFifthChamber > 0 ? (float) openSixthChamber / openFifthChamber : 0f;
+                    float reachFinalRate = openSixthChamber > 0 ? (float) openFinalChamber / openSixthChamber : 0f;
 
-                    ImGui.Text("All-time:");
+                    //ImGui.Text("All-time stats:");
 
-                    ImGui.Text("Total Runs:");
-                    ImGui.SameLine();
-                    ImGui.Text($"{allResults.Count()}");
-                    ImGui.Text("Reached 2nd Chamber:");
-                    ImGui.SameLine();
-                    ImGui.Text($"{openSecondChamber}");
-                    ImGui.Text("Reached 3rd Chamber:");
-                    ImGui.SameLine();
-                    ImGui.Text($"{openThirdChamber}");
-                    ImGui.Text("Reached 4th Chamber:");
-                    ImGui.SameLine();
-                    ImGui.Text($"{openFourthChamber}");
-                    ImGui.Text("Reached 5th Chamber:");
-                    ImGui.SameLine();
-                    ImGui.Text($"{openFifthChamber}");
-                    ImGui.Text("Reached 6th Chamber:");
-                    ImGui.SameLine();
-                    ImGui.Text($"{openSixthChamber}");
-                    ImGui.Text("Reached final Chamber:");
-                    ImGui.SameLine();
-                    ImGui.Text($"{openFinalChamber}");
-                    ImGui.Text("Total Gil Earned: ");
-                    ImGui.SameLine();
-                    ImGui.Text($"{totalGil.ToString("N0")}");
+
+                    if(ImGui.BeginTable($"##hiddenCanalsAllTime", 3, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip)) {
+                        ImGui.TableSetupColumn("checkpoint", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 158f);
+                        ImGui.TableSetupColumn($"rawNumber", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
+                        ImGui.TableSetupColumn($"rate", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
+
+
+
+                        ImGui.TableNextRow();
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Total clears: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{totalClears}");
+                        ImGui.TableNextColumn();
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Runs since last clear: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{mapsSinceLastClear}");
+                        ImGui.TableNextColumn();
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Total gil earned: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{totalGil.ToString("N0")}");
+                        ImGui.TableNextColumn();
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Total Runs:");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{allResults.Count()}");
+                        ImGui.TableNextColumn();
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Reached 2nd chamber:");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{openSecondChamber}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{String.Format("{0:P}%", reachSecondRate)}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Reached 3rd chamber:");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{openThirdChamber}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{String.Format("{0:P}%", reachThirdRate)}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Reached 4th chamber:");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{openFourthChamber}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{String.Format("{0:P}%", reachFourthRate)}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Reached 5th chamber:");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{openFifthChamber}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{String.Format("{0:P}%", reachFifthRate)}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Reached 6th chamber:");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{openSixthChamber}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{String.Format("{0:P}%", reachSixthRate)}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Reached final chamber:");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{openFinalChamber}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{String.Format("{0:P}%", reachFinalRate)}");
+                        ImGui.TableNextColumn();
+
+
+                        ImGui.EndTable();
+                    }
+
+                    
+
+
+                    //ImGui.Text("Total Runs:");
+                    //ImGui.SameLine();
+                    //ImGui.Text($"{allResults.Count()}");
+                    //ImGui.Text("Reached 2nd Chamber:");
+                    //ImGui.SameLine();
+                    //ImGui.Text($"{openSecondChamber}");
+                    //ImGui.Text("Reached 3rd Chamber:");
+                    //ImGui.SameLine();
+                    //ImGui.Text($"{openThirdChamber}");
+                    //ImGui.Text("Reached 4th Chamber:");
+                    //ImGui.SameLine();
+                    //ImGui.Text($"{openFourthChamber}");
+                    //ImGui.Text("Reached 5th Chamber:");
+                    //ImGui.SameLine();
+                    //ImGui.Text($"{openFifthChamber}");
+                    //ImGui.Text("Reached 6th Chamber:");
+                    //ImGui.SameLine();
+                    //ImGui.Text($"{openSixthChamber}");
+                    //ImGui.Text("Reached final Chamber:");
+                    //ImGui.SameLine();
+                    //ImGui.Text($"{openFinalChamber}");
+                    //ImGui.Text("Total Gil Earned: ");
+                    //ImGui.SameLine();
+                    //ImGui.Text($"{totalGil.ToString("N0")}");
                 }
             }
         }

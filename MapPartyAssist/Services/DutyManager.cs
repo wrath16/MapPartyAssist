@@ -49,11 +49,12 @@ namespace MapPartyAssist.Services {
                 //var dutyResults = new DutyResults(dutyName, players, owner);
                 //_currentDutyResults = typeof(DutyResultTypes[dutyName]) dutyResults as typeof(DutyResultTypes[dutyName]);
                 //_currentDutyResults = typeof(DutyResultTypes[dutyName]).GetConstructor().Invoke(dutyId, players, owner);
-                object[] conParams = {dutyId, players, owner};
+                object[] conParams = {dutyId, dutyName, players, owner};
                 _currentDutyResults = DutyResultTypes[dutyName].GetConstructors().First().Invoke(conParams) as DutyResults;
                 //_currentDutyResults = DutyResultTypes[dutyName].GetConstructors().First().Invoke(conParams);
                 //DutyResultTypes[dutyName].Name;
                 Plugin.Configuration.DutyResults.Add(_currentDutyResults!);
+                Plugin.Configuration.Save();
             }
         }
 
@@ -123,6 +124,7 @@ namespace MapPartyAssist.Services {
                 //    //Plugin.Configuration.DutyResults.Add(_currentDutyResults);
                 //    Plugin.Configuration.Save();
                 //}
+                _currentDutyResults.CompletionTime = DateTime.Now;
                 _currentDutyResults = null;
                 Plugin.Configuration.Save();
             }

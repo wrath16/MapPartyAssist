@@ -11,12 +11,12 @@ using System.Threading.Tasks;
 namespace MapPartyAssist.Types {
     internal class ShiftingAltarsOfUznairResults : DutyResults {
 
-        public ShiftingAltarsOfUznairResults(int dutyId, Dictionary<string, MPAMember> players, string owner) : base(dutyId, players, owner) {
+        public ShiftingAltarsOfUznairResults(int dutyId, string dutyName, Dictionary<string, MPAMember> players, string owner) : base(dutyId, dutyName, players, owner) {
             //DutyName = "The Hidden Canals of Uznair";
         }
 
         static ShiftingAltarsOfUznairResults() {
-            DutyName = "The Shifting Altars of Uznair";
+            //DutyName = "The Shifting Altars of Uznair";
             FailureCheckpoint = new Checkpoint("Failure", "The Shifting Altars of Uznair has ended.", 2105);
             //FailureMessage = "A trap is triggered! You are expelled from the area!";
             //setup checkpoints

@@ -13,28 +13,20 @@ namespace MapPartyAssist.Types {
 
         public static List<Checkpoint> Checkpoints = new();
         public static Checkpoint FailureCheckpoint;
-        public static string DutyName = "";
+        //public static string DutyName = "";
 
         public int Version { get; } = 1;
 
         public int DutyId { get; init; }
+        public string DutyName { get; set; }
         public DateTime Time { get; init; }
-
-        public DateTime CompletionTime { get; private set; }
+        public DateTime CompletionTime { get; set; }
         public string[] Players { get; init; }
         public string Owner { get; set; }
         public MPAMap Map { get; set; }
         public List<CheckpointResults> CheckpointResults = new();
         public int TotalGil { get; set; } = 0;
-        public bool IsComplete {
-            get { return _isComplete; }
-            set {
-                if(value && !_isComplete) {
-                    CompletionTime = DateTime.Now;
-                }
-                _isComplete = value;
-            }
-        }
+        public bool IsComplete { get; set; }
 
         private bool _isComplete = false;
 
@@ -50,11 +42,12 @@ namespace MapPartyAssist.Types {
 
         }
 
-        public DutyResults(int dutyId, Dictionary<string, MPAMember> players, string owner) {
+        public DutyResults(int dutyId, string dutyName, Dictionary<string, MPAMember> players, string owner) {
             Players = players.Keys.ToArray();
             Owner = owner;
             Time = DateTime.Now;
             DutyId = dutyId;
+            DutyName = dutyName.ToLower();
         }
 
         //returns true if changes were made
@@ -69,8 +62,10 @@ namespace MapPartyAssist.Types {
                 return true;
             }
 
+            //add 2233 for self!
+
             var nextCheckpoint = Checkpoints[CheckpointResults.Count];
-            if(nextCheckpoint.MessageChannel == (int)type && nextCheckpoint.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
+            if((int)type ==  2233 || (int)type == 2105 && nextCheckpoint.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
                 CheckpointResults.Add(new CheckpointResults(nextCheckpoint, true));
                 //if all checkpoints reached, set to duty complete
                 if(CheckpointResults.Where(cr => cr.IsReached).Count() == Checkpoints.Count) {
