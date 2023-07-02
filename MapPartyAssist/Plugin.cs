@@ -395,7 +395,6 @@ namespace MapPartyAssist {
 
             //enable for solo player
             if(Configuration.EnableWhileSolo && PartyList.Length <= 0) {
-                Configuration.RecentPartyList[key].LastJoined = DateTime.Now;
                 //CurrentPartyList.Add(key, Configuration.RecentPartyList[key]);
 
                 //add yourself for initial setup
@@ -408,6 +407,7 @@ namespace MapPartyAssist {
                     Configuration.RecentPartyList[key].LastJoined = DateTime.Now;
                     CurrentPartyList.Add(key, Configuration.RecentPartyList[key]);
                 }
+                Configuration.RecentPartyList[key].LastJoined = DateTime.Now;
             } else {
                 foreach(PartyMember p in PartyList) {
                     string partyMemberName = p.Name.ToString();
