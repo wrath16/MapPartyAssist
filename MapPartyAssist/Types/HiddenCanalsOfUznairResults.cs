@@ -2,7 +2,7 @@
 
 namespace MapPartyAssist.Types {
     public class HiddenCanalsOfUznairResults : DutyResults {
-        
+
 
         //putting this first...
         public HiddenCanalsOfUznairResults(int dutyId, string dutyName, Dictionary<string, MPAMember> players, string owner) : base(dutyId, dutyName, players, owner) {

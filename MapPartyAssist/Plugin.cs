@@ -23,13 +23,12 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace MapPartyAssist {
     public sealed class Plugin : IDalamudPlugin {
         public string Name => "Map Party Assist";
         private const string CommandName = "/mparty";
-        
+
         //Dalamud services
         private DalamudPluginInterface PluginInterface { get; init; }
         private CommandManager CommandManager { get; init; }
@@ -655,8 +654,10 @@ namespace MapPartyAssist {
         }
 
         public void TestFunction() {
-            DutyManager.StartNewDuty("the hidden canals of uznair", 276, CurrentPartyList, "Test Player TestServer");
-            Configuration.Save();
+            PluginLog.Debug($"Current duty id: {Functions.GetCurrentDutyId()}");
+
+            //DutyManager.StartNewDuty("the hidden canals of uznair", 276, CurrentPartyList, "Test Player TestServer");
+            //Configuration.Save();
 
             //Functions.OpenMap(19);
             //FFXIVClientStructs.FFXIV.Application.OpenMap();
@@ -690,6 +691,24 @@ namespace MapPartyAssist {
             //Functions.testfunc(x);
             //PluginLog.Debug($"AddonToDoList ptr: {x}");
             //PluginLog.Debug($"AddonToDoList heckin based!");
+        }
+
+        public void TestFunction4() {
+
+            List<DutyResults> toRemove = new();
+
+            //clear shifting altars
+            foreach(var dr in Configuration.DutyResults) {
+                if(dr.DutyId == 586) {
+                    toRemove.Add(dr);
+                }
+            }
+            PluginLog.Debug($"Removing {toRemove.Count} results");
+            foreach(var dr in toRemove) {
+                Configuration.DutyResults.Remove(dr);
+            }
+
+            Configuration.Save();
         }
 
         public void OpenMapLink(MapLinkPayload mapLink) {

@@ -1,6 +1,7 @@
 ﻿using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Logging;
+using Dalamud.Utility;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Types;
 using System;
@@ -49,13 +50,39 @@ namespace MapPartyAssist.Services {
                 //var dutyResults = new DutyResults(dutyName, players, owner);
                 //_currentDutyResults = typeof(DutyResultTypes[dutyName]) dutyResults as typeof(DutyResultTypes[dutyName]);
                 //_currentDutyResults = typeof(DutyResultTypes[dutyName]).GetConstructor().Invoke(dutyId, players, owner);
-                object[] conParams = {dutyId, dutyName, players, owner};
+                object[] conParams = { dutyId, dutyName, players, owner };
                 _currentDutyResults = DutyResultTypes[dutyName].GetConstructors().First().Invoke(conParams) as DutyResults;
                 //_currentDutyResults = DutyResultTypes[dutyName].GetConstructors().First().Invoke(conParams);
                 //DutyResultTypes[dutyName].Name;
                 Plugin.Configuration.DutyResults.Add(_currentDutyResults!);
                 Plugin.Configuration.Save();
             }
+        }
+
+        //find map with same duty and most proximal time
+        public MPAMap? FindMapForDutyResults(DutyResults results) {
+            MPAMap? topCandidateMap = null;
+            foreach(var player in Plugin.Configuration.RecentPartyList) {
+                foreach(var map in player.Value.Maps) {
+                    topCandidateMap ??= map;
+                    TimeSpan currentMapSpan = results.Time - map.Time;
+                    TimeSpan topCandidateMapSpan = results.Time - topCandidateMap.Time;
+                    //same duty and must happen afterwards, but not more than 20 mins as a fallback
+                    bool sameDuty = !map.DutyName.IsNullOrEmpty() && map.DutyName.Equals(results.DutyName, StringComparison.OrdinalIgnoreCase);
+                    bool validTime = currentMapSpan.TotalMilliseconds > 0 && currentMapSpan.TotalMinutes < 20;
+                    bool closerTime = currentMapSpan < topCandidateMapSpan;
+                    if(sameDuty && validTime && closerTime) {
+                        topCandidateMap = map;
+                        //clear top candidate if a closer time is found but with the wrong duty
+                    } else if(!sameDuty && validTime && closerTime) {
+                        topCandidateMap = null;
+                        //clear invalid top candidates
+                    } else if(map == topCandidateMap && (!sameDuty || !validTime)) {
+                        topCandidateMap = null;
+                    }
+                }
+            }
+            return topCandidateMap;
         }
 
         private void OnDutyStart(object? sender, ushort territoryId) {
@@ -65,21 +92,11 @@ namespace MapPartyAssist.Services {
             var duty = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
             PluginLog.Debug($"Duty Name: {duty?.Name}");
 
-            if(duty != null) {
-                StartNewDuty(duty.Name.ToString(), dutyId, Plugin.CurrentPartyList, Plugin.MapManager!.LastMapPlayerKey);
-            }
+            //check if duty is ongoing to attempt to pickup...
+            PluginLog.Debug($"Current duty ongoing? {_currentDutyResults != null}");
 
-            //should do this in a more robust way...
-            //if(Regex.IsMatch(duty.Name.ToString(), @"uznair|aquapolis|lyhe ghiah|gymnasion agonon|excitatron 6000$", RegexOptions.IgnoreCase)) {
-            //    StartNewDuty(duty.Name.ToString(), dutyId, Plugin.CurrentPartyList, Plugin.MapManager.LastMapPlayerKey);
-            //    //initialize duty results
-            //    //if(Regex.IsMatch(duty.Name.ToString(), @"lost canals of uznair$", RegexOptions.IgnoreCase)) {
-            //    //    _currentDutyResults = new LostCanalsOfUznairResults(dutyId, Plugin.CurrentPartyList, Plugin.MapManager.LastMapPlayerKey);
-            //    //    //Plugin.ChatGui.ChatMessage += _currentDutyResults.OnChatMessage;
-            //    //} else if(Regex.IsMatch(duty.Name.ToString(), @"hidden canals of uznair$", RegexOptions.IgnoreCase)) {
-            //    //    _currentDutyResults = new HiddenCanalsOfUznairResults(dutyId, Plugin.CurrentPartyList, Plugin.MapManager.LastMapPlayerKey);
-            //    //    //Plugin.ChatGui.ChatMessage += _currentDutyResults.OnChatMessage;
-            //    //}
+            //if(duty != null) {
+            //    StartNewDuty(duty.Name.ToString(), dutyId, Plugin.CurrentPartyList, Plugin.MapManager!.LastMapPlayerKey);
             //}
         }
 
@@ -99,11 +116,29 @@ namespace MapPartyAssist.Services {
         }
 
         private void OnTerritoryChanged(object? sender, ushort territoryId) {
-            //end duty if it was completed successfully or clear as a fallback for failure
-            if(IsDutyInProgress() && (_currentDutyResults!.IsComplete || Plugin.Functions.GetCurrentDutyId() != _currentDutyResults.DutyId)) {
-                EndDuty();
+            var dutyId = Plugin.Functions.GetCurrentDutyId();
+            var duty = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
+            PluginLog.Debug($"Territory changed: {territoryId}, Current duty: {Plugin.Functions.GetCurrentDutyId()}");
+
+            if(IsDutyInProgress()) {
+                //end duty if it was completed successfully or clear as a fallback for failure
+                if(_currentDutyResults!.IsComplete || dutyId != _currentDutyResults.DutyId) {
+                    EndDuty();
+                }
+            } else if(duty != null) {
+                StartNewDuty(duty.Name.ToString(), dutyId, Plugin.CurrentPartyList, Plugin.MapManager!.LastMapPlayerKey);
             }
+
+
+            //end duty if it was completed successfully or clear as a fallback for failure
+            //if(IsDutyInProgress() && (_currentDutyResults!.IsComplete || dutyId != _currentDutyResults.DutyId)) {
+            //    EndDuty();
+            //}
             //todo: re-pickup on game crash
+            //todo: pickup current duty on game restart...
+            //if(Plugin.Functions.GetCurrentDutyId() != 0) {
+
+            //}
         }
 
         private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled) {

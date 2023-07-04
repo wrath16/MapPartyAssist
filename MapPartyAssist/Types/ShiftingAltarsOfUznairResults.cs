@@ -1,12 +1,8 @@
 ﻿using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
-using FFXIVClientStructs.FFXIV.Client.Game.Gauge;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace MapPartyAssist.Types {
     internal class ShiftingAltarsOfUznairResults : DutyResults {
@@ -41,35 +37,37 @@ namespace MapPartyAssist.Types {
                     TotalGil += int.Parse(parsedGilString);
                 }
                 return true;
-            } else if((int) type == 2105) {
+            } else if((int)type == 2105 || (int)type == 2233) {
+                //check for save
+                bool isSave = Regex.IsMatch(message.ToString(), @"^An unknown force", RegexOptions.IgnoreCase);
                 //check for circles shift
                 Match shiftMatch = Regex.Match(message.ToString(), @"(?<=The circles shift and (a |an )?)(the great gold whisker|altar airavata|altar mandragora|altar manticore|altar apanda|altar diresaur)(?=,? appears?)", RegexOptions.IgnoreCase);
                 if(shiftMatch.Success) {
-                    AddCheckpointResults(Summon.Gold, shiftMatch.Value);
+                    AddCheckpointResults(Summon.Gold, shiftMatch.Value, isSave);
                     return true;
                 }
                 //check for special summon
-                Match specialMatch = Regex.Match(message.ToString(), @"^The summon retreats into the shadows.$", RegexOptions.IgnoreCase);
+                Match specialMatch = Regex.Match(message.ToString(), @"^The summon retreats into the shadows", RegexOptions.IgnoreCase);
                 if(specialMatch.Success) {
-                    AddCheckpointResults(Summon.Silver);
+                    AddCheckpointResults(Summon.Silver, null, isSave);
                     return true;
                 }
                 //check for lesser summon
                 Match lesserMatch = Regex.Match(message.ToString(), @"(Hati|altar chimera|altar beast|altar dullahan|altar skatene|altar totem)(?=,? appears?)", RegexOptions.IgnoreCase);
                 if(lesserMatch.Success) {
-                    AddCheckpointResults(Summon.Lesser, lesserMatch.Value);
+                    AddCheckpointResults(Summon.Lesser, lesserMatch.Value, isSave);
                     return true;
                 }
                 //check for greater summon
                 Match greaterMatch = Regex.Match(message.ToString(), @"(The Winged|The Older One|altar kelpie|altar arachne)(?=,? appears?)", RegexOptions.IgnoreCase);
                 if(greaterMatch.Success) {
-                    AddCheckpointResults(Summon.Greater, greaterMatch.Value);
+                    AddCheckpointResults(Summon.Greater, greaterMatch.Value, isSave);
                     return true;
                 }
                 //check for elder summon
                 Match elderMatch = Regex.Match(message.ToString(), @"(the great gold whisker|altar airavata|altar mandragora|altar manticore|altar apanda|altar diresaur)(?=,? appears?)", RegexOptions.IgnoreCase);
                 if(elderMatch.Success) {
-                    AddCheckpointResults(Summon.Elder, elderMatch.Value);
+                    AddCheckpointResults(Summon.Elder, elderMatch.Value, isSave);
                     return true;
                 }
                 //enemy defeated
@@ -86,9 +84,9 @@ namespace MapPartyAssist.Types {
             return false;
         }
 
-        private void AddCheckpointResults(Summon? summon, string? monsterName = null) {
+        private void AddCheckpointResults(Summon? summon, string? monsterName = null, bool isSaved = false) {
             var size = CheckpointResults.Count;
-            CheckpointResults.Add(new RouletteCheckpointResults(Checkpoints[size], summon, monsterName, true));
+            CheckpointResults.Add(new RouletteCheckpointResults(Checkpoints[size], summon, monsterName, isSaved, true));
             //(CheckpointResults[size].Checkpoint as RouletteCheckpoint).SummonType = summon;
             //(CheckpointResults[size].Checkpoint as RouletteCheckpoint).Enemy = enemy;
         }

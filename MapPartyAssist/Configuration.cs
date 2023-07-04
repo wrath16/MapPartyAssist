@@ -1,11 +1,8 @@
 using Dalamud.Configuration;
 using Dalamud.Plugin;
 using MapPartyAssist.Types;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Runtime.ExceptionServices;
-using System.Text.Json.Serialization;
 
 namespace MapPartyAssist {
     [Serializable]
@@ -13,10 +10,10 @@ namespace MapPartyAssist {
         public int Version { get; set; } = 1;
         public bool MasterSwitch { get; set; } = true;
         public uint ArchiveThresholdHours { get; set; } = 24;
-        public Dictionary<string, MPAMember> RecentPartyList { get; set; }
+
         public bool ShowZoneTable { get; set; } = true;
         public bool EnableWhileSolo { get; set; } = true;
-
+        public Dictionary<string, MPAMember> RecentPartyList { get; set; }
         public List<DutyResults> DutyResults { get; set; }
 
         // the below exist just to make saving less cumbersome

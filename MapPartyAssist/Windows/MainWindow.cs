@@ -24,7 +24,7 @@ public class MainWindow : Window, IDisposable {
         this.ForceMainWindow = true;
         this.PositionCondition = ImGuiCond.Always;
         this.SizeConstraints = new WindowSizeConstraints {
-            MinimumSize = new Vector2(500, 100),
+            MinimumSize = new Vector2(200, 100),
             MaximumSize = new Vector2(500, 350)
         };
         this.Plugin = plugin;
@@ -130,7 +130,7 @@ public class MainWindow : Window, IDisposable {
 
     private void MapTable(Dictionary<string, MPAMember> list, bool readOnly = false) {
 
-        if(ImGui.BeginTable($"##{list.GetHashCode()}_Maps_Table", _maxMaps + 2, ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX)) {
+        if(ImGui.BeginTable($"##{list.GetHashCode()}_Maps_Table", _maxMaps + 2, ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoKeepColumnsVisible)) {
             List<MPAMap> toArchive = new();
             List<MPAMap> toDelete = new();
             ImGui.TableSetupColumn("name", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 158f);
@@ -139,7 +139,7 @@ public class MainWindow : Window, IDisposable {
             for(int i = 0; i < _maxMaps; i++) {
                 ImGui.TableSetupColumn($"map{i + 1}", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 15f);
             }
-            ImGui.TableSetupColumn($"extraMaps", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 20f);
+            ImGui.TableSetupColumn($"extraMaps", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 24f);
             foreach(var player in list.OrderBy(kvp => {
                 if(kvp.Value.IsSelf) {
                     return "";

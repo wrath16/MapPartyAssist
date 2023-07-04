@@ -1,6 +1,5 @@
 ﻿using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,8 +14,7 @@ namespace MapPartyAssist.Types {
         public static Checkpoint FailureCheckpoint;
         //public static string DutyName = "";
 
-        public int Version { get; } = 1;
-
+        public int Version { get; set; } = 1;
         public int DutyId { get; init; }
         public string DutyName { get; set; }
         public DateTime Time { get; init; }
@@ -24,11 +22,11 @@ namespace MapPartyAssist.Types {
         public string[] Players { get; init; }
         public string Owner { get; set; }
         public MPAMap Map { get; set; }
-        public List<CheckpointResults> CheckpointResults = new();
         public int TotalGil { get; set; } = 0;
         public bool IsComplete { get; set; }
 
-        private bool _isComplete = false;
+        public List<CheckpointResults> CheckpointResults = new();
+
 
         //[JsonConstructor]
         //public DutyResults(int dutyId, string[] players, string owner) {
@@ -65,7 +63,7 @@ namespace MapPartyAssist.Types {
             //add 2233 for self!
 
             var nextCheckpoint = Checkpoints[CheckpointResults.Count];
-            if((int)type ==  2233 || (int)type == 2105 && nextCheckpoint.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
+            if((int)type == 2233 || (int)type == 2105 && nextCheckpoint.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
                 CheckpointResults.Add(new CheckpointResults(nextCheckpoint, true));
                 //if all checkpoints reached, set to duty complete
                 if(CheckpointResults.Where(cr => cr.IsReached).Count() == Checkpoints.Count) {
@@ -86,7 +84,7 @@ namespace MapPartyAssist.Types {
             //}
 
             //check for failure
-            if((int) type == FailureCheckpoint.MessageChannel && FailureCheckpoint.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
+            if((int)type == FailureCheckpoint.MessageChannel && FailureCheckpoint.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
                 //CheckpointResults.Add(new CheckpointResults(nextCheckpoint, false));
                 IsComplete = true;
                 return true;
