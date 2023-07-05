@@ -210,7 +210,10 @@ public class MainWindow : Window, IDisposable {
                         ImGui.EndTooltip();
                     }
                     if(ImGui.BeginPopupContextItem($"##{maps.ElementAt(i).GetHashCode()}--ContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
-                        if(ImGui.MenuItem($"Remove##{maps.ElementAt(i).GetHashCode()}")) {
+                        if(ImGui.MenuItem($"Archive##{maps.ElementAt(i).GetHashCode()}")) {
+                            toArchive.Add(maps[i]);
+                        }
+                        if(ImGui.MenuItem($"Delete##{maps.ElementAt(i).GetHashCode()}")) {
                             toDelete.Add(maps[i]);
                         }
                         ImGui.EndPopup();

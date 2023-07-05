@@ -82,6 +82,7 @@ namespace MapPartyAssist.Windows {
                         UpdateDutyResults();
                     }
                     ProgressTable(_dutyResults, _dutyId);
+                    SummonTable(_dutyResults, _dutyId);
                     ImGui.EndTabItem();
                 }
                 ImGui.EndTabBar();
@@ -224,17 +225,21 @@ namespace MapPartyAssist.Windows {
                     ImGui.TableNextColumn();
                 }
 
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
+                //todo make this a configuration variable
+                if(_dutyId == 276) {
+                    ImGui.TableNextColumn();
+                    ImGui.TableNextColumn();
+                    ImGui.TableNextColumn();
 
-                for(int i = 0; i < clearSequence.Count; i++) {
-                    ImGui.Text($"{AddOrdinal(i + 1)} clear:");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{clearSequence[i]}");
-                    ImGui.TableNextColumn();
-                    ImGui.TableNextColumn();
+                    for(int i = 0; i < clearSequence.Count; i++) {
+                        ImGui.Text($"{AddOrdinal(i + 1)} clear:");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{clearSequence[i]}");
+                        ImGui.TableNextColumn();
+                        ImGui.TableNextColumn();
+                    }
                 }
+
                 ImGui.EndTable();
             }
         }
@@ -370,6 +375,84 @@ namespace MapPartyAssist.Windows {
         //        ImGui.EndTable();
         //    }
         //}
+
+        private void SummonTable(List<DutyResults> dutyResults, int dutyId) {
+            //only choose correct duties
+            switch(dutyId) {
+                case 586: //shifting altars
+                    break;
+                default:
+                    return;
+            }
+
+            int lesserCount = 0;
+            int greaterCount = 0;
+            int elderCount = 0;
+            int circleCount = 0;
+            int abominationCount = 0;
+            int saveCount = 0;
+            foreach(var result in dutyResults) {
+                foreach(var checkpoint in result.CheckpointResults.Where(c => c.IsReached)) {
+                    switch(checkpoint.SummonType) {
+                        case Summon.Lesser:
+                            lesserCount++; 
+                            break;
+                        case Summon.Greater:
+                            greaterCount++;
+                            break;
+                        case Summon.Elder:
+                            elderCount++;
+                            break;
+                        case Summon.Gold:
+                            circleCount++;
+                            break;
+                        case Summon.Silver:
+                            abominationCount++;
+                            break;
+                        default:
+                            break;
+                    }
+                    if(checkpoint.IsSaved) {
+                        saveCount++;
+                    }
+                }
+            }
+
+            if(ImGui.BeginTable($"##{dutyId}-SummonTable", 3, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip)) {
+                ImGui.TableSetupColumn("summon", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 158f);
+                ImGui.TableSetupColumn($"rawNumber", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
+                ImGui.TableSetupColumn($"rate", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
+
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.Text("Lesser summons: ");
+                ImGui.TableNextColumn();
+                ImGui.Text($"{lesserCount}");
+                ImGui.TableNextColumn();
+                ImGui.TableNextColumn();
+                ImGui.Text("Greater summons: ");
+                ImGui.TableNextColumn();
+                ImGui.Text($"{greaterCount}");
+                ImGui.TableNextColumn();
+                ImGui.TableNextColumn();
+                ImGui.Text("Elder summons: ");
+                ImGui.TableNextColumn();
+                ImGui.Text($"{elderCount}");
+                ImGui.TableNextColumn();
+                ImGui.TableNextColumn();
+                ImGui.Text("Circle shifts: ");
+                ImGui.TableNextColumn();
+                ImGui.Text($"{circleCount}");
+                ImGui.TableNextColumn();
+                ImGui.TableNextColumn();
+                ImGui.Text("Abominations: ");
+                ImGui.TableNextColumn();
+                ImGui.Text($"{abominationCount}");
+                ImGui.TableNextColumn();
+                ImGui.TableNextColumn();
+                ImGui.EndTable();
+            }
+        }
 
         public static string AddOrdinal(int num) {
             if(num <= 0) return num.ToString();

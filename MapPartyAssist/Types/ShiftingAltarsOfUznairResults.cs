@@ -2,6 +2,7 @@
 using Dalamud.Game.Text.SeStringHandling;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace MapPartyAssist.Types {
@@ -75,6 +76,9 @@ namespace MapPartyAssist.Types {
                 //enemy defeated
                 if(Regex.IsMatch(message.ToString(), @"^The summon is dispelled.$", RegexOptions.IgnoreCase)) {
                     AddCheckpointResults(null);
+                    if(CheckpointResults.Where(cr => cr.IsReached).Count() == Checkpoints.Count) {
+                        IsComplete = true;
+                    }
                     return true;
                 }
             }

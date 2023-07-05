@@ -244,7 +244,11 @@ namespace MapPartyAssist {
                 case 2874: //you defeat enemy
                 case 2857: //you crit/dh dmg enemy
                 case 2863: //enemy suffers effect
-                case 4139:
+                case 4139: //party member actions
+                    if(message.ToString().Contains("Dig", StringComparison.OrdinalIgnoreCase) || message.ToString().Contains("Decipher", StringComparison.OrdinalIgnoreCase)) {
+                        goto default;
+                    }
+                    break;
                 case 4269: //critical hp from party member
                 case 4270: //gain effect from party member
                 case 4394: //party member unaffected
@@ -312,6 +316,9 @@ namespace MapPartyAssist {
                     break;
                 default:
                     PluginLog.Debug($"Message received: {type} {message} from {sender}");
+                    foreach(Payload payload in message.Payloads) {
+                        PluginLog.Debug($"payload: {payload}");
+                    }
                     break;
             }
         }
@@ -404,10 +411,6 @@ namespace MapPartyAssist {
 
         public void OpenMapLink(MapLinkPayload mapLink) {
             GameGui.OpenMapWithMapLink(mapLink);
-            //var mapPayload = (MapLinkPayload)mapLink.Payloads.FirstOrDefault(p => p.Type == PayloadType.MapLink);
-            //Functions.SetFlagMarkers(mapPayload.TerritoryType.RowId, mapPayload.Map.RowId, mapPayload.XCoord, mapPayload.YCoord);
-            //Functions.OpenMap(mapPayload.Map.RowId);
-            //FFXIVClientStructs.FFXIV.Application.OpenMap();
         }
 
         public void Save() {
