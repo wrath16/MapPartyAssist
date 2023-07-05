@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Text.RegularExpressions;
 
 namespace MapPartyAssist.Windows {
 
@@ -15,12 +16,12 @@ namespace MapPartyAssist.Windows {
         AllLegacy
     }
 
-
     internal class StatsWindow : Window, IDisposable {
 
         private Plugin Plugin;
-        private bool _showRecentOnly = false;
         private StatRange _statRange = StatRange.All;
+        private int _dutyId;
+        private List<DutyResults> _dutyResults = new();
 
         public StatsWindow(Plugin plugin) : base("Treasure Map Stats") {
             this.SizeConstraints = new WindowSizeConstraints {
@@ -33,6 +34,18 @@ namespace MapPartyAssist.Windows {
         public void Dispose() {
         }
 
+        public void Refresh() {
+            UpdateDutyResults();
+        }
+
+        private void UpdateDutyResults() {
+            _dutyResults = Plugin.Configuration.DutyResults.Where(dr => {
+                MPAMap? map = Plugin.DutyManager.FindMapForDutyResults(dr);
+                bool isCurrent = map != null && !map.IsArchived && !map.IsDeleted;
+                return dr.IsComplete && dr.DutyId == _dutyId && (_statRange != StatRange.Current || isCurrent);
+            }).ToList();
+        }
+
         public override void Draw() {
 
             //if(ImGui.Checkbox("Only Recent", ref _showRecentOnly)) {
@@ -43,174 +56,32 @@ namespace MapPartyAssist.Windows {
             string[] includes = { "Current", "All-Time", "All-Time with imported data" };
             if(ImGui.Combo($"Data Range##includesCombo", ref statRangeToInt, includes, 3)) {
                 _statRange = (StatRange)statRangeToInt;
+                UpdateDutyResults();
             }
 
             if(ImGui.BeginTabBar("StatsTabBar", ImGuiTabBarFlags.FittingPolicyMask)) {
                 if(ImGui.BeginTabItem("The Hidden Canals of Uznair")) {
-
-                    //if(ImGui.Button("Test Function")) {
-                    //    Plugin.TestFunction();
-                    //}
-
-
-                    var allResults = Plugin.Configuration.DutyResults.Where(dr => {
-                        MPAMap? map = Plugin.DutyManager.FindMapForDutyResults(dr);
-                        bool isCurrent = map != null && !map.IsArchived && !map.IsDeleted;
-                        return dr.IsComplete && dr.DutyId == 276 && (_statRange != StatRange.Current || isCurrent);
-                    });
-                    //var allResults = Plugin.Configuration.DutyResults.Where(dr => dr.GetType() == typeof(HiddenCanalsOfUznairResults));
-                    int openSecondChamber = 0;
-                    int openThirdChamber = 0;
-                    int openFourthChamber = 0;
-                    int openFifthChamber = 0;
-                    int openSixthChamber = 0;
-                    int openFinalChamber = 0;
-                    int totalGil = 0;
-                    int mapsSinceLastClear = 0;
-                    int totalClears = 0;
-                    List<int> clearSequence = new();
-                    foreach(var result in allResults) {
-                        mapsSinceLastClear++;
-                        totalGil += result.TotalGil;
-
-                        if(result.CheckpointResults.Count > 0) {
-                            var lastCheckpoint = result.CheckpointResults.Last();
-
-                            //find the last reached door checkpoint
-                            for(int i = 1; (!lastCheckpoint.Checkpoint.Name.StartsWith("Open") || !lastCheckpoint.IsReached) && i <= result.CheckpointResults.Count; i++) {
-                                lastCheckpoint = result.CheckpointResults.ElementAt(result.CheckpointResults.Count - i);
-                            }
-
-                            //did not clear any checkpoints
-                            if(!lastCheckpoint.IsReached) {
-                                //
-                            } else if(lastCheckpoint.Checkpoint.Name.Equals("Open final chamber")) {
-                                openSecondChamber++;
-                                openThirdChamber++;
-                                openFourthChamber++;
-                                openFifthChamber++;
-                                openSixthChamber++;
-                                openFinalChamber++;
-                            } else if(lastCheckpoint.Checkpoint.Name.Equals("Open 6th chamber")) {
-                                openSecondChamber++;
-                                openThirdChamber++;
-                                openFourthChamber++;
-                                openFifthChamber++;
-                                openSixthChamber++;
-                            } else if(lastCheckpoint.Checkpoint.Name.Equals("Open 5th chamber")) {
-                                openSecondChamber++;
-                                openThirdChamber++;
-                                openFourthChamber++;
-                                openFifthChamber++;
-                            } else if(lastCheckpoint.Checkpoint.Name.Equals("Open 4th chamber")) {
-                                openSecondChamber++;
-                                openThirdChamber++;
-                                openFourthChamber++;
-                            } else if(lastCheckpoint.Checkpoint.Name.Equals("Open 3rd chamber")) {
-                                openSecondChamber++;
-                                openThirdChamber++;
-                            } else if(lastCheckpoint.Checkpoint.Name.Equals("Open 2nd chamber")) {
-                                openSecondChamber++;
-                            }
-
-                            if(result.CheckpointResults.Last().Checkpoint.Name.Equals("Clear final chamber")) {
-                                clearSequence.Add(mapsSinceLastClear);
-                                mapsSinceLastClear = 0;
-                                totalClears++;
-                            }
-                        }
+                    if(_dutyId != 276) {
+                        _dutyId = 276;
+                        UpdateDutyResults();
                     }
-
-                    float reachSecondRate = allResults.Count() > 0 ? (float)openSecondChamber / allResults.Count() : 0f;
-                    float reachThirdRate = openSecondChamber > 0 ? (float)openThirdChamber / openSecondChamber : 0f;
-                    float reachFourthRate = openThirdChamber > 0 ? (float)openFourthChamber / openThirdChamber : 0f;
-                    float reachFifthRate = openFourthChamber > 0 ? (float)openFifthChamber / openFourthChamber : 0f;
-                    float reachSixthRate = openFifthChamber > 0 ? (float)openSixthChamber / openFifthChamber : 0f;
-                    float reachFinalRate = openSixthChamber > 0 ? (float)openFinalChamber / openSixthChamber : 0f;
-
-                    if(ImGui.BeginTable($"##hiddenCanalsAllTime", 3, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip)) {
-                        ImGui.TableSetupColumn("checkpoint", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 158f);
-                        ImGui.TableSetupColumn($"rawNumber", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
-                        ImGui.TableSetupColumn($"rate", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
-
-                        ImGui.TableNextRow();
-                        ImGui.TableNextColumn();
-                        ImGui.Text("Total clears: ");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{totalClears}");
-                        ImGui.TableNextColumn();
-                        ImGui.TableNextColumn();
-                        ImGui.Text("Total gil earned: ");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{totalGil.ToString("N0")}");
-                        ImGui.TableNextColumn();
-                        ImGui.TableNextColumn();
-                        ImGui.Text("Runs since last clear: ");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{mapsSinceLastClear}");
-                        ImGui.TableNextColumn();
-                        ImGui.TableNextColumn();
-                        ImGui.Text("Total runs:");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{allResults.Count()}");
-                        ImGui.TableNextColumn();
-                        ImGui.TableNextColumn();
-                        ImGui.Text("Reached 2nd chamber:");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{openSecondChamber}");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{String.Format("{0:P}%", reachSecondRate)}");
-                        ImGui.TableNextColumn();
-                        ImGui.Text("Reached 3rd chamber:");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{openThirdChamber}");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{String.Format("{0:P}%", reachThirdRate)}");
-                        ImGui.TableNextColumn();
-                        ImGui.Text("Reached 4th chamber:");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{openFourthChamber}");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{String.Format("{0:P}%", reachFourthRate)}");
-                        ImGui.TableNextColumn();
-                        ImGui.Text("Reached 5th chamber:");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{openFifthChamber}");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{String.Format("{0:P}%", reachFifthRate)}");
-                        ImGui.TableNextColumn();
-                        ImGui.Text("Reached 6th chamber:");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{openSixthChamber}");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{String.Format("{0:P}%", reachSixthRate)}");
-                        ImGui.TableNextColumn();
-                        ImGui.Text("Reached final chamber:");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{openFinalChamber}");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{String.Format("{0:P}%", reachFinalRate)}");
-                        ImGui.TableNextColumn();
-
-                        ImGui.TableNextColumn();
-                        ImGui.TableNextColumn();
-                        ImGui.TableNextColumn();
-                        for(int i = 0; i < clearSequence.Count; i++) {
-                            ImGui.Text($"{AddOrdinal(i + 1)} clear:");
-                            ImGui.TableNextColumn();
-                            ImGui.Text($"{clearSequence[i]}");
-                            ImGui.TableNextColumn();
-                            ImGui.TableNextColumn();
-                        }
-
-                        ImGui.EndTable();
-                        ImGui.EndTabItem();
-                    }
+                    ProgressTable(_dutyResults, _dutyId);
+                    ImGui.EndTabItem();
                 }
                 if(ImGui.BeginTabItem("The Lost Canals of Uznair")) {
+                    if(_dutyId != 268) {
+                        _dutyId = 268;
+                        UpdateDutyResults();
+                    }
+                    ProgressTable(_dutyResults, _dutyId);
                     ImGui.EndTabItem();
                 }
                 if(ImGui.BeginTabItem("The Shifting Altars of Uznair")) {
+                    if(_dutyId != 586) {
+                        _dutyId = 586;
+                        UpdateDutyResults();
+                    }
+                    ProgressTable(_dutyResults, _dutyId);
                     ImGui.EndTabItem();
                 }
                 ImGui.EndTabBar();
@@ -220,34 +91,178 @@ namespace MapPartyAssist.Windows {
         public override void PreDraw() {
         }
 
-        //public void DoorsTable(int dutyId) {
+        private void PrepareTable() { 
+        }
+
+        private void ProgressTable(List<DutyResults> dutyResults, int dutyId) {
+            //var allResults = Plugin.Configuration.DutyResults.Where(dr => {
+            //    MPAMap? map = Plugin.DutyManager.FindMapForDutyResults(dr);
+            //    bool isCurrent = map != null && !map.IsArchived && !map.IsDeleted;
+            //    return dr.IsComplete && dr.DutyId == dutyId && (_statRange != StatRange.Current || isCurrent);
+            //});
+
+            //determine number of chambers from duty id and whether this is doors or roulette
+            bool isRoulette = false;
+            int numChambers;
+            switch(dutyId) {
+                case 268: //lost canals
+                case 276: //hidden canals
+                    numChambers = 7;
+                    break;
+                case 586: //shifting altars
+                    isRoulette = true;
+                    numChambers = 5;
+                    break;
+                default:
+                    numChambers = 5;
+                    break;
+            }
+            string successVerb = isRoulette ? "Complete" : "Open";
+            string passiveSuccessVerb = isRoulette ? "Completed" : "Reached";
+            string stageNoun = isRoulette ? "summon" : "chamber";
+
+            int[] openChambers = new int[numChambers - 1];
+            float[] openChambersRates = new float[numChambers - 1];
+
+            int totalGil = 0;
+            int runsSinceLastClear = 0;
+            int totalClears = 0;
+            List<int> clearSequence = new();
+            foreach(var result in dutyResults) {
+                runsSinceLastClear++;
+                totalGil += result.TotalGil;
+
+                //no checkpoint results
+                if(result.CheckpointResults.Count <= 0) {
+                    continue;
+                }
+
+                var lastCheckpoint = result.CheckpointResults.Last();
+
+                //check for clear
+                string finalChamberCheckpoint = isRoulette ? "Defeat final summon" : "Clear final chamber";
+                if(lastCheckpoint.Checkpoint.Name.Equals(finalChamberCheckpoint, StringComparison.OrdinalIgnoreCase)) {
+                    clearSequence.Add(runsSinceLastClear);
+                    runsSinceLastClear = 0;
+                    totalClears++;
+                }
+
+                //find the last reached door checkpoint
+                for(int i = 1; (!lastCheckpoint.Checkpoint.Name.StartsWith(successVerb) || !lastCheckpoint.IsReached) && i <= result.CheckpointResults.Count; i++) {
+                    lastCheckpoint = result.CheckpointResults.ElementAt(result.CheckpointResults.Count - i);
+                }
+
+                //did not find a valid checkpoint
+                if(lastCheckpoint == result.CheckpointResults[0] && (!lastCheckpoint.IsReached || !lastCheckpoint.Checkpoint.Name.StartsWith(successVerb))) {
+                    continue;
+                }
+
+                Match chamberMatch = Regex.Match(lastCheckpoint.Checkpoint.Name, @"(?<=(Open|Complete) )[\d|final]+(?=(st|nd|rd|th)? (chamber|summon))", RegexOptions.IgnoreCase);
+                int chamberNumber;
+                if(!chamberMatch.Success) {
+                    //did not find a match
+                    continue;
+                } else if(chamberMatch.Value.Equals("final", StringComparison.OrdinalIgnoreCase)) {
+                    for(int i = 0; i < openChambers.Length; i++) {
+                        openChambers[i]++;
+                    }
+                } else if(int.TryParse(chamberMatch.Value, out chamberNumber)) {
+                    for(int i = 0; i < chamberNumber - 1; i++) {
+                        openChambers[i]++;
+                    }
+                } else {
+                    continue;
+                }
+            }
+
+            for(int i = 0; i < numChambers - 1; i++) {
+                if(i == 0) {
+                    openChambersRates[i] = dutyResults.Count() > 0 ? (float)openChambers[i] / dutyResults.Count() : 0f;
+                } else {
+                    openChambersRates[i] = openChambers[i - 1] > 0 ? (float)openChambers[i] / openChambers[i - 1] : 0f;
+                }
+            }
+
+            if(ImGui.BeginTable($"##{dutyId}-Table", 3, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip)) {
+                ImGui.TableSetupColumn("checkpoint", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 158f);
+                ImGui.TableSetupColumn($"rawNumber", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
+                ImGui.TableSetupColumn($"rate", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
+
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.Text("Total clears: ");
+                ImGui.TableNextColumn();
+                ImGui.Text($"{totalClears}");
+                ImGui.TableNextColumn();
+                ImGui.TableNextColumn();
+                ImGui.Text("Total gil earned: ");
+                ImGui.TableNextColumn();
+                ImGui.Text($"{totalGil.ToString("N0")}");
+                ImGui.TableNextColumn();
+                ImGui.TableNextColumn();
+                ImGui.Text("Runs since last clear: ");
+                ImGui.TableNextColumn();
+                ImGui.Text($"{runsSinceLastClear}");
+                ImGui.TableNextColumn();
+                ImGui.TableNextColumn();
+                ImGui.Text("Total runs:");
+                ImGui.TableNextColumn();
+                ImGui.Text($"{dutyResults.Count()}");
+                ImGui.TableNextColumn();
+                ImGui.TableNextColumn();
+
+                for(int i = 0; i < openChambers.Length; i++) {
+                    if(i == numChambers - 2) {
+                        ImGui.Text($"{passiveSuccessVerb} final {stageNoun}:");
+                    } else {
+                        ImGui.Text($"{passiveSuccessVerb} {AddOrdinal(i + 2)} {stageNoun}:");
+                    }
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"{openChambers[i]}");
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"{string.Format("{0:P}%", openChambersRates[i])}");
+                    ImGui.TableNextColumn();
+                }
+
+                ImGui.TableNextColumn();
+                ImGui.TableNextColumn();
+                ImGui.TableNextColumn();
+
+                for(int i = 0; i < clearSequence.Count; i++) {
+                    ImGui.Text($"{AddOrdinal(i + 1)} clear:");
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"{clearSequence[i]}");
+                    ImGui.TableNextColumn();
+                    ImGui.TableNextColumn();
+                }
+                ImGui.EndTable();
+            }
+        }
+
+        //private void RouletteTable(int dutyId) {
         //    var allResults = Plugin.Configuration.DutyResults.Where(dr => {
         //        MPAMap? map = Plugin.DutyManager.FindMapForDutyResults(dr);
         //        bool isCurrent = map != null && !map.IsArchived && !map.IsDeleted;
         //        return dr.IsComplete && dr.DutyId == dutyId && (_statRange != StatRange.Current || isCurrent);
         //    });
 
-        //    //determine number of chambers from duty id
-        //    int numChambers;
+        //    //determine number of spins from duty id
+        //    int numSummons;
         //    switch(dutyId) {
-        //        case 268: //lost canals
-        //        case 276: //hidden canals
-        //            numChambers = 7;
-        //            break;
         //        default:
-        //            numChambers = 5;
+        //            numSummons = 5;
         //            break;
         //    }
 
-        //    int[] openChambers= new int[numChambers];
-        //    float[] openChambersRates = new float[numChambers];
+        //    int[] completedSummons = new int[numSummons];
+        //    float[] openChambersRates = new float[numSummons];
 
         //    int totalGil = 0;
-        //    int mapsSinceLastClear = 0;
+        //    int runsSinceLastClear = 0;
         //    int totalClears = 0;
         //    List<int> clearSequence = new();
         //    foreach(var result in allResults) {
-        //        mapsSinceLastClear++;
+        //        runsSinceLastClear++;
         //        totalGil += result.TotalGil;
 
         //        //no checkpoint results
@@ -256,6 +271,14 @@ namespace MapPartyAssist.Windows {
         //        }
 
         //        var lastCheckpoint = result.CheckpointResults.Last();
+
+        //        //check for clear
+        //        if(lastCheckpoint.Checkpoint.Name.Equals("Defeat final Summon", StringComparison.OrdinalIgnoreCase)) {
+        //            clearSequence.Add(runsSinceLastClear);
+        //            runsSinceLastClear = 0;
+        //            totalClears++;
+        //        }
+
         //        //find the last reached door checkpoint
         //        for(int i = 1; (!lastCheckpoint.Checkpoint.Name.StartsWith("Open") || !lastCheckpoint.IsReached) && i <= result.CheckpointResults.Count; i++) {
         //            lastCheckpoint = result.CheckpointResults.ElementAt(result.CheckpointResults.Count - i);
@@ -266,30 +289,31 @@ namespace MapPartyAssist.Windows {
         //            continue;
         //        }
 
-        //        Match chamberMatch = Regex.Match(lastCheckpoint.Checkpoint.Name, @"(?<=Open )[\d|final]+(?=(st|nd|rd|th)? chamber)", RegexOptions.IgnoreCase);
+        //        Match chamberMatch = Regex.Match(lastCheckpoint.Checkpoint.Name, @"(?<=Complete )[\d|final]+(?=(st|nd|rd|th)? summon)", RegexOptions.IgnoreCase);
         //        int chamberNumber;
         //        if(!chamberMatch.Success) {
         //            //did not find a match
         //            continue;
         //        } else if(chamberMatch.Value.Equals("final", StringComparison.OrdinalIgnoreCase)) {
-        //            for(int i = 0; i < openChambers.Length; i++) {
-        //                openChambers[i]++;
+        //            for(int i = 0; i < completedSummons.Length; i++) {
+        //                completedSummons[i]++;
         //            }
         //        } else if(int.TryParse(chamberMatch.Value, out chamberNumber)) {
         //            for(int i = 0; i < chamberNumber; i++) {
-        //                openChambers[i]++;
+        //                completedSummons[i]++;
         //            }
         //        } else {
         //            continue;
         //        }
         //    }
 
-        //    float reachSecondRate = allResults.Count() > 0 ? (float)openSecondChamber / allResults.Count() : 0f;
-        //    float reachThirdRate = openSecondChamber > 0 ? (float)openThirdChamber / openSecondChamber : 0f;
-        //    float reachFourthRate = openThirdChamber > 0 ? (float)openFourthChamber / openThirdChamber : 0f;
-        //    float reachFifthRate = openFourthChamber > 0 ? (float)openFifthChamber / openFourthChamber : 0f;
-        //    float reachSixthRate = openFifthChamber > 0 ? (float)openSixthChamber / openFifthChamber : 0f;
-        //    float reachFinalRate = openSixthChamber > 0 ? (float)openFinalChamber / openSixthChamber : 0f;
+        //    for(int i = 0; i < numSummons; i++) {
+        //        if(i == 0) {
+        //            openChambersRates[i] = allResults.Count() > 0 ? (float)completedSummons[i] / allResults.Count() : 0f;
+        //        } else {
+        //            openChambersRates[i] = completedSummons[i - 1] > 0 ? (float)completedSummons[i] / completedSummons[i - 1] : 0f;
+        //        }
+        //    }
 
         //    if(ImGui.BeginTable($"##{dutyId}-Table", 3, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip)) {
         //        ImGui.TableSetupColumn("checkpoint", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 158f);
@@ -310,7 +334,7 @@ namespace MapPartyAssist.Windows {
         //        ImGui.TableNextColumn();
         //        ImGui.Text("Runs since last clear: ");
         //        ImGui.TableNextColumn();
-        //        ImGui.Text($"{mapsSinceLastClear}");
+        //        ImGui.Text($"{runsSinceLastClear}");
         //        ImGui.TableNextColumn();
         //        ImGui.TableNextColumn();
         //        ImGui.Text("Total runs:");
@@ -318,46 +342,24 @@ namespace MapPartyAssist.Windows {
         //        ImGui.Text($"{allResults.Count()}");
         //        ImGui.TableNextColumn();
         //        ImGui.TableNextColumn();
-        //        ImGui.Text("Reached 2nd chamber:");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text($"{openSecondChamber}");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text($"{String.Format("{0:P}%", reachSecondRate)}");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text("Reached 3rd chamber:");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text($"{openThirdChamber}");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text($"{String.Format("{0:P}%", reachThirdRate)}");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text("Reached 4th chamber:");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text($"{openFourthChamber}");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text($"{String.Format("{0:P}%", reachFourthRate)}");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text("Reached 5th chamber:");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text($"{openFifthChamber}");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text($"{String.Format("{0:P}%", reachFifthRate)}");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text("Reached 6th chamber:");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text($"{openSixthChamber}");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text($"{String.Format("{0:P}%", reachSixthRate)}");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text("Reached final chamber:");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text($"{openFinalChamber}");
-        //        ImGui.TableNextColumn();
-        //        ImGui.Text($"{String.Format("{0:P}%", reachFinalRate)}");
-        //        ImGui.TableNextColumn();
+
+        //        for(int i = 1; i < numSummons; i++) {
+        //            if(i == numSummons - 1) {
+        //                ImGui.Text($"Completed final summon:");
+        //            } else {
+        //                ImGui.Text($"Completed {AddOrdinal(i + 1)} summon:");
+        //            }
+        //            ImGui.TableNextColumn();
+        //            ImGui.Text($"{completedSummons[i]}");
+        //            ImGui.TableNextColumn();
+        //            ImGui.Text($"{string.Format("{0:P}%", openChambersRates[i])}");
+        //            ImGui.TableNextColumn();
+        //        }
 
         //        ImGui.TableNextColumn();
         //        ImGui.TableNextColumn();
         //        ImGui.TableNextColumn();
+
         //        for(int i = 0; i < clearSequence.Count; i++) {
         //            ImGui.Text($"{AddOrdinal(i + 1)} clear:");
         //            ImGui.TableNextColumn();
@@ -365,11 +367,9 @@ namespace MapPartyAssist.Windows {
         //            ImGui.TableNextColumn();
         //            ImGui.TableNextColumn();
         //        }
-
         //        ImGui.EndTable();
         //    }
         //}
-
 
         public static string AddOrdinal(int num) {
             if(num <= 0) return num.ToString();

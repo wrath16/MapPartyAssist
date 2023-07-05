@@ -16,16 +16,18 @@ namespace MapPartyAssist.Types {
             FailureCheckpoint = new Checkpoint("Failure", "The Shifting Altars of Uznair has ended.", 2105);
             //FailureMessage = "A trap is triggered! You are expelled from the area!";
             //setup checkpoints
-            Checkpoints.Add(new Checkpoint("Complete 1st Summon"));
-            Checkpoints.Add(new Checkpoint("Defeat 1st Summon"));
-            Checkpoints.Add(new Checkpoint("Complete 2nd Summon"));
-            Checkpoints.Add(new Checkpoint("Defeat 2nd Summon"));
-            Checkpoints.Add(new Checkpoint("Complete 3rd Summon"));
-            Checkpoints.Add(new Checkpoint("Defeat 3rd Summon"));
-            Checkpoints.Add(new Checkpoint("Complete 4th Summon"));
-            Checkpoints.Add(new Checkpoint("Defeat 4th Summon"));
-            Checkpoints.Add(new Checkpoint("Complete final Summon"));
-            Checkpoints.Add(new Checkpoint("Defeat final Summon"));
+            Checkpoints = new() {
+                new Checkpoint("Complete 1st Summon"),
+                new Checkpoint("Defeat 1st Summon"),
+                new Checkpoint("Complete 2nd Summon"),
+                new Checkpoint("Defeat 2nd Summon"),
+                new Checkpoint("Complete 3rd Summon"),
+                new Checkpoint("Defeat 3rd Summon"),
+                new Checkpoint("Complete 4th Summon"),
+                new Checkpoint("Defeat 4th Summon"),
+                new Checkpoint("Complete final Summon"),
+                new Checkpoint("Defeat final Summon")
+            };
         }
 
         public override bool ProcessChat(XivChatType type, uint senderId, SeString sender, SeString message) {

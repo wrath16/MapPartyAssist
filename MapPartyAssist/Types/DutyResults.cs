@@ -84,7 +84,7 @@ namespace MapPartyAssist.Types {
             //}
 
             //check for failure
-            if((int)type == FailureCheckpoint.MessageChannel && FailureCheckpoint.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
+            if((int)type == 2233 || (int)type == 2105 && FailureCheckpoint.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
                 //CheckpointResults.Add(new CheckpointResults(nextCheckpoint, false));
                 IsComplete = true;
                 return true;

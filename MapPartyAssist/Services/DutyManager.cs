@@ -55,7 +55,7 @@ namespace MapPartyAssist.Services {
                 //_currentDutyResults = DutyResultTypes[dutyName].GetConstructors().First().Invoke(conParams);
                 //DutyResultTypes[dutyName].Name;
                 Plugin.Configuration.DutyResults.Add(_currentDutyResults!);
-                Plugin.Configuration.Save();
+                Plugin.Save();
             }
         }
 
@@ -145,7 +145,7 @@ namespace MapPartyAssist.Services {
             if(IsDutyInProgress()) {
                 //save if changes discovered
                 if(_currentDutyResults!.ProcessChat(type, senderId, sender, message)) {
-                    Plugin.Configuration.Save();
+                    Plugin.Save();
                 }
             }
         }
@@ -161,7 +161,7 @@ namespace MapPartyAssist.Services {
                 //}
                 _currentDutyResults.CompletionTime = DateTime.Now;
                 _currentDutyResults = null;
-                Plugin.Configuration.Save();
+                Plugin.Save();
             }
         }
 

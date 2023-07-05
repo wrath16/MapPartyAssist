@@ -135,7 +135,7 @@ namespace MapPartyAssist.Services {
                 if(mapPayload != null) {
                     //CurrentPartyList[key].MapLink = SeString.CreateMapLink(mapPayload.TerritoryType.RowId, mapPayload.Map.RowId, mapPayload.XCoord, mapPayload.YCoord);
                     Plugin.CurrentPartyList[key].MapLink = mapPayload;
-                    Plugin.Configuration.Save();
+                    Plugin.Save();
                 }
             }
 
@@ -155,12 +155,12 @@ namespace MapPartyAssist.Services {
                 player.MapLink = null;
             }
             LastMapPlayerKey = player.Key;
-            Plugin.Configuration.Save();
+            Plugin.Save();
         }
 
         public void RemoveLastMap(MPAMember player) {
             player.Maps.RemoveAt(player.Maps.Count - 1);
-            Plugin.Configuration.Save();
+            Plugin.Save();
         }
 
         //archive all of the maps for the given list
@@ -176,7 +176,7 @@ namespace MapPartyAssist.Services {
             ForceArchiveAllMaps(Plugin.Configuration.RecentPartyList);
             ForceArchiveAllMaps(Plugin.FakePartyList);
             Plugin.BuildRecentPartyList();
-            Plugin.Configuration.Save();
+            Plugin.Save();
         }
 
         public void CheckAndArchiveMaps(Dictionary<string, MPAMember> list) {
@@ -189,7 +189,7 @@ namespace MapPartyAssist.Services {
                     }
                 }
             }
-            Plugin.Configuration.Save();
+            Plugin.Save();
         }
 
         private void ResetDigStatus() {

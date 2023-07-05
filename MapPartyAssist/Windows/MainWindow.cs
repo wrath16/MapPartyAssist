@@ -13,6 +13,7 @@ namespace MapPartyAssist.Windows;
 
 public class MainWindow : Window, IDisposable {
     private Plugin Plugin;
+    private ZoneCountWindow ZoneCountWindow;
 
     private static int _maxMaps = 11;
 
@@ -28,19 +29,22 @@ public class MainWindow : Window, IDisposable {
             MaximumSize = new Vector2(500, 350)
         };
         this.Plugin = plugin;
+        //create new zoneCountWindow
+        ZoneCountWindow = new ZoneCountWindow(Plugin, this);
+        Plugin.WindowSystem.AddWindow(ZoneCountWindow);
     }
 
     public void Dispose() {
     }
 
     public override void OnClose() {
-        Plugin.WindowSystem.GetWindow("Map Links by Zone").IsOpen = false;
+        ZoneCountWindow.IsOpen = false;
         base.OnClose();
     }
 
     public override void PreDraw() {
         base.PreDraw();
-        Plugin.WindowSystem.GetWindow("Map Links by Zone").IsOpen = false;
+        ZoneCountWindow.IsOpen = false;
         //CurrentPosition = ImGui.GetWindowPos();
         //CurrentSize = ImGui.GetWindowSize();
     }
@@ -97,7 +101,7 @@ public class MainWindow : Window, IDisposable {
 
 
         //Plugin.WindowSystem.GetWindow("Map Links by Zone").IsOpen = Plugin.CurrentPartyList.Count > 0;
-        Plugin.WindowSystem.GetWindow("Map Links by Zone").IsOpen = true;
+        ZoneCountWindow.IsOpen = true;
 
         //var recentPartyList = Plugin.Configuration.RecentPartyList.Where(p => {
         //    TimeSpan timeSpan = DateTime.Now - p.Value.LastJoined;
@@ -232,12 +236,14 @@ public class MainWindow : Window, IDisposable {
             //todo move these to plugin layer
             foreach(var map in toArchive) {
                 map.IsArchived = true;
-                Plugin.Configuration.Save();
             }
 
             foreach(var map in toDelete) {
                 map.IsDeleted = true;
-                Plugin.Configuration.Save();
+            }
+
+            if(toArchive.Count > 0 || toDelete.Count > 0) {
+                Plugin.Save();
             }
 
             ImGui.EndTable();
