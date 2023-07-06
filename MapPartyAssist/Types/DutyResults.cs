@@ -1,5 +1,6 @@
 ﻿using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,8 +11,10 @@ namespace MapPartyAssist.Types {
     //class can't be abstract since we are serializing it
     public class DutyResults {
 
-        public static List<Checkpoint> Checkpoints = new();
-        public static Checkpoint FailureCheckpoint;
+        [JsonIgnore]
+        public virtual List<Checkpoint> Checkpoints { get; init;  }
+        [JsonIgnore]
+        public virtual Checkpoint FailureCheckpoint { get; init; }
         //public static string DutyName = "";
 
         public int Version { get; set; } = 1;
@@ -63,7 +66,7 @@ namespace MapPartyAssist.Types {
             //add 2233 for self!
 
             var nextCheckpoint = Checkpoints[CheckpointResults.Count];
-            if((int)type == 2233 || (int)type == 2105 && nextCheckpoint.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
+            if(((int)type == 2233 || (int)type == 2105) && nextCheckpoint.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
                 CheckpointResults.Add(new CheckpointResults(nextCheckpoint, true));
                 //if all checkpoints reached, set to duty complete
                 if(CheckpointResults.Where(cr => cr.IsReached).Count() == Checkpoints.Count) {
@@ -84,7 +87,7 @@ namespace MapPartyAssist.Types {
             //}
 
             //check for failure
-            if((int)type == 2233 || (int)type == 2105 && FailureCheckpoint.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
+            if(((int)type == 2233 || (int)type == 2105) && FailureCheckpoint.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
                 //CheckpointResults.Add(new CheckpointResults(nextCheckpoint, false));
                 IsComplete = true;
                 return true;

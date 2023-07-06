@@ -9,11 +9,6 @@ namespace MapPartyAssist.Types {
     internal class ShiftingAltarsOfUznairResults : DutyResults {
 
         public ShiftingAltarsOfUznairResults(int dutyId, string dutyName, Dictionary<string, MPAMember> players, string owner) : base(dutyId, dutyName, players, owner) {
-            //DutyName = "The Hidden Canals of Uznair";
-        }
-
-        static ShiftingAltarsOfUznairResults() {
-            //DutyName = "The Shifting Altars of Uznair";
             FailureCheckpoint = new Checkpoint("Failure", "The Shifting Altars of Uznair has ended.", 2105);
             //FailureMessage = "A trap is triggered! You are expelled from the area!";
             //setup checkpoints
@@ -29,6 +24,25 @@ namespace MapPartyAssist.Types {
                 new Checkpoint("Complete final Summon"),
                 new Checkpoint("Defeat final Summon")
             };
+        }
+
+        static ShiftingAltarsOfUznairResults() {
+            ////DutyName = "The Shifting Altars of Uznair";
+            //FailureCheckpoint = new Checkpoint("Failure", "The Shifting Altars of Uznair has ended.", 2105);
+            ////FailureMessage = "A trap is triggered! You are expelled from the area!";
+            ////setup checkpoints
+            //Checkpoints = new() {
+            //    new Checkpoint("Complete 1st Summon"),
+            //    new Checkpoint("Defeat 1st Summon"),
+            //    new Checkpoint("Complete 2nd Summon"),
+            //    new Checkpoint("Defeat 2nd Summon"),
+            //    new Checkpoint("Complete 3rd Summon"),
+            //    new Checkpoint("Defeat 3rd Summon"),
+            //    new Checkpoint("Complete 4th Summon"),
+            //    new Checkpoint("Defeat 4th Summon"),
+            //    new Checkpoint("Complete final Summon"),
+            //    new Checkpoint("Defeat final Summon")
+            //};
         }
 
         public override bool ProcessChat(XivChatType type, uint senderId, SeString sender, SeString message) {
@@ -83,7 +97,7 @@ namespace MapPartyAssist.Types {
                 }
             }
             //failure
-            if((int)type == FailureCheckpoint.MessageChannel && FailureCheckpoint.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
+            if(((int)type == 2233 || (int)type == 2105) && FailureCheckpoint.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
                 IsComplete = true;
                 return true;
             }
