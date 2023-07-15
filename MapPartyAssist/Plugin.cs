@@ -316,9 +316,9 @@ namespace MapPartyAssist {
                     break;
                 default:
                     PluginLog.Debug($"Message received: {type} {message} from {sender}");
-                    foreach(Payload payload in message.Payloads) {
-                        PluginLog.Debug($"payload: {payload}");
-                    }
+                    //foreach(Payload payload in message.Payloads) {
+                    //    PluginLog.Debug($"payload: {payload}");
+                    //}
                     break;
             }
         }
@@ -476,6 +476,13 @@ namespace MapPartyAssist {
             Save();
         }
 
+        public void TestFunction5() {
 
+            foreach(var duty in DataManager.GetExcelSheet<ContentFinderCondition>()) {
+                PluginLog.Debug($"id: {duty.RowId} name: {duty.Name}");
+            }
+
+            //DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId)
+        }
     }
 }

@@ -92,6 +92,7 @@ namespace MapPartyAssist.Types {
                     AddCheckpointResults(null);
                     if(CheckpointResults.Where(cr => cr.IsReached).Count() == Checkpoints.Count) {
                         IsComplete = true;
+                        CompletionTime = DateTime.Now;
                     }
                     return true;
                 }
@@ -99,6 +100,7 @@ namespace MapPartyAssist.Types {
             //failure
             if(((int)type == 2233 || (int)type == 2105) && FailureCheckpoint.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
                 IsComplete = true;
+                CompletionTime = DateTime.Now;
                 return true;
             }
             return false;

@@ -18,6 +18,7 @@ namespace MapPartyAssist.Types {
         //public static string DutyName = "";
 
         public int Version { get; set; } = 1;
+        //could replace these two properties with Duty object...
         public int DutyId { get; init; }
         public string DutyName { get; set; }
         public DateTime Time { get; init; }
@@ -27,6 +28,7 @@ namespace MapPartyAssist.Types {
         public MPAMap Map { get; set; }
         public int TotalGil { get; set; } = 0;
         public bool IsComplete { get; set; }
+        public bool IsPickup { get; set; }
 
         public List<CheckpointResults> CheckpointResults = new();
 
@@ -71,6 +73,7 @@ namespace MapPartyAssist.Types {
                 //if all checkpoints reached, set to duty complete
                 if(CheckpointResults.Where(cr => cr.IsReached).Count() == Checkpoints.Count) {
                     IsComplete = true;
+                    CompletionTime = DateTime.Now;
                 }
                 return true;
             }
@@ -90,10 +93,15 @@ namespace MapPartyAssist.Types {
             if(((int)type == 2233 || (int)type == 2105) && FailureCheckpoint.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
                 //CheckpointResults.Add(new CheckpointResults(nextCheckpoint, false));
                 IsComplete = true;
+                CompletionTime = DateTime.Now;
                 return true;
                 //CheckpointResults.Add(new CheckpointResults(FailureCheckpoint, false));
             }
             return false;
         }
+
+        //ShiftingAltarsOfUznairResults ToShiftingAltarsOfUznairResults() {
+        //    return this as ShiftingAltarsOfUznairResults;
+        //}
     }
 }

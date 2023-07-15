@@ -1,4 +1,5 @@
 ﻿using Dalamud.Game.Text.SeStringHandling;
+using Newtonsoft.Json;
 using System;
 
 namespace MapPartyAssist.Types {
@@ -8,11 +9,13 @@ namespace MapPartyAssist.Types {
         public DateTime Time { get; init; }
         public bool IsPortal { get; set; }
         public string DutyName { get; set; }
+        [JsonIgnore]
         public bool IsPending { get; set; }
         public bool IsManual { get; set; }
         public bool IsDeleted { get; set; }
         public bool IsArchived { get; set; }
         public SeString? MapLink { get; set; }
+        [JsonIgnore]
         public DutyResults? Results { get; set; }
 
         public MPAMap(string name, DateTime datetime, string zone = "", bool isManual = false, bool isPortal = false) {
