@@ -93,7 +93,7 @@ namespace MapPartyAssist.Windows {
             }
 
             ProgressTable(_dutyResults, _dutyId);
-            if(Plugin.DutyManager.Duties[_dutyId].Structure == DutyStructure.Doors) {
+            if(Plugin.DutyManager.Duties[_dutyId].Structure == DutyStructure.Roulette) {
                 SummonTable(_dutyResults, _dutyId);
             }
 
