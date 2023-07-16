@@ -20,7 +20,8 @@ namespace MapPartyAssist.Windows {
 
         private Plugin Plugin;
         private StatRange _statRange = StatRange.All;
-        private int _dutyId;
+        private int _dutyId = 276;
+        private int _selectedDuty = 2;
         private List<DutyResults> _dutyResults = new();
 
         public StatsWindow(Plugin plugin) : base("Treasure Map Stats") {
@@ -52,9 +53,37 @@ namespace MapPartyAssist.Windows {
             //    Plugin.TestFunction5();
             //}
 
-            //if(ImGui.Checkbox("Only Recent", ref _showRecentOnly)) {
-
-            //}
+            string[] duties = { "The Aquapolis", "The Lost Canals oF Uznair", "The Hidden Canals of Uznair", "The Shifting Altars of Uznair", "The Dungeons of Lyhe Ghiah", "The Shifting Oubliettes of Lyhe Ghiah", "The Excitatron 6000", "The Shifting Gymnasion Agonon" };
+            if(ImGui.Combo($"Duty##DutyCombo", ref _selectedDuty, duties, 4)) {
+                switch(_selectedDuty) {
+                    case 0:
+                        _dutyId = 179;
+                        break;
+                    case 1:
+                        _dutyId = 268;
+                        break;
+                    case 2:
+                    default:
+                        _dutyId = 276;
+                        break;
+                    case 3:
+                        _dutyId = 586;
+                        break;
+                    case 4:
+                        _dutyId = 688;
+                        break;
+                    case 5:
+                        _dutyId = 745;
+                        break;
+                    case 6:
+                        _dutyId = 819;
+                        break;
+                    case 7:
+                        _dutyId = 909;
+                        break;
+                }
+                UpdateDutyResults();
+            }
 
             int statRangeToInt = (int)_statRange;
             string[] includes = { "Current", "All-Time", "All-Time with imported data" };
@@ -63,40 +92,53 @@ namespace MapPartyAssist.Windows {
                 UpdateDutyResults();
             }
 
-            if(ImGui.BeginTabBar("StatsTabBar", ImGuiTabBarFlags.FittingPolicyMask)) {
-                if(ImGui.BeginTabItem("Hidden Canals of Uznair")) {
-                    if(_dutyId != 276) {
-                        _dutyId = 276;
-                        UpdateDutyResults();
-                    }
-                    ProgressTable(_dutyResults, _dutyId);
-                    ImGui.EndTabItem();
-                }
-                if(ImGui.BeginTabItem("Lost Canals of Uznair")) {
-                    if(_dutyId != 268) {
-                        _dutyId = 268;
-                        UpdateDutyResults();
-                    }
-                    ProgressTable(_dutyResults, _dutyId);
-                    ImGui.EndTabItem();
-                }
-                if(ImGui.BeginTabItem("Shifting Altars of Uznair")) {
-                    if(_dutyId != 586) {
-                        _dutyId = 586;
-                        UpdateDutyResults();
-                    }
-                    ProgressTable(_dutyResults, _dutyId);
-                    SummonTable(_dutyResults, _dutyId);
-                    ImGui.EndTabItem();
-                }
-                ImGui.EndTabBar();
+            ProgressTable(_dutyResults, _dutyId);
+            if(Plugin.DutyManager.Duties[_dutyId].Structure == DutyStructure.Doors) {
+                SummonTable(_dutyResults, _dutyId);
             }
+
+            //if(ImGui.BeginTabBar("StatsTabBar", ImGuiTabBarFlags.FittingPolicyMask)) {
+            //    if(ImGui.BeginTabItem("Hidden Canals of Uznair")) {
+            //        if(_dutyId != 276) {
+            //            _dutyId = 276;
+            //            UpdateDutyResults();
+            //        }
+            //        ProgressTable(_dutyResults, _dutyId);
+            //        ImGui.EndTabItem();
+            //    }
+            //    if(ImGui.BeginTabItem("Lost Canals of Uznair")) {
+            //        if(_dutyId != 268) {
+            //            _dutyId = 268;
+            //            UpdateDutyResults();
+            //        }
+            //        ProgressTable(_dutyResults, _dutyId);
+            //        ImGui.EndTabItem();
+            //    }
+            //    if(ImGui.BeginTabItem("Shifting Altars of Uznair")) {
+            //        if(_dutyId != 586) {
+            //            _dutyId = 586;
+            //            UpdateDutyResults();
+            //        }
+            //        ProgressTable(_dutyResults, _dutyId);
+            //        SummonTable(_dutyResults, _dutyId);
+            //        ImGui.EndTabItem();
+            //    }
+            //    if(ImGui.BeginTabItem("Aquapolis")) {
+            //        if(_dutyId != 179) {
+            //            _dutyId = 179;
+            //            UpdateDutyResults();
+            //        }
+            //        ProgressTable(_dutyResults, _dutyId);
+            //        ImGui.EndTabItem();
+            //    }
+            //    ImGui.EndTabBar();
+            //}
         }
 
         public override void PreDraw() {
         }
 
-        private void PrepareTable() { 
+        private void PrepareTable() {
         }
 
         private void ProgressTable(List<DutyResults> dutyResults, int dutyId) {
@@ -183,21 +225,26 @@ namespace MapPartyAssist.Windows {
 
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
-                ImGui.Text("Total clears: ");
-                ImGui.TableNextColumn();
-                ImGui.Text($"{totalClears}");
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
                 ImGui.Text("Total gil earned: ");
                 ImGui.TableNextColumn();
                 ImGui.Text($"{totalGil.ToString("N0")}");
                 ImGui.TableNextColumn();
                 ImGui.TableNextColumn();
-                ImGui.Text("Runs since last clear: ");
+                ImGui.Text("Total clears: ");
                 ImGui.TableNextColumn();
-                ImGui.Text($"{runsSinceLastClear}");
+                ImGui.Text($"{totalClears}");
                 ImGui.TableNextColumn();
+                if(dutyResults.Count() > 0) {
+                    ImGui.Text($"{string.Format("{0:P}%", (double)totalClears / dutyResults.Count())}");
+                }
                 ImGui.TableNextColumn();
+                //if(totalClears > 0) {
+                //    ImGui.Text("Runs since last clear: ");
+                //    ImGui.TableNextColumn();
+                //    ImGui.Text($"{runsSinceLastClear}");
+                //    ImGui.TableNextColumn();
+                //    ImGui.TableNextColumn();
+                //}
                 ImGui.Text("Total runs:");
                 ImGui.TableNextColumn();
                 ImGui.Text($"{dutyResults.Count()}");
@@ -213,16 +260,18 @@ namespace MapPartyAssist.Windows {
                     ImGui.TableNextColumn();
                     ImGui.Text($"{openChambers[i]}");
                     ImGui.TableNextColumn();
-                    ImGui.Text($"{string.Format("{0:P}%", openChambersRates[i])}");
+                    if((i == 0 && dutyResults.Count() != 0) || (i != 0 && openChambers[i - 1] != 0)) {
+                        ImGui.Text($"{string.Format("{0:P}%", openChambersRates[i])}");
+                    }
                     ImGui.TableNextColumn();
                 }
 
+                ImGui.TableNextColumn();
+                ImGui.TableNextColumn();
+                ImGui.TableNextColumn();
+
                 //todo make this a configuration variable
                 if(_dutyId == 276) {
-                    ImGui.TableNextColumn();
-                    ImGui.TableNextColumn();
-                    ImGui.TableNextColumn();
-
                     for(int i = 0; i < clearSequence.Count; i++) {
                         ImGui.Text($"{AddOrdinal(i + 1)} clear:");
                         ImGui.TableNextColumn();
@@ -230,6 +279,14 @@ namespace MapPartyAssist.Windows {
                         ImGui.TableNextColumn();
                         ImGui.TableNextColumn();
                     }
+                }
+
+                if(totalClears > 0) {
+                    ImGui.Text("Runs since last clear: ");
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"{runsSinceLastClear}");
+                    ImGui.TableNextColumn();
+                    ImGui.TableNextColumn();
                 }
 
                 ImGui.EndTable();
@@ -255,7 +312,7 @@ namespace MapPartyAssist.Windows {
                 foreach(var checkpoint in result.CheckpointResults.Where(c => c.IsReached)) {
                     switch(checkpoint.SummonType) {
                         case Summon.Lesser:
-                            lesserCount++; 
+                            lesserCount++;
                             break;
                         case Summon.Greater:
                             greaterCount++;

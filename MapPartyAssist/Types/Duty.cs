@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace MapPartyAssist.Types {
     internal class Duty {
@@ -8,11 +9,16 @@ namespace MapPartyAssist.Types {
         public DutyStructure Structure { get; init; }
         public int ChamberCount { get; init; }
         public Type? ResultsType { get; init; }
-        public Duty(int id, string name, DutyStructure structure, int chamberCount, Type resultsType = null) {
+        public List<Checkpoint>? Checkpoints { get; init; }
+        public Checkpoint? FailureCheckpoint { get; init; }
+
+        public Duty(int id, string name, DutyStructure structure, int chamberCount, List<Checkpoint>? checkpoints = null, Checkpoint? failureCheckpoint = null, Type? resultsType = null) {
             DutyId = id;
             Name = name;
             Structure = structure;
             ChamberCount = chamberCount;
+            Checkpoints = checkpoints;
+            FailureCheckpoint = failureCheckpoint;
             ResultsType = resultsType;
         }
     }
