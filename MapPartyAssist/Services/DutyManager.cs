@@ -312,9 +312,13 @@ namespace MapPartyAssist.Services {
                     return true;
                 }
                 //check for special summon
-                Match specialMatch = Regex.Match(message.ToString(), @"^The summon retreats into the shadows", RegexOptions.IgnoreCase);
+                Match specialMatch = Regex.Match(message.ToString(), @"^The .* retreats into the shadows", RegexOptions.IgnoreCase);
                 if(specialMatch.Success) {
                     AddRouletteCheckpointResults(Summon.Silver, null, isSave);
+                    if(_currentDutyResults.CheckpointResults.Where(cr => cr.IsReached).Count() == _currentDuty.Checkpoints!.Count) {
+                        _currentDutyResults.IsComplete = true;
+                        _currentDutyResults.CompletionTime = DateTime.Now;
+                    }
                     return true;
                 }
                 //check for lesser summon
