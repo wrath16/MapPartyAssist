@@ -135,7 +135,7 @@ namespace MapPartyAssist.Services {
                 } else {
                     key = $"{senderPayload.PlayerName} {senderPayload.World.Name}";
                 }
-                if(mapPayload != null) {
+                if(mapPayload != null && Plugin.CurrentPartyList.ContainsKey[key]) {
                     //CurrentPartyList[key].MapLink = SeString.CreateMapLink(mapPayload.TerritoryType.RowId, mapPayload.Map.RowId, mapPayload.XCoord, mapPayload.YCoord);
                     Plugin.CurrentPartyList[key].MapLink = mapPayload;
                     Plugin.StorageManager.UpdatePlayer(Plugin.CurrentPartyList[key]);
