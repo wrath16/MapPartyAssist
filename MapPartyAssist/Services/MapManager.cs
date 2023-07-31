@@ -3,6 +3,7 @@ using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Logging;
 using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Types;
 using System;
@@ -53,8 +54,10 @@ namespace MapPartyAssist.Services {
             if(Regex.IsMatch(duty.Name.ToString(), @"uznair|aquapolis|lyhe ghiah|gymnasion agonon|excitatron 6000$", RegexOptions.IgnoreCase)) {
                 //fallback for cases where we miss the map
                 if(Plugin.CurrentPartyList.Count > 0 && !LastMapPlayerKey.IsNullOrEmpty() && (DateTime.Now - Plugin.CurrentPartyList[LastMapPlayerKey].Maps.Last().Time).TotalSeconds < _digFallbackSeconds) {
-                    Plugin.CurrentPartyList[LastMapPlayerKey].Maps.Last().IsPortal = true;
-                    Plugin.CurrentPartyList[LastMapPlayerKey].Maps.Last().DutyName = duty.Name;
+                    var lastMap = Plugin.CurrentPartyList[LastMapPlayerKey].Maps.Last();
+                    lastMap.IsPortal = true;
+                    lastMap.DutyName = duty.Name;
+                    Plugin.StorageManager.UpdateMap(lastMap);
                 }
             }
         }
@@ -121,7 +124,7 @@ namespace MapPartyAssist.Services {
                         _digTime = newDigTime;
                     }
                 }
-            } else if(type == XivChatType.Party) {
+            } else if(type == XivChatType.Party || type == XivChatType.Say) {
                 //getting map link
                 var mapPayload = (MapLinkPayload)message.Payloads.FirstOrDefault(p => p.Type == PayloadType.MapLink);
                 var senderPayload = (PlayerPayload)sender.Payloads.FirstOrDefault(p => p.Type == PayloadType.Player);
@@ -135,6 +138,7 @@ namespace MapPartyAssist.Services {
                 if(mapPayload != null) {
                     //CurrentPartyList[key].MapLink = SeString.CreateMapLink(mapPayload.TerritoryType.RowId, mapPayload.Map.RowId, mapPayload.XCoord, mapPayload.YCoord);
                     Plugin.CurrentPartyList[key].MapLink = mapPayload;
+                    Plugin.StorageManager.UpdatePlayer(Plugin.CurrentPartyList[key]);
                     Plugin.Save();
                 }
             }
@@ -150,21 +154,40 @@ namespace MapPartyAssist.Services {
             //zone = _textInfo.ToTitleCase(zone);
             type = _textInfo.ToTitleCase(type);
             var newMap = new MPAMap(type, DateTime.Now, zone, isManual, isPortal);
+            newMap.Owner = player.Key;
             player.Maps.Add(newMap);
             if(!isManual) {
                 player.MapLink = null;
             }
             LastMapPlayerKey = player.Key;
-            Plugin.Save();
+
+            //add to DB
+            Plugin.StorageManager.AddMap(newMap);
+
+            //this can cause race conditions with the config file since we're saving in the other thread
+            //Plugin.Save();
         }
 
         public void RemoveLastMap(MPAMember player) {
-            player.Maps.RemoveAt(player.Maps.Count - 1);
-            Plugin.Save();
+            var lastMap = player.Maps.Where(m => !m.IsDeleted && !m.IsArchived).Last();
+            if(lastMap != null) {
+                lastMap.IsDeleted = true;
+
+                Plugin.Save();
+
+                var lastMapStorage = Plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted && !m.IsArchived).ToList().Last();
+                if(lastMapStorage != null) {
+                    lastMapStorage.IsDeleted = true;
+                    Plugin.StorageManager.UpdateMap(lastMapStorage);
+                }
+            }
+            //player.Maps.Where(m => !m.IsDeleted && !m.IsArchived).Last().IsDeleted = true;
+            //player.Maps.RemoveAt(player.Maps.Count - 1);
+
         }
 
         //archive all of the maps for the given list
-        public void ForceArchiveAllMaps(Dictionary<string, MPAMember> list) {
+        private void ForceArchiveAllMaps(Dictionary<string, MPAMember> list) {
             foreach(var player in list.Values) {
                 foreach(var map in player.Maps) {
                     map.IsArchived = true;
@@ -173,22 +196,85 @@ namespace MapPartyAssist.Services {
         }
 
         public void ClearAllMaps() {
+
+            PluginLog.Information("Archiving all maps...");
+
+            //TODO: only do this for current maps
+
             ForceArchiveAllMaps(Plugin.Configuration.RecentPartyList);
             ForceArchiveAllMaps(Plugin.FakePartyList);
             Plugin.BuildRecentPartyList();
-            Plugin.Save();
+
+            var maps = Plugin.StorageManager.GetMaps().Query().ToList();
+            maps.ForEach(m => m.IsArchived = true);
+            Plugin.StorageManager.UpdateMaps(maps);
+
+            //foreach(var map in maps) {
+            //    map.IsArchived = true;
+            //    Plugin.StorageManager.UpdateMap(map);
+            //}
+
+
+            //foreach(var p in Plugin.Configuration.RecentPartyList) {
+            //    Plugin.StorageManager.UpdateMaps(p.Value.Maps);
+            //    //foreach(var m in p.Value.Maps) {
+            //    //    Plugin.StorageManager.UpdateMap(m);
+            //    //}
+            //}
+
+            //Plugin.Save();
         }
+
+        public void ArchiveMaps(IEnumerable<MPAMap> maps) {
+            PluginLog.Information("Archiving maps...");
+            //get from storage
+            var storageMaps = Plugin.StorageManager.GetMaps().Query().Where(m => maps.Contains(m)).ToList();
+            foreach(var map in storageMaps) {
+                map.IsArchived = true;
+            }
+            Plugin.StorageManager.UpdateMaps(storageMaps);
+            //Plugin.Save();
+
+            //maps.ToList().ForEach(m => m.IsArchived = true);
+            //Plugin.StorageManager.UpdateMaps(maps);
+        }
+
+        public void DeleteMaps(IEnumerable<MPAMap> maps) {
+            PluginLog.Information("Deleting maps...");
+            //get from storage
+            //var storageMaps = Plugin.StorageManager.GetMaps().Query().Where(m => maps.Contains(m)).ToList();
+            //foreach(var map in storageMaps) {
+            //    map.IsDeleted = true;
+            //}
+            //Plugin.StorageManager.UpdateMaps(storageMaps);
+
+            maps.ToList().ForEach(m => m.IsDeleted = true);
+            Plugin.StorageManager.UpdateMaps(maps);
+            //Plugin.Save();
+        }
+
+
 
         public void CheckAndArchiveMaps(Dictionary<string, MPAMember> list) {
             DateTime currentTime = DateTime.Now;
+
             foreach(MPAMember player in list.Values) {
                 foreach(MPAMap map in player.Maps) {
                     TimeSpan timeSpan = currentTime - map.Time;
                     if(timeSpan.TotalHours > Plugin.Configuration.ArchiveThresholdHours) {
                         map.IsArchived = true;
+                        //Plugin.StorageManager.UpdateMap(map);
                     }
                 }
             }
+            
+            var storageMaps = Plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived).ToList();
+            foreach(var map in storageMaps) {
+                TimeSpan timeSpan = currentTime - map.Time;
+                map.IsArchived = timeSpan.TotalHours > Plugin.Configuration.ArchiveThresholdHours;
+            }
+            Plugin.StorageManager.UpdateMaps(storageMaps);
+
             Plugin.Save();
         }
 

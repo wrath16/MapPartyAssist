@@ -13,6 +13,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
+using LiteDB;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Services;
 using MapPartyAssist.Types;
@@ -22,12 +23,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 
 namespace MapPartyAssist {
     public sealed class Plugin : IDalamudPlugin {
         public string Name => "Map Party Assist";
         private const string CommandName = "/mparty";
         private const string StatsCommandName = "/mpartystats";
+        private const string TestCommandName = "/mpartytest";
 
         //Dalamud services
         private DalamudPluginInterface PluginInterface { get; init; }
@@ -41,6 +44,7 @@ namespace MapPartyAssist {
         private Framework Framework { get; init; }
         internal DutyManager DutyManager { get; init; }
         internal MapManager MapManager { get; init; }
+        internal StorageManager StorageManager { get; init; }
         public Configuration Configuration { get; init; }
         internal GameFunctions Functions { get; }
         public WindowSystem WindowSystem = new("Map Party Assist");
@@ -48,6 +52,9 @@ namespace MapPartyAssist {
         private MainWindow MainWindow;
         private StatsWindow StatsWindow;
         private ConfigWindow ConfigWindow;
+        private TestFunctionWindow TestFunctionWindow;
+
+        internal LiteDatabase Database { get; init; }
 
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
         public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
@@ -78,14 +85,16 @@ namespace MapPartyAssist {
             GameGui = gameGui;
             Framework = framework;
 
-            Functions = new GameFunctions();
-            DutyManager = new DutyManager(this);
-            MapManager = new MapManager(this);
-
             PluginLog.Log("Begin Config loading");
             Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
             Configuration.Initialize(PluginInterface);
             PluginLog.Log("Done Config loading");
+
+
+            StorageManager = new StorageManager(this, $"{PluginInterface.GetPluginConfigDirectory()}\\data.db");
+            Functions = new GameFunctions();
+            DutyManager = new DutyManager(this);
+            MapManager = new MapManager(this);
 
             MainWindow = new MainWindow(this);
             //ZoneCountWindow = new ZoneCountWindow(this, MainWindow);
@@ -103,6 +112,14 @@ namespace MapPartyAssist {
             CommandManager.AddHandler(StatsCommandName, new CommandInfo(OnStatsCommand) {
                 HelpMessage = "Opens stats window."
             });
+
+#if DEBUG
+            TestFunctionWindow = new TestFunctionWindow(this);
+            WindowSystem.AddWindow(TestFunctionWindow);
+            CommandManager.AddHandler("/mpartytest", new CommandInfo(OnTestCommand) {
+                HelpMessage = "Opens test window."
+            });
+#endif
 
             PluginInterface.UiBuilder.Draw += DrawUI;
             PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
@@ -171,7 +188,10 @@ namespace MapPartyAssist {
 
             WindowSystem.RemoveAllWindows();
             CommandManager.RemoveHandler(CommandName);
-            CommandManager.RemoveHandler("/mpartystats");
+            CommandManager.RemoveHandler(StatsCommandName);
+#if DEBUG
+            CommandManager.RemoveHandler("/mpartytest");
+#endif
 
             Framework.Update -= OnFrameworkUpdate;
             ChatGui.ChatMessage -= OnChatMessage;
@@ -185,6 +205,7 @@ namespace MapPartyAssist {
 
             MapManager.Dispose();
             DutyManager.Dispose();
+            StorageManager.Dispose();
 
             Configuration.PruneRecentPartyList();
         }
@@ -195,6 +216,10 @@ namespace MapPartyAssist {
 
         private void OnStatsCommand(string command, string args) {
             StatsWindow.IsOpen = true;
+        }
+
+        private void OnTestCommand(string command, string args) {
+            TestFunctionWindow.IsOpen = true;
         }
 
         private void DrawUI() {
@@ -337,45 +362,84 @@ namespace MapPartyAssist {
             CurrentPartyList = new();
             //ResetDigStatus();
             Configuration.PruneRecentPartyList();
+            Save();
         }
 
         //builds current party list, from scratch
         public void BuildCurrentPartyList() {
             string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
             string currentPlayerWorld = ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
-            string key = $"{currentPlayerName} {currentPlayerWorld}";
+            string currentPlayerKey = $"{currentPlayerName} {currentPlayerWorld}";
             CurrentPartyList = new();
 
+            ////enable for solo player
+            //if(Configuration.EnableWhileSolo && PartyList.Length <= 0) {
+            //    //add yourself for initial setup
+            //    if(!Configuration.RecentPartyList.ContainsKey(currentPlayerKey)) {
+            //        var newPlayer = new MPAMember(currentPlayerName, currentPlayerWorld, true);
+            //        Configuration.RecentPartyList.Add(currentPlayerKey, newPlayer);
+            //        CurrentPartyList.Add(currentPlayerKey, newPlayer);
+            //    } else {
+            //        //find existing player
+            //        Configuration.RecentPartyList[currentPlayerKey].LastJoined = DateTime.Now;
+            //        CurrentPartyList.Add(currentPlayerKey, Configuration.RecentPartyList[currentPlayerKey]);
+            //    }
+            //    Configuration.RecentPartyList[currentPlayerKey].LastJoined = DateTime.Now;
+            //} else {
+            //    foreach(PartyMember p in PartyList) {
+            //        string partyMemberName = p.Name.ToString();
+            //        string partyMemberWorld = p.World.GameData.Name.ToString();
+            //        var key = $"{partyMemberName} {partyMemberWorld}";
+            //        bool isCurrentPlayer = partyMemberName.Equals(currentPlayerName) && partyMemberWorld.Equals(currentPlayerWorld);
+            //        //if(isCurrentPlayer) continue;
+
+            //        //new player!
+            //        if(!Configuration.RecentPartyList.ContainsKey(key)) {
+            //            var newPlayer = new MPAMember(partyMemberName, partyMemberWorld, isCurrentPlayer);
+            //            Configuration.RecentPartyList.Add(key, newPlayer);
+            //            CurrentPartyList.Add(key, newPlayer);
+            //        } else {
+            //            //find existing player
+            //            Configuration.RecentPartyList[key].LastJoined = DateTime.Now;
+            //            CurrentPartyList.Add(key, Configuration.RecentPartyList[key]);
+            //        }
+            //    }
+            //}
+            //Save();
+
+            var allPlayers = StorageManager.GetPlayers();
+            var currentPlayer = allPlayers.Query().Where(p => p.Key == currentPlayerKey).FirstOrDefault();
             //enable for solo player
             if(Configuration.EnableWhileSolo && PartyList.Length <= 0) {
                 //add yourself for initial setup
-                if(!Configuration.RecentPartyList.ContainsKey(key)) {
+                if(currentPlayer == null) {
                     var newPlayer = new MPAMember(currentPlayerName, currentPlayerWorld, true);
-                    Configuration.RecentPartyList.Add(key, newPlayer);
-                    CurrentPartyList.Add(key, newPlayer);
+                    CurrentPartyList.Add(currentPlayerKey, newPlayer);
+                    StorageManager.AddPlayer(newPlayer);
                 } else {
-                    //find existing player
-                    Configuration.RecentPartyList[key].LastJoined = DateTime.Now;
-                    CurrentPartyList.Add(key, Configuration.RecentPartyList[key]);
+                    currentPlayer.LastJoined = DateTime.Now;
+                    CurrentPartyList.Add(currentPlayerKey, currentPlayer);
+                    StorageManager.UpdatePlayer(currentPlayer);
                 }
-                Configuration.RecentPartyList[key].LastJoined = DateTime.Now;
             } else {
                 foreach(PartyMember p in PartyList) {
                     string partyMemberName = p.Name.ToString();
                     string partyMemberWorld = p.World.GameData.Name.ToString();
-                    key = $"{partyMemberName} {partyMemberWorld}";
+                    var key = $"{partyMemberName} {partyMemberWorld}";
                     bool isCurrentPlayer = partyMemberName.Equals(currentPlayerName) && partyMemberWorld.Equals(currentPlayerWorld);
-                    //if(isCurrentPlayer) continue;
+                    var findPlayer = allPlayers.Query().Where(p => p.Key == key).FirstOrDefault();
 
                     //new player!
-                    if(!Configuration.RecentPartyList.ContainsKey(key)) {
+                    if(findPlayer == null) {
                         var newPlayer = new MPAMember(partyMemberName, partyMemberWorld, isCurrentPlayer);
-                        Configuration.RecentPartyList.Add(key, newPlayer);
                         CurrentPartyList.Add(key, newPlayer);
+                        StorageManager.AddPlayer(newPlayer);
                     } else {
                         //find existing player
-                        Configuration.RecentPartyList[key].LastJoined = DateTime.Now;
-                        CurrentPartyList.Add(key, Configuration.RecentPartyList[key]);
+                        findPlayer.LastJoined = DateTime.Now;
+                        findPlayer.IsSelf = isCurrentPlayer;
+                        CurrentPartyList.Add(key, findPlayer);
+                        StorageManager.UpdatePlayer(findPlayer);
                     }
                 }
             }
@@ -384,22 +448,38 @@ namespace MapPartyAssist {
 
         public void BuildRecentPartyList() {
             RecentPartyList = new();
-            foreach(var player in Configuration.RecentPartyList) {
-                TimeSpan timeSpan = DateTime.Now - player.Value.LastJoined;
+            //foreach(var player in Configuration.RecentPartyList) {
+            //    TimeSpan timeSpan = DateTime.Now - player.Value.LastJoined;
+            //    var isRecent = timeSpan.TotalHours <= Configuration.ArchiveThresholdHours;
+            //    var hasMaps = false;
+            //    foreach(var map in player.Value.Maps) {
+            //        if(!map.IsArchived && !map.IsDeleted) {
+            //            hasMaps = true;
+            //            break;
+            //        }
+            //    }
+            //    var notCurrent = !CurrentPartyList.ContainsKey(player.Key);
+            //    var notSelf = !player.Value.IsSelf;
+            //    if(isRecent && hasMaps && notCurrent) {
+            //        RecentPartyList.Add(player.Key, player.Value);
+            //    }
+            //}
+            //Save();
+
+            var allPlayers = StorageManager.GetPlayers();
+            var currentMaps = StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted).ToList();
+            foreach(var player in allPlayers.Query().ToList()) {
+                TimeSpan timeSpan = DateTime.Now - player.LastJoined;
                 var isRecent = timeSpan.TotalHours <= Configuration.ArchiveThresholdHours;
-                var hasMaps = false;
-                foreach(var map in player.Value.Maps) {
-                    if(!map.IsArchived && !map.IsDeleted) {
-                        hasMaps = true;
-                        break;
-                    }
-                }
+                var hasMaps = currentMaps.Where(m => m.Owner.Equals(player.Key)).Any();
+
                 var notCurrent = !CurrentPartyList.ContainsKey(player.Key);
-                var notSelf = !player.Value.IsSelf;
+                var notSelf = !player.IsSelf;
                 if(isRecent && hasMaps && notCurrent) {
-                    RecentPartyList.Add(player.Key, player.Value);
+                    RecentPartyList.Add(player.Key, player);
                 }
             }
+            Save();
         }
 
         public void ToggleEnableSolo(bool toSet) {
@@ -415,7 +495,9 @@ namespace MapPartyAssist {
 
         public void Save() {
             Configuration.Save();
+            //this causes a small hitch
             StatsWindow.Refresh();
+            MainWindow.Refresh();
         }
 
         public void TestFunction() {
@@ -452,10 +534,10 @@ namespace MapPartyAssist {
             var duty = DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
             PluginLog.Debug($"Duty Name: {duty?.Name}");
 
-            //var x = GameGui.GetAddonByName("_ToDoList");
-            //Functions.testfunc(x);
-            //PluginLog.Debug($"AddonToDoList ptr: {x}");
-            //PluginLog.Debug($"AddonToDoList heckin based!");
+            var x = GameGui.GetAddonByName("_ToDoList");
+            Functions.testfunc(x);
+            PluginLog.Debug($"AddonToDoList ptr: {x}");
+            PluginLog.Debug($"AddonToDoList heckin based!");
         }
 
         public void TestFunction4() {
@@ -483,6 +565,51 @@ namespace MapPartyAssist {
             }
 
             //DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId)
+        }
+
+        public void TestFuncAddDRToDB() {
+            //var col = Database.GetCollection<DutyResults>("dutyresults");
+
+
+
+            ////var col2 = Database.GetCollection<DutyResults>("dutyresults2", )
+
+            ////BsonMapper.Global.RegisterType<DutyResults>(
+            ////    serialize: (dr) => {
+
+            ////        //var doc = new BsonDocument(dr);
+
+            ////        var doc = new BsonDocument();
+            ////        doc["Version"] = dr.Version;
+            ////        doc["DutyId"] = dr.DutyId;
+            ////        doc["DutyName"] = dr.DutyName;
+            ////        doc["Time"] = dr.Time;
+            ////        doc["CompletionTime"] = dr.CompletionTime;
+            ////        doc["Owner"] = dr.Owner;
+            ////        doc["IsComplete"] = dr.IsComplete;
+            ////        doc["IsPickup"] = dr.IsPickup;
+
+            ////        return doc;
+            ////    },
+            ////    deserialize: (bson) => new DutyResults()
+
+            ////    );
+
+
+            //col.InsertBulk(Configuration.DutyResults);
+        }
+
+        public void TestGetDRFromDB() {
+            //var results = Database.GetCollection<DutyResults>("dutyresults").Query().Limit(10).ToList();
+            //PluginLog.Debug($"{results.First().CheckpointResults.Count}");
+        }
+
+        public void TestUpdateMap() {
+            MPAMap map = Configuration.RecentPartyList["Sarah Montcroix Siren"].Maps.Last();
+            map.IsArchived = true;
+            PluginLog.Debug($"ID: {map.Id}");
+            StorageManager.UpdateMap(map);
+            //PluginLog.Debug($"Map found? {result}");
         }
     }
 }

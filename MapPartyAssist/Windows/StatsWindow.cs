@@ -24,7 +24,7 @@ namespace MapPartyAssist.Windows {
         private int _selectedDuty = 2;
         private List<DutyResults> _dutyResults = new();
 
-        public StatsWindow(Plugin plugin) : base("Treasure Map Stats") {
+        public StatsWindow(Plugin plugin) : base("Treasure Dungeon Stats") {
             this.SizeConstraints = new WindowSizeConstraints {
                 MinimumSize = new Vector2(300, 50),
                 MaximumSize = new Vector2(800, 1000)

@@ -1,4 +1,6 @@
-﻿using System;
+﻿using LiteDB;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -13,6 +15,9 @@ namespace MapPartyAssist.Types {
         //public virtual Checkpoint FailureCheckpoint { get; init; }
         //public static string DutyName = "";
 
+        [BsonId]
+        [JsonIgnore]
+        public ObjectId Id { get; set; }
         public int Version { get; set; } = 1;
         //could replace these two properties with Duty object...
         public int DutyId { get; init; }
@@ -26,7 +31,7 @@ namespace MapPartyAssist.Types {
         public bool IsComplete { get; set; }
         public bool IsPickup { get; set; }
 
-        public List<CheckpointResults> CheckpointResults = new();
+        public List<CheckpointResults> CheckpointResults { get; set; } = new();
 
 
         //[JsonConstructor]

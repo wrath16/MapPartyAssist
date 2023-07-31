@@ -1,15 +1,18 @@
 ﻿using Dalamud.Game.Text.SeStringHandling.Payloads;
+using LiteDB;
 using System;
 using System.Collections.Generic;
 
 namespace MapPartyAssist.Types {
-    public class MPAMember {
+    public class MPAMember : IEquatable<MPAMember>, IEquatable<string> {
         public string Name { get; set; }
         public string HomeWorld { get; set; }
+        [BsonIgnore]
         public List<MPAMap> Maps { get; set; }
         public bool IsSelf { get; set; }
         public DateTime LastJoined { get; set; }
         public MapLinkPayload? MapLink { get; set; }
+        [BsonId]
         public string Key {
             get {
                 return $"{Name} {HomeWorld}";
@@ -22,6 +25,14 @@ namespace MapPartyAssist.Types {
             IsSelf = isSelf;
             LastJoined = DateTime.Now;
             Maps = new List<MPAMap>();
+        }
+
+        public bool Equals(MPAMember? other) {
+            return other != null && Key.Equals(other.Key);
+        }
+
+        public bool Equals(string? other) {
+            return other != null && Key.Equals(other);
         }
     }
 }

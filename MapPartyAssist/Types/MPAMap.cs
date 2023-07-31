@@ -1,9 +1,15 @@
 ﻿using Dalamud.Game.Text.SeStringHandling;
+using LiteDB;
 using Newtonsoft.Json;
 using System;
 
 namespace MapPartyAssist.Types {
-    public class MPAMap {
+    public class MPAMap : IEquatable<MPAMap> {
+
+        [BsonId]
+        [JsonIgnore]
+        public ObjectId Id { get; set; }
+        public string Owner { get; set; }
         public string Name { get; set; }
         public string Zone { get; set; }
         public DateTime Time { get; init; }
@@ -18,6 +24,10 @@ namespace MapPartyAssist.Types {
         [JsonIgnore]
         public DutyResults? Results { get; set; }
 
+        public MPAMap() {
+
+        }
+
         public MPAMap(string name, DateTime datetime, string zone = "", bool isManual = false, bool isPortal = false) {
             Name = name;
             Time = datetime;
@@ -26,6 +36,15 @@ namespace MapPartyAssist.Types {
             IsDeleted = false;
             IsArchived = false;
             Zone = zone;
+            Id = ObjectId.NewObjectId();
+        }
+
+        public bool Equals(MPAMap? other) {
+            if(Id == null || other == null || other.Id == null) {
+                return false;
+            } else {
+                return Id.Equals(other.Id);
+            }
         }
 
         //public static MapType NameToType(string name) {

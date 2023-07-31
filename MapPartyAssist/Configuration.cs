@@ -2,7 +2,9 @@ using Dalamud.Configuration;
 using Dalamud.Plugin;
 using MapPartyAssist.Types;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace MapPartyAssist {
     [Serializable]
@@ -20,9 +22,13 @@ namespace MapPartyAssist {
         [NonSerialized]
         private DalamudPluginInterface? PluginInterface;
 
+        [NonSerialized]
+        private SemaphoreSlim _fileLock;
+
         public Configuration() {
             RecentPartyList = new Dictionary<string, MPAMember>();
             DutyResults = new();
+            _fileLock = new SemaphoreSlim(1, 1);
         }
 
         public void Initialize(DalamudPluginInterface pluginInterface) {
@@ -30,7 +36,9 @@ namespace MapPartyAssist {
         }
 
         public void Save() {
+            _fileLock.Wait();
             this.PluginInterface!.SavePluginConfig(this);
+            _fileLock.Release();
         }
 
         //removes players who have 0 maps and last joined >24 hours

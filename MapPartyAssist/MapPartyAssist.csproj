@@ -18,6 +18,7 @@
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+	<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -59,5 +60,9 @@
       <Private>false</Private>
     </Reference>
   </ItemGroup>
+
+	<ItemGroup>
+	    <PackageReference Include="LiteDB" Version="5.0.16" />
+	</ItemGroup>
 
 </Project>
