@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
 
 namespace MapPartyAssist.Windows;
 
@@ -26,6 +27,8 @@ public class MainWindow : Window, IDisposable {
     private int _currentMapCount;
     private int _recentMapCount;
 
+    private SemaphoreSlim _updateMapsLock;
+
     public Vector2 CurrentPosition { get; private set; }
     public Vector2 CurrentSize { get; private set; }
 
@@ -41,6 +44,8 @@ public class MainWindow : Window, IDisposable {
         //create new zoneCountWindow
         ZoneCountWindow = new ZoneCountWindow(Plugin, this);
         Plugin.WindowSystem.AddWindow(ZoneCountWindow);
+
+        _updateMapsLock = new SemaphoreSlim(1, 1);
     }
 
     public void Dispose() {
@@ -59,6 +64,10 @@ public class MainWindow : Window, IDisposable {
     //}
 
     private void UpdateMaps() {
+
+        _updateMapsLock.Wait();
+        //PluginLog.Debug("Updating maps windoW!");
+
 
         _currentMapCount = 0;
         _recentMapCount = 0;
@@ -106,6 +115,9 @@ public class MainWindow : Window, IDisposable {
                 }
             }
         }
+
+        //PluginLog.Debug($"total maps: {_currentMapCount}");
+        _updateMapsLock.Release();
     }
 
     public override void OnClose() {
@@ -240,12 +252,12 @@ public class MainWindow : Window, IDisposable {
                     ImGui.PopFont();
                     if(ImGui.IsItemHovered()) {
                         ImGui.BeginTooltip();
-                        ImGui.Text($"{playerMaps.Key.MapLink.PlaceName} {playerMaps.Key.MapLink.CoordinateString}");
+                        ImGui.Text($"{playerMaps.Key.MapLink.GetMapLinkPayload().PlaceName} {playerMaps.Key.MapLink.GetMapLinkPayload().CoordinateString}");
                         ImGui.EndTooltip();
                     }
                     if(ImGui.IsItemClicked()) {
 
-                        Plugin.OpenMapLink(playerMaps.Key.MapLink);
+                        Plugin.OpenMapLink(playerMaps.Key.MapLink.GetMapLinkPayload());
                     }
                 }
                 ImGui.TableNextColumn();
@@ -290,10 +302,16 @@ public class MainWindow : Window, IDisposable {
                 }
 
                 if(playerMaps.Value.Count() > _maxMaps) {
-                    ImGui.TextColored(ImGuiColors.ParsedGreen, $" +{playerMaps.Value.Count() - _maxMaps}");
+                    var color = playerMaps.Value.Last().IsManual ? ImGuiColors.DalamudYellow : ImGuiColors.ParsedGreen;
+                    ImGui.TextColored(color, $" +{playerMaps.Value.Count() - _maxMaps}");
                     if(ImGui.BeginPopupContextItem($"##{playerMaps.Key.GetHashCode()}--ExtraMapsContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
-                        if(ImGui.MenuItem($"Remove Last##{playerMaps.Key.GetHashCode()}--ExtraMapsRemove")) {
-                            Plugin.MapManager.RemoveLastMap(playerMaps.Key);
+                        if(ImGui.MenuItem($"Archive Last##{playerMaps.Key.GetHashCode()}--ExtraMapsArchive")) {
+                            //Plugin.MapManager.RemoveLastMap(playerMaps.Key);
+                            toArchive.Add(playerMaps.Value.Last());
+                        }
+                        if(ImGui.MenuItem($"Delete Last##{playerMaps.Key.GetHashCode()}--ExtraMapsDelete")) {
+                            //Plugin.MapManager.RemoveLastMap(playerMaps.Key);
+                            toDelete.Add(playerMaps.Value.Last());
                         }
                         ImGui.EndPopup();
                     }

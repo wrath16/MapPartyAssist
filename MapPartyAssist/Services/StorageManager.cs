@@ -1,4 +1,5 @@
-﻿using Dalamud.Utility;
+﻿using Dalamud.Logging;
+using Dalamud.Utility;
 using LiteDB;
 using MapPartyAssist.Types;
 using System;
@@ -10,19 +11,17 @@ using System.Threading.Tasks;
 namespace MapPartyAssist.Services {
     internal class StorageManager : IDisposable {
 
-        private const string _mapTable = "map";
-        private const string _dutyResultsTable = "dutyresults";
-        private const string _playerTable = "player";
+        public const string MapTable = "map";
+        public const string DutyResultsTable = "dutyresults";
+        public const string PlayerTable = "player";
 
         private Plugin Plugin;
-
         private SemaphoreSlim _dbLock;
-
         private LiteDatabase Database { get; init; }
 
         public ILiteCollection<MPAMap> Maps {
             get {
-                return Database.GetCollection<MPAMap>(_mapTable);
+                return Database.GetCollection<MPAMap>(MapTable);
             }
         }
 
@@ -31,19 +30,19 @@ namespace MapPartyAssist.Services {
             Database = new LiteDatabase(path);
 
             //create indices
-            var mapCollection = Database.GetCollection<MPAMap>(_mapTable);
+            var mapCollection = Database.GetCollection<MPAMap>(MapTable);
             mapCollection.EnsureIndex(m => m.Time);
             mapCollection.EnsureIndex(m => m.Owner);
             mapCollection.EnsureIndex(m => m.IsArchived);
             mapCollection.EnsureIndex(m => m.IsDeleted);
             mapCollection.EnsureIndex(m => m.IsManual);
 
-            var drCollection = Database.GetCollection<DutyResults>(_dutyResultsTable);
+            var drCollection = Database.GetCollection<DutyResults>(DutyResultsTable);
             drCollection.EnsureIndex(dr => dr.Time);
             drCollection.EnsureIndex(dr => dr.DutyName);
             drCollection.EnsureIndex(dr => dr.DutyId);
 
-            var playerCollection = Database.GetCollection<MPAMember>(_playerTable);
+            var playerCollection = Database.GetCollection<MPAMember>(PlayerTable);
             playerCollection.EnsureIndex(p => p.Name);
             playerCollection.EnsureIndex(p => p.HomeWorld);
             playerCollection.EnsureIndex(p => p.Key);
@@ -58,6 +57,7 @@ namespace MapPartyAssist.Services {
 
         //wip
         public void Import() {
+            PluginLog.Information("Importing data from config file into database...");
 
             List<MPAMap> maps = new();
 
@@ -73,6 +73,19 @@ namespace MapPartyAssist.Services {
             }
             AddMaps(maps);
 
+            foreach(var dutyResults in Plugin.Configuration.DutyResults) {
+                //find map...
+                var map = Plugin.MapManager.FindMapForDutyResults(dutyResults);
+                dutyResults.Map = map;
+                //if(map != null) {
+                //    map.DutyResults = dutyResults;
+                //}
+            }
+            AddDutyResults(Plugin.Configuration.DutyResults);
+
+            Plugin.Configuration.DutyResults = new();
+            Plugin.Configuration.RecentPartyList = new();
+
             Plugin.Configuration.Version = 2;
             Plugin.Save();
         }
@@ -85,104 +98,207 @@ namespace MapPartyAssist.Services {
 
         }
 
-
-        public void AddMap(MPAMap map) {
+        public Task AddMap(MPAMap map) {
             //Maps.Insert(map);
-            var mapCollection = Database.GetCollection<MPAMap>(_mapTable);
-            //run in new thread for performance reasons.
-            //Thread t = new Thread(() => {
-            //    mapCollection.Insert(map);
-            //    Plugin.Save();
-            //});
-            //t.Start();
-
+            var mapCollection = Database.GetCollection<MPAMap>(MapTable);
             Task task = new Task(() => {
-                _dbLock.Wait();
-                mapCollection.Insert(map);
-                Plugin.Save();
-                _dbLock.Release();
+                try {
+                    _dbLock.Wait();
+                    mapCollection.Insert(map);
+                    Plugin.Save();
+                    _dbLock.Release();
+                } catch(Exception e) {
+                    _dbLock.Release();
+                    PluginLog.Error(e.Message);
+                }
+
             });
             task.Start();
+            //task.ContinueWith(HandleTaskExceptions, TaskContinuationOptions.OnlyOnFaulted);
+            return task;
         }
 
-        public void AddMaps(IEnumerable<MPAMap> maps) {
-            var mapCollection = Database.GetCollection<MPAMap>(_mapTable);
+        public Task AddMaps(IEnumerable<MPAMap> maps) {
+            var mapCollection = Database.GetCollection<MPAMap>(MapTable);
             Task task = new Task(() => {
-                _dbLock.Wait();
-                mapCollection.Insert(maps);
-                Plugin.Save();
-                _dbLock.Release();
+                try {
+                    _dbLock.Wait();
+                    mapCollection.Insert(maps);
+                    Plugin.Save();
+                    _dbLock.Release();
+                } catch(Exception e) {
+                    _dbLock.Release();
+                    PluginLog.Error(e.Message);
+                }
+
             });
             task.Start();
+            //task.ContinueWith(HandleTaskExceptions, TaskContinuationOptions.OnlyOnFaulted);
+            return task;
         }
 
-        //returns false if not found
-        public void UpdateMap(MPAMap map) {
-            var mapCollection = Database.GetCollection<MPAMap>(_mapTable);
-            //run in new thread for performance reasons.
-            //Thread t = new Thread(() => {
-            //    mapCollection.Update(map);
-            //    Plugin.Save();
-            //});
-            //t.Start();
-
-
+        public Task UpdateMap(MPAMap map) {
+            var mapCollection = Database.GetCollection<MPAMap>(MapTable);
             Task task = new Task(() => {
-                _dbLock.Wait();
-                mapCollection.Update(map);
-                Plugin.Save();
-                _dbLock.Release();
+                try {
+                    _dbLock.Wait();
+                    mapCollection.Update(map);
+                    Plugin.Save();
+                    _dbLock.Release();
+                } catch(Exception e) {
+                    _dbLock.Release();
+                    PluginLog.Error(e.Message);
+                }
+
             });
             task.Start();
+            //task.ContinueWith(HandleTaskExceptions, TaskContinuationOptions.OnlyOnFaulted);
+            return task;
         }
 
-        public void UpdateMaps(IEnumerable<MPAMap> maps) {
-            var mapCollection = Database.GetCollection<MPAMap>(_mapTable);
-
-            //Thread t = new Thread(() => {
-            //    mapCollection.Update(maps.Where(m => m.Id != null));
-            //    Plugin.Save();
-            //});
-            //t.Start();
-
+        public Task UpdateMaps(IEnumerable<MPAMap> maps) {
+            var mapCollection = Database.GetCollection<MPAMap>(MapTable);
             Task task = new Task(() => {
-                _dbLock.Wait();
-                mapCollection.Update(maps.Where(m => m.Id != null));
-                Plugin.Save();
-                _dbLock.Release();
+                try {
+                    _dbLock.Wait();
+                    mapCollection.Update(maps.Where(m => m.Id != null));
+                    Plugin.Save();
+                    _dbLock.Release();
+                } catch(Exception e) {
+                    _dbLock.Release();
+                    PluginLog.Error(e.Message);
+                }
             });
             task.Start();
+            //task.ContinueWith(HandleTaskExceptions, TaskContinuationOptions.OnlyOnFaulted);
+            return task;
         }
 
         public ILiteCollection<MPAMap> GetMaps() {
-            return Database.GetCollection<MPAMap>(_mapTable);
+            return Database.GetCollection<MPAMap>(MapTable);
         }
 
 
-        public void AddPlayer(MPAMember player) {
-            var playerCollection = Database.GetCollection<MPAMember>(_playerTable);
+        public Task AddPlayer(MPAMember player) {
+            var playerCollection = Database.GetCollection<MPAMember>(PlayerTable);
             Task task = new Task(() => {
-                _dbLock.Wait();
-                playerCollection.Insert(player);
-                Plugin.Save();
-                _dbLock.Release();
+                try {
+                    _dbLock.Wait();
+                    playerCollection.Insert(player);
+                    Plugin.Save();
+                    _dbLock.Release();
+                } catch(Exception e) {
+                    _dbLock.Release();
+                    PluginLog.Error(e.Message);
+                }
             });
             task.Start();
+            task.ContinueWith(HandleTaskExceptions, TaskContinuationOptions.OnlyOnFaulted);
+            return task;
         }
 
-        public void UpdatePlayer(MPAMember player) {
-            var playerCollection = Database.GetCollection<MPAMember>(_playerTable);
+        public Task UpdatePlayer(MPAMember player) {
+            var playerCollection = Database.GetCollection<MPAMember>(PlayerTable);
             Task task = new Task(() => {
-                _dbLock.Wait();
-                playerCollection.Update(player);
-                Plugin.Save();
-                _dbLock.Release();
+                try {
+                    _dbLock.Wait();
+                    playerCollection.Update(player);
+                    Plugin.Save();
+                    _dbLock.Release();
+                } catch(Exception e) {
+                    _dbLock.Release();
+                    PluginLog.Error(e.Message);
+                }
             });
             task.Start();
+            //task.ContinueWith(HandleTaskExceptions, TaskContinuationOptions.OnlyOnFaulted);
+            return task;
         }
 
         public ILiteCollection<MPAMember> GetPlayers() {
-            return Database.GetCollection<MPAMember>(_playerTable);
+            return Database.GetCollection<MPAMember>(PlayerTable);
+        }
+
+        public Task AddDutyResults(DutyResults results) {
+            var drCollection = Database.GetCollection<DutyResults>(DutyResultsTable);
+            Task task = new Task(() => {
+                try {
+                    _dbLock.Wait();
+                    drCollection.Insert(results);
+                    Plugin.Save();
+                    _dbLock.Release();
+                } catch(Exception e) {
+                    _dbLock.Release();
+                    PluginLog.Error(e.Message);
+                }
+            });
+            task.Start();
+            //task.ContinueWith(HandleTaskExceptions, TaskContinuationOptions.OnlyOnFaulted);
+            return task;
+        }
+
+        public Task AddDutyResults(IEnumerable<DutyResults> results) {
+            var drCollection = Database.GetCollection<DutyResults>(DutyResultsTable);
+            Task task = new Task(() => {
+                try {
+                    _dbLock.Wait();
+                    drCollection.Insert(results);
+                    Plugin.Save();
+                    _dbLock.Release();
+                } catch(Exception e) {
+                    _dbLock.Release();
+                    PluginLog.Error(e.Message);
+                }
+            });
+            task.Start();
+            //task.ContinueWith(HandleTaskExceptions, TaskContinuationOptions.OnlyOnFaulted);
+            return task;
+        }
+
+        public Task UpdateDutyResults(DutyResults results) {
+            var drCollection = Database.GetCollection<DutyResults>(DutyResultsTable);
+            Task task = new Task(() => {
+                try {
+                    _dbLock.Wait();
+                    drCollection.Update(results);
+                    Plugin.Save();
+                    _dbLock.Release();
+                } catch(Exception e) {
+                    _dbLock.Release();
+                    PluginLog.Error(e.Message);
+                }
+            });
+            task.Start();
+            //task.ContinueWith(HandleTaskExceptions, TaskContinuationOptions.OnlyOnFaulted);
+            return task;
+        }
+
+        public ILiteCollection<DutyResults> GetDutyResults() {
+            return Database.GetCollection<DutyResults>(DutyResultsTable);
+        }
+
+        private void HandleTaskExceptions(Task task) {
+            var aggException = task.Exception.Flatten();
+            foreach(var exception in aggException.InnerExceptions) {
+                PluginLog.Error($"{exception.Message}");
+            }
+        }
+
+        private Task AsyncWriteToDatabase(Func<object> action) {
+            Task task = new Task(() => {
+                try {
+                    _dbLock.Wait();
+                    action.Invoke();
+                    Plugin.Save();
+                    _dbLock.Release();
+                } catch(Exception e) {
+                    _dbLock.Release();
+                    PluginLog.Error(e.Message);
+                }
+            });
+            task.Start();
+            //task.ContinueWith(HandleTaskExceptions, TaskContinuationOptions.OnlyOnFaulted);
+            return task;
         }
     }
 }

@@ -2,14 +2,13 @@ using Dalamud.Configuration;
 using Dalamud.Plugin;
 using MapPartyAssist.Types;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 
 namespace MapPartyAssist {
     [Serializable]
     public class Configuration : IPluginConfiguration {
-        public int Version { get; set; } = 1;
+        public int Version { get; set; } = 2;
         public bool MasterSwitch { get; set; } = true;
         public uint ArchiveThresholdHours { get; set; } = 24;
 

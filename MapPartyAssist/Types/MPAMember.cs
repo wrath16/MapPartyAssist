@@ -11,7 +11,7 @@ namespace MapPartyAssist.Types {
         public List<MPAMap> Maps { get; set; }
         public bool IsSelf { get; set; }
         public DateTime LastJoined { get; set; }
-        public MapLinkPayload? MapLink { get; set; }
+        public MPAMapLink MapLink { get; set; }
         [BsonId]
         public string Key {
             get {

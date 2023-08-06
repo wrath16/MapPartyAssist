@@ -3,7 +3,6 @@ using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Logging;
 using Dalamud.Utility;
-using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Types;
 using System;
@@ -52,9 +51,10 @@ namespace MapPartyAssist.Services {
             //set the duty name
             //should do this in a more robust way...
             if(Regex.IsMatch(duty.Name.ToString(), @"uznair|aquapolis|lyhe ghiah|gymnasion agonon|excitatron 6000$", RegexOptions.IgnoreCase)) {
+                var lastMap = Plugin.StorageManager.GetMaps().Query().OrderBy(dr => dr.Time).ToList().Last();
                 //fallback for cases where we miss the map
-                if(Plugin.CurrentPartyList.Count > 0 && !LastMapPlayerKey.IsNullOrEmpty() && (DateTime.Now - Plugin.CurrentPartyList[LastMapPlayerKey].Maps.Last().Time).TotalSeconds < _digFallbackSeconds) {
-                    var lastMap = Plugin.CurrentPartyList[LastMapPlayerKey].Maps.Last();
+                if(Plugin.CurrentPartyList.Count > 0 && !LastMapPlayerKey.IsNullOrEmpty() && (DateTime.Now - lastMap.Time).TotalSeconds < _digFallbackSeconds) {
+                    //var lastMap = Plugin.CurrentPartyList[LastMapPlayerKey].Maps.Last();
                     lastMap.IsPortal = true;
                     lastMap.DutyName = duty.Name;
                     Plugin.StorageManager.UpdateMap(lastMap);
@@ -137,7 +137,7 @@ namespace MapPartyAssist.Services {
                 }
                 if(mapPayload != null && Plugin.CurrentPartyList.ContainsKey(key)) {
                     //CurrentPartyList[key].MapLink = SeString.CreateMapLink(mapPayload.TerritoryType.RowId, mapPayload.Map.RowId, mapPayload.XCoord, mapPayload.YCoord);
-                    Plugin.CurrentPartyList[key].MapLink = mapPayload;
+                    Plugin.CurrentPartyList[key].MapLink = new MPAMapLink(mapPayload);
                     Plugin.StorageManager.UpdatePlayer(Plugin.CurrentPartyList[key]);
                     Plugin.Save();
                 }
@@ -155,7 +155,7 @@ namespace MapPartyAssist.Services {
             type = _textInfo.ToTitleCase(type);
             var newMap = new MPAMap(type, DateTime.Now, zone, isManual, isPortal);
             newMap.Owner = player.Key;
-            player.Maps.Add(newMap);
+            //player.Maps.Add(newMap);
             if(!isManual) {
                 player.MapLink = null;
             }
@@ -201,13 +201,15 @@ namespace MapPartyAssist.Services {
 
             //TODO: only do this for current maps
 
-            ForceArchiveAllMaps(Plugin.Configuration.RecentPartyList);
-            ForceArchiveAllMaps(Plugin.FakePartyList);
-            Plugin.BuildRecentPartyList();
+            //ForceArchiveAllMaps(Plugin.Configuration.RecentPartyList);
+            //ForceArchiveAllMaps(Plugin.FakePartyList);
+
 
             var maps = Plugin.StorageManager.GetMaps().Query().ToList();
             maps.ForEach(m => m.IsArchived = true);
-            Plugin.StorageManager.UpdateMaps(maps);
+            Plugin.StorageManager.UpdateMaps(maps).ContinueWith(t => {
+                Plugin.BuildRecentPartyList();
+            });
 
             //foreach(var map in maps) {
             //    map.IsArchived = true;
@@ -228,15 +230,13 @@ namespace MapPartyAssist.Services {
         public void ArchiveMaps(IEnumerable<MPAMap> maps) {
             PluginLog.Information("Archiving maps...");
             //get from storage
-            var storageMaps = Plugin.StorageManager.GetMaps().Query().Where(m => maps.Contains(m)).ToList();
-            foreach(var map in storageMaps) {
-                map.IsArchived = true;
-            }
-            Plugin.StorageManager.UpdateMaps(storageMaps);
+            //var storageMaps = Plugin.StorageManager.GetMaps().Query().Where(m => maps.Contains(m)).ToList();
+            //foreach(var map in storageMaps) {
+            //    map.IsArchived = true;
+            //}
+            maps.ToList().ForEach(m => m.IsArchived = true);
+            Plugin.StorageManager.UpdateMaps(maps);
             //Plugin.Save();
-
-            //maps.ToList().ForEach(m => m.IsArchived = true);
-            //Plugin.StorageManager.UpdateMaps(maps);
         }
 
         public void DeleteMaps(IEnumerable<MPAMap> maps) {
@@ -253,29 +253,74 @@ namespace MapPartyAssist.Services {
             //Plugin.Save();
         }
 
-
-
         public void CheckAndArchiveMaps(Dictionary<string, MPAMember> list) {
             DateTime currentTime = DateTime.Now;
 
-            foreach(MPAMember player in list.Values) {
-                foreach(MPAMap map in player.Maps) {
-                    TimeSpan timeSpan = currentTime - map.Time;
-                    if(timeSpan.TotalHours > Plugin.Configuration.ArchiveThresholdHours) {
-                        map.IsArchived = true;
-                        //Plugin.StorageManager.UpdateMap(map);
-                    }
-                }
-            }
-            
+            //foreach(MPAMember player in list.Values) {
+            //    foreach(MPAMap map in player.Maps) {
+            //        TimeSpan timeSpan = currentTime - map.Time;
+            //        if(timeSpan.TotalHours > Plugin.Configuration.ArchiveThresholdHours) {
+            //            map.IsArchived = true;
+            //            //Plugin.StorageManager.UpdateMap(map);
+            //        }
+            //    }
+            //}
+
             var storageMaps = Plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived).ToList();
             foreach(var map in storageMaps) {
                 TimeSpan timeSpan = currentTime - map.Time;
                 map.IsArchived = timeSpan.TotalHours > Plugin.Configuration.ArchiveThresholdHours;
             }
-            Plugin.StorageManager.UpdateMaps(storageMaps);
+            Plugin.StorageManager.UpdateMaps(storageMaps).ContinueWith(t => {
+                Plugin.BuildRecentPartyList();
+            });
 
             Plugin.Save();
+        }
+
+        public MPAMap? FindMapForDutyResults(DutyResults results) {
+            MPAMap? topCandidateMap = null;
+            //foreach(var player in Plugin.Configuration.RecentPartyList) {
+            //    foreach(var map in player.Value.Maps) {
+            //        topCandidateMap ??= map;
+            //        TimeSpan currentMapSpan = results.Time - map.Time;
+            //        TimeSpan topCandidateMapSpan = results.Time - topCandidateMap.Time;
+            //        //same duty and must happen afterwards, but not more than 20 mins as a fallback
+            //        bool sameDuty = !map.DutyName.IsNullOrEmpty() && map.DutyName.Equals(results.DutyName, StringComparison.OrdinalIgnoreCase);
+            //        bool validTime = currentMapSpan.TotalMilliseconds > 0 && currentMapSpan.TotalMinutes < 20;
+            //        bool closerTime = currentMapSpan < topCandidateMapSpan;
+            //        if(sameDuty && validTime && closerTime) {
+            //            topCandidateMap = map;
+            //            //clear top candidate if a closer time is found but with the wrong duty
+            //        } else if(!sameDuty && validTime && closerTime) {
+            //            topCandidateMap = null;
+            //            //clear invalid top candidates
+            //        } else if(map == topCandidateMap && (!sameDuty || !validTime)) {
+            //            topCandidateMap = null;
+            //        }
+            //    }
+            //}
+
+            var maps = Plugin.StorageManager.GetMaps().Query().ToList();
+            foreach(var map in maps) {
+                topCandidateMap ??= map;
+                TimeSpan currentMapSpan = results.Time - map.Time;
+                TimeSpan topCandidateMapSpan = results.Time - topCandidateMap.Time;
+                //same duty and must happen afterwards, but not more than 20 mins as a fallback
+                bool sameDuty = !map.DutyName.IsNullOrEmpty() && map.DutyName.Equals(results.DutyName, StringComparison.OrdinalIgnoreCase);
+                bool validTime = currentMapSpan.TotalMilliseconds > 0 && currentMapSpan.TotalMinutes < 20;
+                bool closerTime = currentMapSpan < topCandidateMapSpan;
+                if(sameDuty && validTime && closerTime) {
+                    topCandidateMap = map;
+                    //clear top candidate if a closer time is found but with the wrong duty
+                } else if(!sameDuty && validTime && closerTime) {
+                    topCandidateMap = null;
+                    //clear invalid top candidates
+                } else if(map == topCandidateMap && (!sameDuty || !validTime)) {
+                    topCandidateMap = null;
+                }
+            }
+            return topCandidateMap;
         }
 
         private void ResetDigStatus() {

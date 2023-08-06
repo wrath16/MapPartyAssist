@@ -40,11 +40,19 @@ namespace MapPartyAssist.Windows {
         }
 
         private void UpdateDutyResults() {
-            _dutyResults = Plugin.Configuration.DutyResults.Where(dr => {
-                MPAMap? map = Plugin.DutyManager.FindMapForDutyResults(dr);
-                bool isCurrent = map != null && !map.IsArchived && !map.IsDeleted;
-                return dr.IsComplete && dr.DutyId == _dutyId && (_statRange != StatRange.Current || isCurrent);
-            }).ToList();
+
+            if(_statRange == StatRange.Current) {
+                //_dutyResults = Plugin.DutyManager.GetRecentDutyResultsList(_dutyId);
+                _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted && dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+            } else {
+                _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+            }
+
+            //_dutyResults = Plugin.Configuration.DutyResults.Where(dr => {
+            //    MPAMap? map = Plugin.MapManager.FindMapForDutyResults(dr);
+            //    bool isCurrent = map != null && !map.IsArchived && !map.IsDeleted;
+            //    return dr.IsComplete && dr.DutyId == _dutyId && (_statRange != StatRange.Current || isCurrent);
+            //}).ToList();
         }
 
         public override void Draw() {
@@ -53,7 +61,7 @@ namespace MapPartyAssist.Windows {
             //    Plugin.TestFunction5();
             //}
 
-            string[] duties = { "The Aquapolis", "The Lost Canals oF Uznair", "The Hidden Canals of Uznair", "The Shifting Altars of Uznair", "The Dungeons of Lyhe Ghiah", "The Shifting Oubliettes of Lyhe Ghiah", "The Excitatron 6000", "The Shifting Gymnasion Agonon" };
+            string[] duties = { "The Aquapolis", "The Lost Canals of Uznair", "The Hidden Canals of Uznair", "The Shifting Altars of Uznair", "The Dungeons of Lyhe Ghiah", "The Shifting Oubliettes of Lyhe Ghiah", "The Excitatron 6000", "The Shifting Gymnasion Agonon" };
             if(ImGui.Combo($"Duty##DutyCombo", ref _selectedDuty, duties, 4)) {
                 switch(_selectedDuty) {
                     case 0:

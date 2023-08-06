@@ -21,8 +21,10 @@ namespace MapPartyAssist.Types {
         public bool IsDeleted { get; set; }
         public bool IsArchived { get; set; }
         public SeString? MapLink { get; set; }
+        //[BsonRef("dutyresults")] //this will cause stack overflow due to infinite recursion with ref on DutyResults -_-
         [JsonIgnore]
-        public DutyResults? Results { get; set; }
+        [BsonIgnore]
+        public DutyResults? DutyResults { get; set; }
 
         public MPAMap() {
 

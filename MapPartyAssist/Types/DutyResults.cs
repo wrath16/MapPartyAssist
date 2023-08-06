@@ -26,7 +26,9 @@ namespace MapPartyAssist.Types {
         public DateTime CompletionTime { get; set; }
         public string[] Players { get; init; }
         public string Owner { get; set; }
-        public MPAMap Map { get; set; }
+        [BsonRef("map")]
+        [JsonIgnore]
+        public MPAMap? Map { get; set; }
         public int TotalGil { get; set; } = 0;
         public bool IsComplete { get; set; }
         public bool IsPickup { get; set; }

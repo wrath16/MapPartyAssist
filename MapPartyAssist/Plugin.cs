@@ -23,7 +23,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
 
 namespace MapPartyAssist {
     public sealed class Plugin : IDalamudPlugin {
@@ -129,6 +128,12 @@ namespace MapPartyAssist {
             ClientState.Login += OnLogin;
             ClientState.Logout += OnLogout;
 
+
+            //import data
+            if(Configuration.Version < 2) {
+                StorageManager.Import();
+            }
+
             //build current and recent party lists
             if(ClientState.IsLoggedIn) {
                 BuildCurrentPartyList();
@@ -139,36 +144,36 @@ namespace MapPartyAssist {
             }
 
 
-            //setup fake party list!
-            FakePartyList = new();
-            FakePartyList.Add("Test Party1 Siren", new MPAMember("Test Party1", "Siren"));
-            FakePartyList.Add("Sarah Montcroix Siren", new MPAMember("Sarah Montcroix", "Siren", true));
-            FakePartyList.Add("Test Party2 Gilgamesh", new MPAMember("Test Party2", "Gilgamesh"));
-            FakePartyList.Add("KillerDog Matmaster Coeurl", new MPAMember("Killerdog Matmaster", "Coeurl"));
-            FakePartyList.Add("Test Party4 Siren", new MPAMember("Test Party4", "Siren"));
-            FakePartyList.Add("Test Party5 Cactuar", new MPAMember("Test Party5", "Cactuar"));
-            FakePartyList.Add("Test Party6 Lamia", new MPAMember("Test Party6", "Lamia"));
-            FakePartyList.Add("Test Party7 Balmung", new MPAMember("Test Party7", "Balmung"));
-            //FakePartyList["Test Party1 Siren"].MapLink = new MapLinkPayload(23, 23, 22f, 22f);
-            var mapLinkPayload = SeString.CreateMapLink("Upper La Noscea", 22f, 24f).Payloads.ElementAt(0) as MapLinkPayload;
-            FakePartyList["Test Party1 Siren"].MapLink = mapLinkPayload;
-            FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 12, 8, 30, 11), "The Ruby Sea"));
-            FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("", new DateTime(2023, 4, 12, 9, 30, 11)));
-            FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("", new DateTime(2023, 4, 12, 10, 30, 11)));
-            FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("", new DateTime(2023, 4, 12, 11, 30, 11)));
-            FakePartyList["Sarah Montcroix Siren"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 1, 11, 30, 11)));
-            FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 2, 11, 30, 11)));
-            FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 3, 11, 30, 11)));
-            FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 4, 11, 30, 11)));
-            FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 5, 11, 30, 11)));
-            FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", DateTime.Now));
-            FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 7, 11, 30, 11)));
-            FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 8, 11, 30, 11)));
-            FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 9, 11, 30, 11)));
-            FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 10, 11, 30, 11)));
-            FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 11, 11, 30, 11)));
-            FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 12, 11, 30, 11)));
-            FakePartyList["Test Party6 Lamia"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 3, 12, 13, 30, 11)));
+            ////setup fake party list!
+            //FakePartyList = new();
+            //FakePartyList.Add("Test Party1 Siren", new MPAMember("Test Party1", "Siren"));
+            //FakePartyList.Add("Sarah Montcroix Siren", new MPAMember("Sarah Montcroix", "Siren", true));
+            //FakePartyList.Add("Test Party2 Gilgamesh", new MPAMember("Test Party2", "Gilgamesh"));
+            //FakePartyList.Add("KillerDog Matmaster Coeurl", new MPAMember("Killerdog Matmaster", "Coeurl"));
+            //FakePartyList.Add("Test Party4 Siren", new MPAMember("Test Party4", "Siren"));
+            //FakePartyList.Add("Test Party5 Cactuar", new MPAMember("Test Party5", "Cactuar"));
+            //FakePartyList.Add("Test Party6 Lamia", new MPAMember("Test Party6", "Lamia"));
+            //FakePartyList.Add("Test Party7 Balmung", new MPAMember("Test Party7", "Balmung"));
+            ////FakePartyList["Test Party1 Siren"].MapLink = new MapLinkPayload(23, 23, 22f, 22f);
+            //var mapLinkPayload = SeString.CreateMapLink("Upper La Noscea", 22f, 24f).Payloads.ElementAt(0) as MapLinkPayload;
+            //FakePartyList["Test Party1 Siren"].MapLink = mapLinkPayload;
+            //FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 12, 8, 30, 11), "The Ruby Sea"));
+            //FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("", new DateTime(2023, 4, 12, 9, 30, 11)));
+            //FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("", new DateTime(2023, 4, 12, 10, 30, 11)));
+            //FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("", new DateTime(2023, 4, 12, 11, 30, 11)));
+            //FakePartyList["Sarah Montcroix Siren"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 1, 11, 30, 11)));
+            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 2, 11, 30, 11)));
+            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 3, 11, 30, 11)));
+            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 4, 11, 30, 11)));
+            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 5, 11, 30, 11)));
+            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", DateTime.Now));
+            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 7, 11, 30, 11)));
+            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 8, 11, 30, 11)));
+            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 9, 11, 30, 11)));
+            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 10, 11, 30, 11)));
+            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 11, 11, 30, 11)));
+            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 12, 11, 30, 11)));
+            //FakePartyList["Test Party6 Lamia"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 3, 12, 13, 30, 11)));
         }
 
         public IPluginConfiguration? GetPluginConfig() {
@@ -290,6 +295,7 @@ namespace MapPartyAssist {
                 case 4911:
                 case 8235:
                 case 8236:
+                case 8745: //takes fall dmg
                 case 8746:
                 case 8749: //other recover hp
                 case 8750:
@@ -297,6 +303,7 @@ namespace MapPartyAssist {
                 case 8752:
                 case 8753: //other recover from effect
                 case 9001: //other combat
+                case 9007: //other combat
                 case 10283:
                 case 10409: //you dmged by enemy
                 case 10410:
@@ -319,6 +326,8 @@ namespace MapPartyAssist {
                 case 13353: //companion
                 case 14379: //npc uses ability
                 case 15145: //npc takes damage
+                case 15146: //miss
+                case 15151: //suffers effect
                 case 15162: //npc defeats enemy
                 case 15278: //gains effect
                 case 15280: //loses effect
@@ -349,7 +358,7 @@ namespace MapPartyAssist {
         }
 
         private void OnLogin(object? sender, EventArgs e) {
-            Configuration.PruneRecentPartyList();
+            //Configuration.PruneRecentPartyList();
             BuildCurrentPartyList();
             BuildRecentPartyList();
             MapManager.CheckAndArchiveMaps(Configuration.RecentPartyList);

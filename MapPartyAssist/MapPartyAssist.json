@@ -11,5 +11,6 @@
     "maps",
     "achievements",
     "plugin"
-  ]
+  ],
+  "IconUrl": "https://raw.githubusercontent.com/wrath16/MapPartyAssist/master/images/icon.png"
 }

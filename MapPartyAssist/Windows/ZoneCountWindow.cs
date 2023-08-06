@@ -46,10 +46,10 @@ namespace MapPartyAssist.Windows {
         private void ZoneCountTable(Dictionary<string, MPAMember> list) {
             Dictionary<string, int> zones = new();
             foreach(MPAMember player in list.Values.Where(p => p.MapLink != null)) {
-                if(zones.ContainsKey(player.MapLink!.PlaceName)) {
-                    zones[player.MapLink.PlaceName] += 1;
+                if(zones.ContainsKey(player.MapLink!.GetMapLinkPayload().PlaceName)) {
+                    zones[player.MapLink.GetMapLinkPayload().PlaceName] += 1;
                 } else {
-                    zones.Add(player.MapLink.PlaceName, 1);
+                    zones.Add(player.MapLink.GetMapLinkPayload().PlaceName, 1);
                 }
             }
 

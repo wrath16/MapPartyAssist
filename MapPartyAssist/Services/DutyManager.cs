@@ -1,7 +1,6 @@
 ﻿using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Logging;
-using Dalamud.Utility;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Types;
 using System;
@@ -14,14 +13,7 @@ namespace MapPartyAssist.Services {
 
         private Plugin Plugin;
         private DutyResults? _currentDutyResults;
-
         private bool _firstTerritoryChange;
-
-        //private static Dictionary<string, Type> DutyResultTypes = new Dictionary<string, Type>() {
-        //    { "the lost canals of uznair", typeof(LostCanalsOfUznairResults) },
-        //    { "the shifting altars of uznair", typeof(ShiftingAltarsOfUznairResults) },
-        //    { "the hidden canals of uznair", typeof(HiddenCanalsOfUznairResults) }
-        //};
 
         public readonly Dictionary<int, Duty> Duties = new Dictionary<int, Duty>() {
             { 179 , new Duty(179, "the aquapolis", DutyStructure.Doors, 7, new() {
@@ -111,10 +103,6 @@ namespace MapPartyAssist.Services {
             Plugin.DutyState.DutyCompleted -= OnDutyRecommenced;
             Plugin.ClientState.TerritoryChanged -= OnTerritoryChanged;
             Plugin.ChatGui.ChatMessage -= OnChatMessage;
-
-            //if(IsDutyInProgress()) {
-            //    Plugin.ChatGui.ChatMessage -= _currentDutyResults.OnChatMessage;
-            //}
         }
 
         private void StartNewDuty(int dutyId, Dictionary<string, MPAMember> players, string owner) {
@@ -123,36 +111,17 @@ namespace MapPartyAssist.Services {
                 //object[] conParams = { dutyId, Duties[dutyId].Name, players, owner };
                 //_currentDutyResults = Duties[dutyId].ResultsType!.GetConstructors().First().Invoke(conParams) as DutyResults;
                 _currentDutyResults = new DutyResults(dutyId, Duties[dutyId].Name, players, owner);
+                //assume last map is the one...
+                _currentDutyResults.Map = Plugin.StorageManager.GetMaps().Query().OrderBy(dr => dr.Time).ToList().Last();
 
-                Plugin.Configuration.DutyResults.Add(_currentDutyResults);
+                //Plugin.Configuration.DutyResults.Add(_currentDutyResults);
+                Plugin.StorageManager.AddDutyResults(_currentDutyResults);
                 Plugin.Save();
             }
         }
 
-        //find map with same duty and most proximal time
-        public MPAMap? FindMapForDutyResults(DutyResults results) {
-            MPAMap? topCandidateMap = null;
-            foreach(var player in Plugin.Configuration.RecentPartyList) {
-                foreach(var map in player.Value.Maps) {
-                    topCandidateMap ??= map;
-                    TimeSpan currentMapSpan = results.Time - map.Time;
-                    TimeSpan topCandidateMapSpan = results.Time - topCandidateMap.Time;
-                    //same duty and must happen afterwards, but not more than 20 mins as a fallback
-                    bool sameDuty = !map.DutyName.IsNullOrEmpty() && map.DutyName.Equals(results.DutyName, StringComparison.OrdinalIgnoreCase);
-                    bool validTime = currentMapSpan.TotalMilliseconds > 0 && currentMapSpan.TotalMinutes < 20;
-                    bool closerTime = currentMapSpan < topCandidateMapSpan;
-                    if(sameDuty && validTime && closerTime) {
-                        topCandidateMap = map;
-                        //clear top candidate if a closer time is found but with the wrong duty
-                    } else if(!sameDuty && validTime && closerTime) {
-                        topCandidateMap = null;
-                        //clear invalid top candidates
-                    } else if(map == topCandidateMap && (!sameDuty || !validTime)) {
-                        topCandidateMap = null;
-                    }
-                }
-            }
-            return topCandidateMap;
+        public List<DutyResults> GetRecentDutyResultsList(int? dutyId = null) {
+            return Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted && dr.IsComplete && (dutyId == null || dr.DutyId == dutyId)).ToList();
         }
 
         public Duty? GetDutyByName(string name) {
@@ -174,6 +143,21 @@ namespace MapPartyAssist.Services {
             //check if duty is ongoing to attempt to pickup...
             PluginLog.Debug($"Current duty ongoing? {_currentDutyResults != null}");
 
+
+            //if(!IsDutyInProgress()) {
+            //    var lastDuty = Plugin.StorageManager.GetDutyResults().Query().OrderBy(dr => dr.Time).ToList().Last();
+            //    if(lastDuty != null) {
+            //        TimeSpan lastTimeDiff = DateTime.Now - lastDuty.Time;
+            //        //pickup if duty is valid, and matches the last duty which was not completed and not more than an hour has elapsed (fallback)
+            //        if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null && lastDuty.DutyId == dutyId && !lastDuty.IsComplete && !_firstTerritoryChange && lastTimeDiff.TotalHours < 1) {
+            //            PluginLog.Debug("re-picking up duty results...");
+            //            _currentDutyResults = lastDuty;
+            //            _currentDutyResults.IsPickup = true;
+            //            Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
+            //            Plugin.Save();
+            //        }
+            //    }
+            //}
             //if(duty != null) {
             //    StartNewDuty(duty.Name.ToString(), dutyId, Plugin.CurrentPartyList, Plugin.MapManager!.LastMapPlayerKey);
             //}
@@ -206,7 +190,8 @@ namespace MapPartyAssist.Services {
                 }
             } else if(duty != null) {
                 //attempt to pickup if game closed without completing properly
-                var lastDuty = Plugin.Configuration.DutyResults.Last();
+                //var lastDuty = Plugin.Configuration.DutyResults.Last();
+                var lastDuty = Plugin.StorageManager.GetDutyResults().Query().OrderBy(dr => dr.Time).ToList().Last();
                 if(lastDuty != null) {
                     TimeSpan lastTimeDiff = DateTime.Now - lastDuty.Time;
                     //pickup if duty is valid, and matches the last duty which was not completed and not more than an hour has elapsed (fallback)
@@ -214,25 +199,8 @@ namespace MapPartyAssist.Services {
                         PluginLog.Debug("re-picking up duty results...");
                         _currentDutyResults = lastDuty;
                         _currentDutyResults.IsPickup = true;
+                        Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
                         Plugin.Save();
-                        //_currentDutyResults = lastDuty as (Duties[dutyId].ResultsType);
-                        //_currentDutyResults = Convert.ChangeType(lastDuty, Duties[dutyId].ResultsType) as DutyResults;
-
-                        //TODO there must be a better way to do this
-                        //switch(dutyId) {
-                        //    case 268:
-                        //        _currentDutyResults = lastDuty as LostCanalsOfUznairResults;
-                        //        break;
-                        //    case 276:
-                        //        _currentDutyResults = lastDuty as HiddenCanalsOfUznairResults;
-                        //        break;
-                        //    case 586:
-                        //        _currentDutyResults = lastDuty as ShiftingAltarsOfUznairResults;
-                        //        break;
-                        //    default:
-                        //        break;
-                        //}
-                        //_currentDutyResults.IsPickup = true;
                     } else {
                         //otherwise attempt to start new duty!
                         StartNewDuty(dutyId, Plugin.CurrentPartyList, Plugin.MapManager!.LastMapPlayerKey);
@@ -253,6 +221,7 @@ namespace MapPartyAssist.Services {
                     if(m.Success) {
                         string parsedGilString = m.Value.Replace(",", "").Replace(".", "");
                         _currentDutyResults!.TotalGil += int.Parse(parsedGilString);
+                        Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
                         Plugin.Save();
                         return;
                     }
@@ -271,6 +240,7 @@ namespace MapPartyAssist.Services {
                 }
                 //save if changes discovered
                 if(isChange) {
+                    Plugin.StorageManager.UpdateDutyResults(_currentDutyResults!);
                     Plugin.Save();
                 }
             }
@@ -367,14 +337,6 @@ namespace MapPartyAssist.Services {
 
         private void EndDuty(bool success = false) {
             if(IsDutyInProgress()) {
-                //_currentDutyResults.IsComplete = success;
-                //Plugin.ChatGui.ChatMessage -= _currentDutyResults.OnChatMessage;
-                //only save full runs
-                //if(_currentDutyResults.IsComplete) {
-                //    //Plugin.Configuration.DutyResults.Add(_currentDutyResults);
-                //    Plugin.Configuration.Save();
-                //}
-                //_currentDutyResults.CompletionTime = DateTime.Now;
                 _currentDutyResults = null;
                 Plugin.Save();
             }
