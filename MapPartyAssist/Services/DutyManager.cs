@@ -337,6 +337,8 @@ namespace MapPartyAssist.Services {
                 Match specialMatch = Regex.Match(message.ToString(), @"^The .* retreats into the shadows", RegexOptions.IgnoreCase);
                 if(specialMatch.Success) {
                     AddRouletteCheckpointResults(Summon.Silver, null, isSave);
+                    //add next checkpoint as well
+                    AddRouletteCheckpointResults(null);
                     if(_currentDutyResults.CheckpointResults.Where(cr => cr.IsReached).Count() == _currentDuty.Checkpoints!.Count) {
                         _currentDutyResults.IsComplete = true;
                         _currentDutyResults.CompletionTime = DateTime.Now;

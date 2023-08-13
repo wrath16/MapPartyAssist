@@ -69,11 +69,13 @@ namespace MapPartyAssist.Windows {
             }
 
             //not sure if need to protect boundary
-            ImGui.SameLine();
-            if(ImGui.Button("Next 100")) {
-                Refresh(currentPage + 1);
-            }
 
+            if(_dutyResults.Count >= 100) {
+                ImGui.SameLine();
+                if(ImGui.Button("Next 100")) {
+                    Refresh(currentPage + 1);
+                }
+            }
         }
 
         public void DrawDutyResults(DutyResults dutyResults) {
