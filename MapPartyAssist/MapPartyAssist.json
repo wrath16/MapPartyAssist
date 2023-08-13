@@ -1,8 +1,8 @@
 {
   "Author": "SaMo",
   "Name": "Map Party Assist",
-  "Punchline": "Keep track of treasure maps opened by party members.",
-  "Description": "Helpful tool for keeping track of treasure maps opened by players in your party. Automatic and manual tracking available.",
+  "Punchline": "Keep track of treasure maps used by party members.",
+  "Description": "Helpful tool for keeping track of treasure maps opened by players in your party and recording treasure dungeon statistics.",
   "InternalName": "MapPartyAssist",
   "RepoUrl": "https://github.com/wrath16/MapPartyAssist",
   "ApplicableVersion": "any",
