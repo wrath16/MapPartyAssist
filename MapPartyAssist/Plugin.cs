@@ -14,7 +14,6 @@ using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
 using LiteDB;
-using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Services;
 using MapPartyAssist.Types;
 using MapPartyAssist.Windows;

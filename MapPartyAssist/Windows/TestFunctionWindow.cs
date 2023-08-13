@@ -1,12 +1,10 @@
 ﻿using Dalamud.Interface.Windowing;
 using Dalamud.Logging;
 using ImGuiNET;
-using Lumina.Data.Parsing;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Numerics;
 
@@ -93,8 +91,8 @@ namespace MapPartyAssist.Windows {
 
                 for(int i = 0; i < dr.Count; i++) {
                     var res = dr[i];
-                    for(int j = 0; j < dr[i].CheckpointResults.Count; j+=2) {
-                        dr[i].CheckpointResults.Insert(j + 1, new RouletteCheckpointResults(Plugin.DutyManager.Duties[909].Checkpoints[j+1], null, null, false, true));
+                    for(int j = 0; j < dr[i].CheckpointResults.Count; j += 2) {
+                        dr[i].CheckpointResults.Insert(j + 1, new RouletteCheckpointResults(Plugin.DutyManager.Duties[909].Checkpoints[j + 1], null, null, false, true));
                         if(j != 0) {
                             dr[i].CheckpointResults[j].Checkpoint = Plugin.DutyManager.Duties[909].Checkpoints[j];
                         }
