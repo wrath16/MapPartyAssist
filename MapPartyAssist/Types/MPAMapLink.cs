@@ -1,7 +1,5 @@
 ﻿using Dalamud.Game.Text.SeStringHandling.Payloads;
-using FFXIVClientStructs.FFXIV.Client.Graphics;
 using LiteDB;
-using Lumina.Excel.GeneratedSheets;
 
 namespace MapPartyAssist.Types {
     public class MPAMapLink {

@@ -2,7 +2,7 @@
 
 namespace MapPartyAssist.Types {
     public class CheckpointResults {
-        public Checkpoint Checkpoint { get; init; }
+        public Checkpoint Checkpoint { get; set; }
         public DateTime Time { get; set; }
         public bool IsReached { get; set; }
 

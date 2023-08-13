@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MapPartyAssist.Types {
     internal class Duty {
@@ -12,14 +13,51 @@ namespace MapPartyAssist.Types {
         public List<Checkpoint>? Checkpoints { get; init; }
         public Checkpoint? FailureCheckpoint { get; init; }
 
-        public Duty(int id, string name, DutyStructure structure, int chamberCount, List<Checkpoint>? checkpoints = null, Checkpoint? failureCheckpoint = null, Type? resultsType = null) {
+        public string[]? LesserSummons { get; init; }
+        public string[]? GreaterSummons { get; init; }
+        public string[]? ElderSummons { get; init; }
+        public string[]? FinalSummons { get; init; }
+
+        public Duty(int id, string name, DutyStructure structure, int chamberCount, List<Checkpoint>? checkpoints = null, Checkpoint? failureCheckpoint = null, string[]? lesserSummons = null, string[]? greaterSummons = null, string[]? elderSummons = null, string[]? finalSummons = null) {
             DutyId = id;
             Name = name;
             Structure = structure;
             ChamberCount = chamberCount;
             Checkpoints = checkpoints;
             FailureCheckpoint = failureCheckpoint;
-            ResultsType = resultsType;
+            LesserSummons = lesserSummons;
+            GreaterSummons = greaterSummons;
+            ElderSummons = elderSummons;
+            FinalSummons = finalSummons;
+        }
+
+        public string GetSummonPatternString(Summon summonType) {
+            List<string> summonList;
+            switch(summonType) {
+                case Summon.Lesser:
+                    summonList = LesserSummons.ToList();
+                    break;
+                case Summon.Greater:
+                    summonList = GreaterSummons.ToList();
+                    break;
+                case Summon.Elder:
+                    summonList = ElderSummons.ToList();
+                    summonList = summonList.Concat(FinalSummons).ToList();
+                    break;
+                default:
+                    return "";
+            }
+
+            string pattern = "(";
+            for(int i = 0; i < summonList.Count; i++) {
+                pattern += summonList[i];
+                if(i == summonList.Count - 1) {
+                    pattern += ")";
+                } else {
+                    pattern += "|";
+                }
+            }
+            return pattern;
         }
     }
 

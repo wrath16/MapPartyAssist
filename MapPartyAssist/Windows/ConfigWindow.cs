@@ -21,7 +21,7 @@ namespace MapPartyAssist.Windows {
         }
 
         public override void Draw() {
-            //this.Position = new Vector2(MainWindow.CurrentPosition.X, MainWindow.CurrentPosition.Y + MainWindow.CurrentSize.Y);
+            this.Position = new Vector2(MainWindow.CurrentPosition.X, MainWindow.CurrentPosition.Y + MainWindow.CurrentSize.Y);
             bool enableSolo = Plugin.Configuration.EnableWhileSolo;
             if(ImGui.Checkbox("Enable While Solo", ref enableSolo)) {
                 Plugin.ToggleEnableSolo(enableSolo);

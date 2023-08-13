@@ -23,12 +23,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 
 namespace MapPartyAssist {
     public sealed class Plugin : IDalamudPlugin {
         public string Name => "Map Party Assist";
         private const string CommandName = "/mparty";
         private const string StatsCommandName = "/mpartystats";
+        private const string DutyResultsCommandName = "/mpartydutyresults";
         private const string TestCommandName = "/mpartytest";
 
         //Dalamud services
@@ -51,18 +53,17 @@ namespace MapPartyAssist {
         private MainWindow MainWindow;
         private StatsWindow StatsWindow;
         private ConfigWindow ConfigWindow;
+        private DutyResultsWindow DutyResultsWindow;
         private TestFunctionWindow TestFunctionWindow;
 
         internal LiteDatabase Database { get; init; }
 
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
         public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
-        //public string LastMapPlayerKey { get; private set; } = "";
-
-        //TODO delete (for testing only!)
-        public Dictionary<string, MPAMember> FakePartyList { get; private set; }
 
         private int _lastPartySize;
+
+        private SemaphoreSlim _saveLock;
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -84,6 +85,8 @@ namespace MapPartyAssist {
             GameGui = gameGui;
             Framework = framework;
 
+            _saveLock = new SemaphoreSlim(1, 1);
+
             PluginLog.Log("Begin Config loading");
             Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
             Configuration.Initialize(PluginInterface);
@@ -99,9 +102,11 @@ namespace MapPartyAssist {
             //ZoneCountWindow = new ZoneCountWindow(this, MainWindow);
             ConfigWindow = new ConfigWindow(this);
             StatsWindow = new StatsWindow(this);
+            DutyResultsWindow = new DutyResultsWindow(this);
             WindowSystem.AddWindow(MainWindow);
             //WindowSystem.AddWindow(ZoneCountWindow);
             WindowSystem.AddWindow(ConfigWindow);
+            WindowSystem.AddWindow(DutyResultsWindow);
             WindowSystem.AddWindow(StatsWindow);
 
             CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand) {
@@ -112,16 +117,20 @@ namespace MapPartyAssist {
                 HelpMessage = "Opens stats window."
             });
 
+            CommandManager.AddHandler(DutyResultsCommandName, new CommandInfo(OnDutyResultsCommand) {
+                HelpMessage = "Edit duty results (Advanced)."
+            });
+
 #if DEBUG
             TestFunctionWindow = new TestFunctionWindow(this);
             WindowSystem.AddWindow(TestFunctionWindow);
-            CommandManager.AddHandler("/mpartytest", new CommandInfo(OnTestCommand) {
+            CommandManager.AddHandler(TestCommandName, new CommandInfo(OnTestCommand) {
                 HelpMessage = "Opens test window."
             });
 #endif
 
             PluginInterface.UiBuilder.Draw += DrawUI;
-            PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
+            //PluginInterface.UiBuilder.OpenConfigUi += DrawUI;
 
             Framework.Update += OnFrameworkUpdate;
             ChatGui.ChatMessage += OnChatMessage;
@@ -142,38 +151,6 @@ namespace MapPartyAssist {
                 CurrentPartyList = new();
                 RecentPartyList = new();
             }
-
-
-            ////setup fake party list!
-            //FakePartyList = new();
-            //FakePartyList.Add("Test Party1 Siren", new MPAMember("Test Party1", "Siren"));
-            //FakePartyList.Add("Sarah Montcroix Siren", new MPAMember("Sarah Montcroix", "Siren", true));
-            //FakePartyList.Add("Test Party2 Gilgamesh", new MPAMember("Test Party2", "Gilgamesh"));
-            //FakePartyList.Add("KillerDog Matmaster Coeurl", new MPAMember("Killerdog Matmaster", "Coeurl"));
-            //FakePartyList.Add("Test Party4 Siren", new MPAMember("Test Party4", "Siren"));
-            //FakePartyList.Add("Test Party5 Cactuar", new MPAMember("Test Party5", "Cactuar"));
-            //FakePartyList.Add("Test Party6 Lamia", new MPAMember("Test Party6", "Lamia"));
-            //FakePartyList.Add("Test Party7 Balmung", new MPAMember("Test Party7", "Balmung"));
-            ////FakePartyList["Test Party1 Siren"].MapLink = new MapLinkPayload(23, 23, 22f, 22f);
-            //var mapLinkPayload = SeString.CreateMapLink("Upper La Noscea", 22f, 24f).Payloads.ElementAt(0) as MapLinkPayload;
-            //FakePartyList["Test Party1 Siren"].MapLink = mapLinkPayload;
-            //FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 12, 8, 30, 11), "The Ruby Sea"));
-            //FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("", new DateTime(2023, 4, 12, 9, 30, 11)));
-            //FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("", new DateTime(2023, 4, 12, 10, 30, 11)));
-            //FakePartyList["Test Party1 Siren"].Maps.Add(new MPAMap("", new DateTime(2023, 4, 12, 11, 30, 11)));
-            //FakePartyList["Sarah Montcroix Siren"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 1, 11, 30, 11)));
-            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 2, 11, 30, 11)));
-            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 3, 11, 30, 11)));
-            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 4, 11, 30, 11)));
-            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 5, 11, 30, 11)));
-            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", DateTime.Now));
-            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 7, 11, 30, 11)));
-            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 8, 11, 30, 11)));
-            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 9, 11, 30, 11)));
-            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 10, 11, 30, 11)));
-            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 11, 11, 30, 11)));
-            //FakePartyList["Test Party2 Gilgamesh"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 4, 12, 11, 30, 11)));
-            //FakePartyList["Test Party6 Lamia"].Maps.Add(new MPAMap("unknown", new DateTime(2023, 3, 12, 13, 30, 11)));
         }
 
         public IPluginConfiguration? GetPluginConfig() {
@@ -194,6 +171,7 @@ namespace MapPartyAssist {
             WindowSystem.RemoveAllWindows();
             CommandManager.RemoveHandler(CommandName);
             CommandManager.RemoveHandler(StatsCommandName);
+            CommandManager.RemoveHandler(DutyResultsCommandName);
 #if DEBUG
             CommandManager.RemoveHandler("/mpartytest");
 #endif
@@ -223,6 +201,10 @@ namespace MapPartyAssist {
             StatsWindow.IsOpen = true;
         }
 
+        private void OnDutyResultsCommand(string command, string args) {
+            DutyResultsWindow.IsOpen = true;
+        }
+
         private void OnTestCommand(string command, string args) {
             TestFunctionWindow.IsOpen = true;
         }
@@ -242,7 +224,7 @@ namespace MapPartyAssist {
             var currentPartySize = PartyList.Length;
 
             if(playerJob != null && currentPartySize != _lastPartySize) {
-                PluginLog.Debug($"Party size has changed.");
+                PluginLog.Debug($"Party size has changed: {_lastPartySize} to {currentPartySize}");
                 BuildCurrentPartyList();
                 BuildRecentPartyList();
                 //this.Configuration.Save();
@@ -293,6 +275,11 @@ namespace MapPartyAssist {
                 case 4905: //combat
                 case 4906:
                 case 4911:
+                case 4922: //party member defeats enemy
+                case 6187:
+                case 6574:
+                case 6576:
+                case 6959:
                 case 8235:
                 case 8236:
                 case 8745: //takes fall dmg
@@ -310,16 +297,27 @@ namespace MapPartyAssist {
                 case 10537:
                 case 10538: //misses party member
                 case 10922: //attack misses
+                case 10926: //engaged enemy gains beneficial effect
                 case 10929:
                 case 11305: //companion
                 case 11306: //companion
                 case 12331:
                 case 12457: //
+                case 12458:
                 case 12585: //hits party member
+                case 12586: //attack misses party member
+                case 12591:
+                case 12713:
+                case 12717:
+                case 12719:
                 case 12841: //other combat
                 case 13098:
+                case 13101:
                 case 13102:
+                case 13103:
+                case 13104:
                 case 13105: //enemy recovers from status
+                case 13097:
                 case 13114: //enemy defeated
                 case 13225: //npc hits enemy
                 case 13226: //npc status
@@ -344,6 +342,7 @@ namespace MapPartyAssist {
                 case 19241: //crit
                 case 19632: //party member companion loses beneficial effect
                 case 22571: //other companion
+                case 22825:
                 case 23082: //other
                 case 23085: //other
                 case 23086: //other
@@ -358,6 +357,7 @@ namespace MapPartyAssist {
         }
 
         private void OnLogin(object? sender, EventArgs e) {
+            PluginLog.Debug("logging in");
             //Configuration.PruneRecentPartyList();
             BuildCurrentPartyList();
             BuildRecentPartyList();
@@ -376,50 +376,15 @@ namespace MapPartyAssist {
 
         //builds current party list, from scratch
         public void BuildCurrentPartyList() {
+            _saveLock.Wait();
             string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
             string currentPlayerWorld = ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
             string currentPlayerKey = $"{currentPlayerName} {currentPlayerWorld}";
             CurrentPartyList = new();
-
-            ////enable for solo player
-            //if(Configuration.EnableWhileSolo && PartyList.Length <= 0) {
-            //    //add yourself for initial setup
-            //    if(!Configuration.RecentPartyList.ContainsKey(currentPlayerKey)) {
-            //        var newPlayer = new MPAMember(currentPlayerName, currentPlayerWorld, true);
-            //        Configuration.RecentPartyList.Add(currentPlayerKey, newPlayer);
-            //        CurrentPartyList.Add(currentPlayerKey, newPlayer);
-            //    } else {
-            //        //find existing player
-            //        Configuration.RecentPartyList[currentPlayerKey].LastJoined = DateTime.Now;
-            //        CurrentPartyList.Add(currentPlayerKey, Configuration.RecentPartyList[currentPlayerKey]);
-            //    }
-            //    Configuration.RecentPartyList[currentPlayerKey].LastJoined = DateTime.Now;
-            //} else {
-            //    foreach(PartyMember p in PartyList) {
-            //        string partyMemberName = p.Name.ToString();
-            //        string partyMemberWorld = p.World.GameData.Name.ToString();
-            //        var key = $"{partyMemberName} {partyMemberWorld}";
-            //        bool isCurrentPlayer = partyMemberName.Equals(currentPlayerName) && partyMemberWorld.Equals(currentPlayerWorld);
-            //        //if(isCurrentPlayer) continue;
-
-            //        //new player!
-            //        if(!Configuration.RecentPartyList.ContainsKey(key)) {
-            //            var newPlayer = new MPAMember(partyMemberName, partyMemberWorld, isCurrentPlayer);
-            //            Configuration.RecentPartyList.Add(key, newPlayer);
-            //            CurrentPartyList.Add(key, newPlayer);
-            //        } else {
-            //            //find existing player
-            //            Configuration.RecentPartyList[key].LastJoined = DateTime.Now;
-            //            CurrentPartyList.Add(key, Configuration.RecentPartyList[key]);
-            //        }
-            //    }
-            //}
-            //Save();
-
             var allPlayers = StorageManager.GetPlayers();
             var currentPlayer = allPlayers.Query().Where(p => p.Key == currentPlayerKey).FirstOrDefault();
             //enable for solo player
-            if(Configuration.EnableWhileSolo && PartyList.Length <= 0) {
+            if(PartyList.Length <= 0) {
                 //add yourself for initial setup
                 if(currentPlayer == null) {
                     var newPlayer = new MPAMember(currentPlayerName, currentPlayerWorld, true);
@@ -452,29 +417,13 @@ namespace MapPartyAssist {
                     }
                 }
             }
+            _saveLock.Release();
             Save();
         }
 
         public void BuildRecentPartyList() {
+            _saveLock.Wait();
             RecentPartyList = new();
-            //foreach(var player in Configuration.RecentPartyList) {
-            //    TimeSpan timeSpan = DateTime.Now - player.Value.LastJoined;
-            //    var isRecent = timeSpan.TotalHours <= Configuration.ArchiveThresholdHours;
-            //    var hasMaps = false;
-            //    foreach(var map in player.Value.Maps) {
-            //        if(!map.IsArchived && !map.IsDeleted) {
-            //            hasMaps = true;
-            //            break;
-            //        }
-            //    }
-            //    var notCurrent = !CurrentPartyList.ContainsKey(player.Key);
-            //    var notSelf = !player.Value.IsSelf;
-            //    if(isRecent && hasMaps && notCurrent) {
-            //        RecentPartyList.Add(player.Key, player.Value);
-            //    }
-            //}
-            //Save();
-
             var allPlayers = StorageManager.GetPlayers();
             var currentMaps = StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted).ToList();
             foreach(var player in allPlayers.Query().ToList()) {
@@ -488,6 +437,7 @@ namespace MapPartyAssist {
                     RecentPartyList.Add(player.Key, player);
                 }
             }
+            _saveLock.Release();
             Save();
         }
 
@@ -503,122 +453,12 @@ namespace MapPartyAssist {
         }
 
         public void Save() {
+            _saveLock.Wait();
             Configuration.Save();
-            //this causes a small hitch
             StatsWindow.Refresh();
             MainWindow.Refresh();
-        }
-
-        public void TestFunction() {
-            PluginLog.Debug($"Current duty id: {Functions.GetCurrentDutyId()}");
-
-            //DutyManager.StartNewDuty("the hidden canals of uznair", 276, CurrentPartyList, "Test Player TestServer");
-            //Configuration.Save();
-
-            //Functions.OpenMap(19);
-            //FFXIVClientStructs.FFXIV.Application.OpenMap();
-            //AgentMap* agont = FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentMap.Instance();
-            //FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentMap.MemberFunctionPointers.OpenMapByMapId(19);
-            //PluginLog.Debug($"Current party members: {PartyList.Length}");
-            //foreach(var player in PartyList) {
-            //    PluginLog.Debug($"Party Member: {player.Name} {player.World.GameData.Name}");
-            //}
-
-            //PluginLog.Debug($"{ClientState.LocalPlayer.Name} {ClientState.LocalPlayer!.HomeWorld.GameData!.Name}");
-        }
-
-        public void TestFunction2() {
-            //foreach(var world in _worlds) {
-            //    PluginLog.Debug($"World: {world.Key} {world.Value.Name}");
-            //}
-            foreach(var map in DataManager.GetExcelSheet<Map>()!) {
-                PluginLog.Debug($"{map.RowId} {map.PlaceName.Value.Name}");
-            }
-        }
-
-        public void TestFunction3() {
-            PluginLog.Debug($"Is duty started? {DutyState.IsDutyStarted}");
-            var dutyId = Functions.GetCurrentDutyId();
-            PluginLog.Debug($"Current duty ID: {dutyId}");
-            var duty = DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
-            PluginLog.Debug($"Duty Name: {duty?.Name}");
-
-            var x = GameGui.GetAddonByName("_ToDoList");
-            Functions.testfunc(x);
-            PluginLog.Debug($"AddonToDoList ptr: {x}");
-            PluginLog.Debug($"AddonToDoList heckin based!");
-        }
-
-        public void TestFunction4() {
-
-            List<DutyResults> toRemove = new();
-
-            //clear shifting altars
-            foreach(var dr in Configuration.DutyResults) {
-                if(dr.DutyId == 586) {
-                    toRemove.Add(dr);
-                }
-            }
-            PluginLog.Debug($"Removing {toRemove.Count} results");
-            foreach(var dr in toRemove) {
-                Configuration.DutyResults.Remove(dr);
-            }
-
-            Save();
-        }
-
-        public void TestFunction5() {
-
-            foreach(var duty in DataManager.GetExcelSheet<ContentFinderCondition>()) {
-                PluginLog.Debug($"id: {duty.RowId} name: {duty.Name}");
-            }
-
-            //DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId)
-        }
-
-        public void TestFuncAddDRToDB() {
-            //var col = Database.GetCollection<DutyResults>("dutyresults");
-
-
-
-            ////var col2 = Database.GetCollection<DutyResults>("dutyresults2", )
-
-            ////BsonMapper.Global.RegisterType<DutyResults>(
-            ////    serialize: (dr) => {
-
-            ////        //var doc = new BsonDocument(dr);
-
-            ////        var doc = new BsonDocument();
-            ////        doc["Version"] = dr.Version;
-            ////        doc["DutyId"] = dr.DutyId;
-            ////        doc["DutyName"] = dr.DutyName;
-            ////        doc["Time"] = dr.Time;
-            ////        doc["CompletionTime"] = dr.CompletionTime;
-            ////        doc["Owner"] = dr.Owner;
-            ////        doc["IsComplete"] = dr.IsComplete;
-            ////        doc["IsPickup"] = dr.IsPickup;
-
-            ////        return doc;
-            ////    },
-            ////    deserialize: (bson) => new DutyResults()
-
-            ////    );
-
-
-            //col.InsertBulk(Configuration.DutyResults);
-        }
-
-        public void TestGetDRFromDB() {
-            //var results = Database.GetCollection<DutyResults>("dutyresults").Query().Limit(10).ToList();
-            //PluginLog.Debug($"{results.First().CheckpointResults.Count}");
-        }
-
-        public void TestUpdateMap() {
-            MPAMap map = Configuration.RecentPartyList["Sarah Montcroix Siren"].Maps.Last();
-            map.IsArchived = true;
-            PluginLog.Debug($"ID: {map.Id}");
-            StorageManager.UpdateMap(map);
-            //PluginLog.Debug($"Map found? {result}");
+            DutyResultsWindow.Refresh();
+            _saveLock.Release();
         }
     }
 }

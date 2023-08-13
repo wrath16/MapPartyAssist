@@ -37,7 +37,7 @@ public class MainWindow : Window, IDisposable {
         this.ForceMainWindow = true;
         this.PositionCondition = ImGuiCond.Always;
         this.SizeConstraints = new WindowSizeConstraints {
-            MinimumSize = new Vector2(200, 100),
+            MinimumSize = new Vector2(200, 50),
             MaximumSize = new Vector2(500, 350)
         };
         this.Plugin = plugin;

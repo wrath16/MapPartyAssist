@@ -156,13 +156,12 @@ namespace MapPartyAssist.Services {
             var newMap = new MPAMap(type, DateTime.Now, zone, isManual, isPortal);
             newMap.Owner = player.Key;
             //player.Maps.Add(newMap);
-            if(!isManual) {
-                player.MapLink = null;
-            }
+            player.MapLink = null;
             LastMapPlayerKey = player.Key;
 
             //add to DB
             Plugin.StorageManager.AddMap(newMap);
+            Plugin.StorageManager.UpdatePlayer(player);
 
             //this can cause race conditions with the config file since we're saving in the other thread
             //Plugin.Save();

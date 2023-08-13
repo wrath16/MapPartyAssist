@@ -1,5 +1,4 @@
-﻿using Dalamud.Game.Text.SeStringHandling.Payloads;
-using LiteDB;
+﻿using LiteDB;
 using System;
 using System.Collections.Generic;
 

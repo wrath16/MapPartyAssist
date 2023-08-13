@@ -53,6 +53,11 @@ namespace MapPartyAssist.Windows {
                 }
             }
 
+            ////hide self on no links
+            //if(zones.Count <= 0) {
+            //    this.IsOpen = false;
+            //}
+
             if(ImGui.BeginTable($"##{list.GetHashCode()}_Zone_Table", 2, ImGuiTableFlags.NoHostExtendX)) {
                 ImGui.TableSetupColumn("name", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 158f);
                 ImGui.TableSetupColumn("count", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 15);

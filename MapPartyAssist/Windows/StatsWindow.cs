@@ -62,7 +62,7 @@ namespace MapPartyAssist.Windows {
             //}
 
             string[] duties = { "The Aquapolis", "The Lost Canals of Uznair", "The Hidden Canals of Uznair", "The Shifting Altars of Uznair", "The Dungeons of Lyhe Ghiah", "The Shifting Oubliettes of Lyhe Ghiah", "The Excitatron 6000", "The Shifting Gymnasion Agonon" };
-            if(ImGui.Combo($"Duty##DutyCombo", ref _selectedDuty, duties, 4)) {
+            if(ImGui.Combo($"Duty##DutyCombo", ref _selectedDuty, duties, 8)) {
                 switch(_selectedDuty) {
                     case 0:
                         _dutyId = 179;
@@ -183,7 +183,8 @@ namespace MapPartyAssist.Windows {
                 var lastCheckpoint = result.CheckpointResults.Last();
 
                 //check for clear
-                string finalChamberCheckpoint = isRoulette ? "Defeat final summon" : "Clear final chamber";
+                //string finalChamberCheckpoint = isRoulette ? "Defeat final summon" : "Clear final chamber";
+                string finalChamberCheckpoint = Plugin.DutyManager.Duties[result.DutyId].Checkpoints.Last().Name;
                 if(lastCheckpoint.Checkpoint.Name.Equals(finalChamberCheckpoint, StringComparison.OrdinalIgnoreCase)) {
                     clearSequence.Add(runsSinceLastClear);
                     runsSinceLastClear = 0;
@@ -200,7 +201,7 @@ namespace MapPartyAssist.Windows {
                     continue;
                 }
 
-                Match chamberMatch = Regex.Match(lastCheckpoint.Checkpoint.Name, @"(?<=(Open|Complete) )[\d|final]+(?=(st|nd|rd|th)? (chamber|summon))", RegexOptions.IgnoreCase);
+                Match chamberMatch = Regex.Match(lastCheckpoint.Checkpoint.Name, @"(?<=(Open|Complete) )[\d|final]+(?=(st|nd|rd|th)? (chamber|summon|trial))", RegexOptions.IgnoreCase);
                 int chamberNumber;
                 if(!chamberMatch.Success) {
                     //did not find a match
@@ -302,14 +303,6 @@ namespace MapPartyAssist.Windows {
         }
 
         private void SummonTable(List<DutyResults> dutyResults, int dutyId) {
-            //only choose correct duties
-            switch(dutyId) {
-                case 586: //shifting altars
-                    break;
-                default:
-                    return;
-            }
-
             int lesserCount = 0;
             int greaterCount = 0;
             int elderCount = 0;

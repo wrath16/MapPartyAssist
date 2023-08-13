@@ -1,10 +1,12 @@
 ﻿using Dalamud.Interface.Windowing;
 using Dalamud.Logging;
 using ImGuiNET;
+using Lumina.Data.Parsing;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Numerics;
 
@@ -44,6 +46,15 @@ namespace MapPartyAssist.Windows {
                 ShowDRTable();
             }
 
+
+            if(ImGui.Button("Last 3 DutyResults")) {
+                var dutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderByDescending(dr => dr.Time).Limit(3).ToList();
+                foreach(var results in dutyResults) {
+                    PrintDutyResults(results);
+                }
+            }
+
+
             //if(ImGui.Button("Test Last Map Equality")) {
             //    TestMapEquality();
             //}
@@ -65,9 +76,53 @@ namespace MapPartyAssist.Windows {
                 Plugin.StorageManager.Import();
             }
 
-            if(ImGui.Button("fix records")) {
-                FixRecords();
+            if(ImGui.Button("fix record")) {
+                //var dr = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.DutyId == 745).OrderBy(dr => dr.Time).ToList().Last();
+                //dr.CheckpointResults = new();
+                //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[0], Summon.Lesser, "secret serpent", false, true));
+                //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[1], null, null, false, true));
+                //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[2], Summon.Greater, "secret porxie", true, true));
+                //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[3], null, null, false, true));
+                //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[4], Summon.Elder, "secret keeper", true, true));
+                //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[5], null, null, false, true));
+                //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[6], Summon.Greater, "greedy pixie", true, true));
+                //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[7], null, null, false, true));
+                //Plugin.StorageManager.UpdateDutyResults(dr);
+
+                var dr = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.DutyId == 909).OrderBy(dr => dr.Time).ToList();
+
+                for(int i = 0; i < dr.Count; i++) {
+                    var res = dr[i];
+                    for(int j = 0; j < dr[i].CheckpointResults.Count; j+=2) {
+                        dr[i].CheckpointResults.Insert(j + 1, new RouletteCheckpointResults(Plugin.DutyManager.Duties[909].Checkpoints[j+1], null, null, false, true));
+                        if(j != 0) {
+                            dr[i].CheckpointResults[j].Checkpoint = Plugin.DutyManager.Duties[909].Checkpoints[j];
+                        }
+                    }
+                }
+
+                //dr.CheckpointResults = new();
+                //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[0], true));
+                //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[1], true));
+                //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[2], true));
+                //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[3], true));
+                //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[4], true));
+                //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[5], true));
+                //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[6], true));
+                Plugin.StorageManager.UpdateDutyResults(dr);
             }
+
+            //if(ImGui.Button("altars lesser string")) {
+            //    PluginLog.Debug(Plugin.DutyManager.Duties[586].GetSummonPatternString(Summon.Lesser));
+            //}
+
+            //if(ImGui.Button("altars greater string")) {
+            //    PluginLog.Debug(Plugin.DutyManager.Duties[586].GetSummonPatternString(Summon.Greater));
+            //}
+
+            //if(ImGui.Button("altars elder string")) {
+            //    PluginLog.Debug(Plugin.DutyManager.Duties[586].GetSummonPatternString(Summon.Elder));
+            //}
 
         }
 
@@ -89,10 +144,16 @@ namespace MapPartyAssist.Windows {
         private void ShowDRTable() {
             var dutyResults = Plugin.StorageManager.GetDutyResults().Query().ToList();
             foreach(var results in dutyResults) {
-                PluginLog.Debug(String.Format("Time: {0,-23} Owner:Owner: {5,-35} Duty: {1,-40} CheckpointCount: {2,-2} isComplete: {3,-5} isPickup: {4, -5} totalGil: {6,-10}", results.Time, results.DutyName, results.CheckpointResults.Count, results.IsComplete, results.IsPickup, results.Owner, results.TotalGil));
+                PrintDutyResults(results);
             }
         }
 
+        private void PrintDutyResults(DutyResults dr) {
+            PluginLog.Debug(String.Format("Time: {0,-23} Owner: {5,-35} Duty: {1,-40} CheckpointCount: {2,-2} isComplete: {3,-5} isPickup: {4, -5} totalGil: {6,-10}", dr.Time, dr.DutyName, dr.CheckpointResults.Count, dr.IsComplete, dr.IsPickup, dr.Owner, dr.TotalGil));
+            foreach(var checkpointResults in dr.CheckpointResults) {
+                PluginLog.Debug(String.Format("Name: {0,-20} isReached: {1,-5} isSaved: {2,-5}, Monster: {3,-20}, Type: {4, -9}", checkpointResults.Checkpoint.Name, checkpointResults.IsReached, checkpointResults.IsSaved, checkpointResults.MonsterName, checkpointResults.SummonType));
+            }
+        }
 
         private void TestMapEquality() {
             var map = Plugin.CurrentPartyList.Values.FirstOrDefault().Maps.Last();
