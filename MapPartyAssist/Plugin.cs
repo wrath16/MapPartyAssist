@@ -14,6 +14,7 @@ using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
 using LiteDB;
+using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Services;
 using MapPartyAssist.Types;
 using MapPartyAssist.Windows;
@@ -449,6 +450,11 @@ namespace MapPartyAssist {
 
         public void OpenMapLink(MapLinkPayload mapLink) {
             GameGui.OpenMapWithMapLink(mapLink);
+        }
+
+        public int GetCurrentTerritoryId() {
+            return ClientState.TerritoryType;
+            //return DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name;
         }
 
         public void Save() {

@@ -12,6 +12,8 @@ namespace MapPartyAssist.Windows {
 
     public enum StatRange {
         Current,
+        PastDay,
+        PastWeek,
         All,
         AllLegacy
     }
@@ -44,6 +46,10 @@ namespace MapPartyAssist.Windows {
             if(_statRange == StatRange.Current) {
                 //_dutyResults = Plugin.DutyManager.GetRecentDutyResultsList(_dutyId);
                 _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted && dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+            } else if(_statRange == StatRange.PastDay) {
+                _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToEnumerable().Where(dr => (DateTime.Now - dr.Time).TotalHours < 24).ToList();
+            } else if(_statRange == StatRange.PastWeek) {
+                _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToEnumerable().Where(dr => (DateTime.Now - dr.Time).TotalDays < 7).ToList();
             } else {
                 _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
             }
@@ -94,8 +100,8 @@ namespace MapPartyAssist.Windows {
             }
 
             int statRangeToInt = (int)_statRange;
-            string[] includes = { "Current", "All-Time", "All-Time with imported data" };
-            if(ImGui.Combo($"Data Range##includesCombo", ref statRangeToInt, includes, 2)) {
+            string[] includes = { "Current", "Last Day", "Last Week", "All-Time", "All-Time with imported data" };
+            if(ImGui.Combo($"Data Range##includesCombo", ref statRangeToInt, includes, 4)) {
                 _statRange = (StatRange)statRangeToInt;
                 UpdateDutyResults();
             }
@@ -171,6 +177,7 @@ namespace MapPartyAssist.Windows {
             int runsSinceLastClear = 0;
             int totalClears = 0;
             List<int> clearSequence = new();
+            List<DutyResults> clearDuties = new();
             foreach(var result in dutyResults) {
                 runsSinceLastClear++;
                 totalGil += result.TotalGil;
@@ -187,6 +194,7 @@ namespace MapPartyAssist.Windows {
                 string finalChamberCheckpoint = Plugin.DutyManager.Duties[result.DutyId].Checkpoints.Last().Name;
                 if(lastCheckpoint.Checkpoint.Name.Equals(finalChamberCheckpoint, StringComparison.OrdinalIgnoreCase)) {
                     clearSequence.Add(runsSinceLastClear);
+                    clearDuties.Add(result);
                     runsSinceLastClear = 0;
                     totalClears++;
                 }
@@ -284,7 +292,13 @@ namespace MapPartyAssist.Windows {
                     for(int i = 0; i < clearSequence.Count; i++) {
                         ImGui.Text($"{AddOrdinal(i + 1)} clear:");
                         ImGui.TableNextColumn();
-                        ImGui.Text($"{clearSequence[i]}");
+                        ImGui.Text($"{clearSequence[i].ToString().PadRight(3)}");
+                        if(ImGui.IsItemHovered()) {
+                            ImGui.BeginTooltip();
+                            ImGui.Text($"{clearDuties[i].CompletionTime.ToString()}");
+                            ImGui.Text($"{clearDuties[i].Owner}");
+                            ImGui.EndTooltip();
+                        }
                         ImGui.TableNextColumn();
                         ImGui.TableNextColumn();
                     }
