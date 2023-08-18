@@ -136,22 +136,13 @@ public class MainWindow : Window, IDisposable {
         CurrentPosition = ImGui.GetWindowPos();
         CurrentSize = ImGui.GetWindowSize();
 
+        if(!Plugin.IsEnglishClient()) {
+            ImGui.TextColored(ImGuiColors.DalamudRed, $"Non-English client, automatic tracking unavailable.");
+        }
+
         if(ImGui.Button("Clear All")) {
             Plugin.MapManager.ClearAllMaps();
         }
-
-        //int totalMapsCurrent = 0;
-        //int totalMapsRecent = 0;
-        //int totalPortalsCurrent = 0;
-        //int totalPortalsRecent = 0;
-        //foreach(var p in Plugin.CurrentPartyList) {
-        //    totalMapsCurrent += p.Value.Maps.Where(m => !m.IsDeleted && !m.IsArchived).ToList().Count;
-        //    totalPortalsCurrent += p.Value.Maps.Where(m => !m.IsDeleted && !m.IsArchived && m.IsPortal).ToList().Count;
-        //}
-        //foreach(var p in Plugin.RecentPartyList) {
-        //    totalMapsRecent += p.Value.Maps.Where(m => !m.IsDeleted && !m.IsArchived).ToList().Count;
-        //    totalPortalsRecent += p.Value.Maps.Where(m => !m.IsDeleted && !m.IsArchived && m.IsPortal).ToList().Count;
-        //}
 
         ImGui.SameLine();
         ImGui.Text($"Total Maps: {_currentMapCount + _recentMapCount}");
@@ -175,37 +166,12 @@ public class MainWindow : Window, IDisposable {
             MapTable(_currentPlayerMaps);
         }
 
-
-        //Plugin.WindowSystem.GetWindow("Map Links by Zone").IsOpen = Plugin.CurrentPartyList.Count > 0;
         ZoneCountWindow.IsOpen = true;
-
-        //var recentPartyList = Plugin.Configuration.RecentPartyList.Where(p => {
-        //    TimeSpan timeSpan = DateTime.Now - p.Value.LastJoined;
-        //    var isRecent = timeSpan.TotalHours <= Plugin.Configuration.ArchiveThresholdHours;
-        //    var hasMaps = false;
-        //    foreach(var m in p.Value.Maps) {
-        //        if(!m.IsArchived && !m.IsDeleted) {
-        //            hasMaps = true;
-        //            break;
-        //        }
-        //    }
-        //    var notCurrent = !Plugin.CurrentPartyList.ContainsKey(p.Key);
-        //    var notSelf = !p.Value.IsSelf;
-        //    return isRecent && hasMaps && notCurrent && notSelf;
-        //}).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
         if(_recentPlayerMaps.Count > 0) {
             ImGui.Text("Recent party members:");
             MapTable(_recentPlayerMaps);
         }
-
-        //ImGui.BeginChildFrame(111, new Vector2(200, 50), ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoTitleBar);
-        //ImGui.Text("Test2");
-        ////ImGui.EndChild();
-        //ImGui.EndChildFrame();
-
-        //Plugin.WindowSystem.GetWindow("Map Links").IsOpen = true;
-        //MapTable(Plugin.FakePartyList);
     }
 
     private void MapTable(Dictionary<MPAMember, List<MPAMap>> list, bool readOnly = false) {

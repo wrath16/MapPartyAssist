@@ -50,7 +50,7 @@ namespace MapPartyAssist.Services {
 
             //set the duty name
             //should do this in a more robust way...
-            if(Regex.IsMatch(duty.Name.ToString(), @"uznair|aquapolis|lyhe ghiah|gymnasion agonon|excitatron 6000$", RegexOptions.IgnoreCase)) {
+            if(Plugin.IsEnglishClient() && Regex.IsMatch(duty.Name.ToString(), @"uznair|aquapolis|lyhe ghiah|gymnasion agonon|excitatron 6000$", RegexOptions.IgnoreCase)) {
                 var lastMap = Plugin.StorageManager.GetMaps().Query().OrderBy(dr => dr.Time).ToList().Last();
                 //fallback for cases where we miss the map
                 if(Plugin.CurrentPartyList.Count > 0 && !LastMapPlayerKey.IsNullOrEmpty() && (DateTime.Now - lastMap.Time).TotalSeconds < _digFallbackSeconds) {
@@ -71,6 +71,11 @@ namespace MapPartyAssist.Services {
             bool isPortal = false;
             string key = "";
             string mapType = "";
+
+            //refuse to process if not in English
+            //if(!Plugin.IsEnglishClient()) {
+            //    return;
+            //}
 
             if((int)type == 2361) {
                 //party member opens portal, after block time
@@ -195,76 +200,34 @@ namespace MapPartyAssist.Services {
         }
 
         public void ClearAllMaps() {
-
             PluginLog.Information("Archiving all maps...");
-
-            //TODO: only do this for current maps
-
-            //ForceArchiveAllMaps(Plugin.Configuration.RecentPartyList);
-            //ForceArchiveAllMaps(Plugin.FakePartyList);
-
-
             var maps = Plugin.StorageManager.GetMaps().Query().ToList();
             maps.ForEach(m => m.IsArchived = true);
             Plugin.StorageManager.UpdateMaps(maps).ContinueWith(t => {
                 Plugin.BuildRecentPartyList();
             });
-
-            //foreach(var map in maps) {
-            //    map.IsArchived = true;
-            //    Plugin.StorageManager.UpdateMap(map);
-            //}
-
-
-            //foreach(var p in Plugin.Configuration.RecentPartyList) {
-            //    Plugin.StorageManager.UpdateMaps(p.Value.Maps);
-            //    //foreach(var m in p.Value.Maps) {
-            //    //    Plugin.StorageManager.UpdateMap(m);
-            //    //}
-            //}
-
-            //Plugin.Save();
         }
 
         public void ArchiveMaps(IEnumerable<MPAMap> maps) {
             PluginLog.Information("Archiving maps...");
-            //get from storage
-            //var storageMaps = Plugin.StorageManager.GetMaps().Query().Where(m => maps.Contains(m)).ToList();
-            //foreach(var map in storageMaps) {
-            //    map.IsArchived = true;
-            //}
             maps.ToList().ForEach(m => m.IsArchived = true);
-            Plugin.StorageManager.UpdateMaps(maps);
+            Plugin.StorageManager.UpdateMaps(maps).ContinueWith(t => {
+                Plugin.BuildRecentPartyList();
+            });
             //Plugin.Save();
         }
 
         public void DeleteMaps(IEnumerable<MPAMap> maps) {
             PluginLog.Information("Deleting maps...");
-            //get from storage
-            //var storageMaps = Plugin.StorageManager.GetMaps().Query().Where(m => maps.Contains(m)).ToList();
-            //foreach(var map in storageMaps) {
-            //    map.IsDeleted = true;
-            //}
-            //Plugin.StorageManager.UpdateMaps(storageMaps);
-
             maps.ToList().ForEach(m => m.IsDeleted = true);
-            Plugin.StorageManager.UpdateMaps(maps);
+            Plugin.StorageManager.UpdateMaps(maps).ContinueWith(t => {
+                Plugin.BuildRecentPartyList();
+            });
             //Plugin.Save();
         }
 
         public void CheckAndArchiveMaps(Dictionary<string, MPAMember> list) {
             DateTime currentTime = DateTime.Now;
-
-            //foreach(MPAMember player in list.Values) {
-            //    foreach(MPAMap map in player.Maps) {
-            //        TimeSpan timeSpan = currentTime - map.Time;
-            //        if(timeSpan.TotalHours > Plugin.Configuration.ArchiveThresholdHours) {
-            //            map.IsArchived = true;
-            //            //Plugin.StorageManager.UpdateMap(map);
-            //        }
-            //    }
-            //}
-
             var storageMaps = Plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived).ToList();
             foreach(var map in storageMaps) {
                 TimeSpan timeSpan = currentTime - map.Time;

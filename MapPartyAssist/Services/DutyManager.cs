@@ -149,7 +149,7 @@ namespace MapPartyAssist.Services {
             Plugin.ChatGui.ChatMessage += OnChatMessage;
 
             //attempt to pickup
-            if(Plugin.ClientState.IsLoggedIn && !IsDutyInProgress()) {
+            if(Plugin.ClientState.IsLoggedIn && Plugin.IsEnglishClient() && !IsDutyInProgress()) {
                 var lastDutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderBy(dr => dr.Time).ToList().LastOrDefault();
                 var dutyId = Plugin.Functions.GetCurrentDutyId();
                 var duty = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
@@ -160,6 +160,7 @@ namespace MapPartyAssist.Services {
                         PluginLog.Debug("re-picking up duty results...");
                         _currentDutyResults = lastDutyResults;
                         _currentDutyResults.IsPickup = true;
+                        //can't save since this is called from Plugin constructor!
                         //Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
                         //Plugin.Save();
                     }
@@ -179,17 +180,40 @@ namespace MapPartyAssist.Services {
 
         private void StartNewDuty(int dutyId, Dictionary<string, MPAMember> players, string owner) {
 
+            //abort if not in English-language client
+            if(!Plugin.IsEnglishClient()) {
+                return;
+            }
+
             if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null) {
-                //object[] conParams = { dutyId, Duties[dutyId].Name, players, owner };
-                //_currentDutyResults = Duties[dutyId].ResultsType!.GetConstructors().First().Invoke(conParams) as DutyResults;
                 _currentDutyResults = new DutyResults(dutyId, Duties[dutyId].Name, players, owner);
                 //assume last map is the one...
                 _currentDutyResults.Map = Plugin.StorageManager.GetMaps().Query().OrderBy(dr => dr.Time).ToList().Last();
-
-                //Plugin.Configuration.DutyResults.Add(_currentDutyResults);
                 Plugin.StorageManager.AddDutyResults(_currentDutyResults);
                 Plugin.Save();
             }
+        }
+
+        //returns true if duty was succesfully picked up
+        private bool PickupLastDuty() {
+            var dutyId = Plugin.Functions.GetCurrentDutyId();
+            var duty = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
+            var lastDutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderBy(dr => dr.Time).ToList().LastOrDefault();
+            if(lastDutyResults != null) {
+                TimeSpan lastTimeDiff = DateTime.Now - lastDutyResults.Time;
+                //pickup if duty is valid, and matches the last duty which was not completed and not more than an hour has elapsed (fallback)
+                if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null && lastDutyResults.DutyId == dutyId && !lastDutyResults.IsComplete && !_firstTerritoryChange && lastTimeDiff.TotalHours < 1) {
+                    PluginLog.Debug("re-picking up duty results...");
+                    _currentDutyResults = lastDutyResults;
+                    _currentDutyResults.IsPickup = true;
+                    //Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
+                    //Plugin.Save();
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            return false;
         }
 
         public List<DutyResults> GetRecentDutyResultsList(int? dutyId = null) {
@@ -247,7 +271,7 @@ namespace MapPartyAssist.Services {
                 if(lastDutyResults != null) {
                     TimeSpan lastTimeDiff = DateTime.Now - lastDutyResults.Time;
                     //pickup if duty is valid, and matches the last duty which was not completed and not more than an hour has elapsed (fallback)
-                    if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null && lastDutyResults.DutyId == dutyId && !lastDutyResults.IsComplete && !_firstTerritoryChange && lastTimeDiff.TotalHours < 1) {
+                    if(Plugin.IsEnglishClient() && Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null && lastDutyResults.DutyId == dutyId && !lastDutyResults.IsComplete && !_firstTerritoryChange && lastTimeDiff.TotalHours < 1) {
                         PluginLog.Debug("re-picking up duty results...");
                         _currentDutyResults = lastDutyResults;
                         _currentDutyResults.IsPickup = true;
@@ -266,7 +290,6 @@ namespace MapPartyAssist.Services {
 
         private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled) {
             if(IsDutyInProgress()) {
-
                 //check for gil obtained
                 if((int)type == 62) {
                     Match m = Regex.Match(message.ToString(), @"(?<=You obtain )[\d,\.]+(?= gil)");

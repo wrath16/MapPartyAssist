@@ -14,7 +14,6 @@ using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
 using LiteDB;
-using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Services;
 using MapPartyAssist.Types;
 using MapPartyAssist.Windows;
@@ -92,6 +91,10 @@ namespace MapPartyAssist {
             Configuration.Initialize(PluginInterface);
             PluginLog.Log("Done Config loading");
 
+            PluginLog.Debug($"Client language: {ClientState.ClientLanguage}");
+            if(!IsEnglishClient()) {
+                PluginLog.Warning("Client is not in English, most functions will be unavailable.");
+            }
 
             StorageManager = new StorageManager(this, $"{PluginInterface.GetPluginConfigDirectory()}\\data.db");
             Functions = new GameFunctions();
@@ -99,12 +102,10 @@ namespace MapPartyAssist {
             MapManager = new MapManager(this);
 
             MainWindow = new MainWindow(this);
-            //ZoneCountWindow = new ZoneCountWindow(this, MainWindow);
             ConfigWindow = new ConfigWindow(this);
             StatsWindow = new StatsWindow(this);
             DutyResultsWindow = new DutyResultsWindow(this);
             WindowSystem.AddWindow(MainWindow);
-            //WindowSystem.AddWindow(ZoneCountWindow);
             WindowSystem.AddWindow(ConfigWindow);
             WindowSystem.AddWindow(DutyResultsWindow);
             WindowSystem.AddWindow(StatsWindow);
@@ -455,6 +456,10 @@ namespace MapPartyAssist {
         public int GetCurrentTerritoryId() {
             return ClientState.TerritoryType;
             //return DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name;
+        }
+
+        public bool IsEnglishClient() {
+            return ClientState.ClientLanguage == Dalamud.ClientLanguage.English;
         }
 
         public void Save() {
