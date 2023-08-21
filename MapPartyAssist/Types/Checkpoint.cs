@@ -9,5 +9,17 @@
             Message = message;
             MessageChannel = messageChannel;
         }
+
+        public override bool Equals(object obj) {
+            return Equals(obj as Checkpoint);
+        }
+
+        public bool Equals(Checkpoint obj) {
+            return obj != null && obj.Name == Name;
+        }
+
+        public override int GetHashCode() {
+            return Name.GetHashCode();
+        }
     }
 }

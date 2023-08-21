@@ -187,8 +187,15 @@ namespace MapPartyAssist.Services {
 
             if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null) {
                 _currentDutyResults = new DutyResults(dutyId, Duties[dutyId].Name, players, owner);
-                //assume last map is the one...
-                _currentDutyResults.Map = Plugin.StorageManager.GetMaps().Query().OrderBy(dr => dr.Time).ToList().Last();
+                //assume last map is the one...10 min fallback for missed maps
+                var lastMap = Plugin.StorageManager.GetMaps().Query().OrderBy(dr => dr.Time).ToList().Last();
+                if((DateTime.Now - lastMap.Time).TotalMinutes < 10) {
+                    _currentDutyResults.Map = Plugin.StorageManager.GetMaps().Query().OrderBy(dr => dr.Time).ToList().Last();
+                } else {
+                    _currentDutyResults.Map = null;
+                    _currentDutyResults.Owner = "UNKNOWN OWNER";
+                }
+                
                 Plugin.StorageManager.AddDutyResults(_currentDutyResults);
                 Plugin.Save();
             }

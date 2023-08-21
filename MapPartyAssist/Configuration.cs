@@ -11,8 +11,7 @@ namespace MapPartyAssist {
         public int Version { get; set; } = 2;
         public bool MasterSwitch { get; set; } = true;
         public uint ArchiveThresholdHours { get; set; } = 24;
-
-        public bool ShowZoneTable { get; set; } = true;
+        public bool ShowZoneTableWhenEmpty { get; set; } = true;
         public bool EnableWhileSolo { get; set; } = true;
         public Dictionary<string, MPAMember> RecentPartyList { get; set; }
         public List<DutyResults> DutyResults { get; set; }

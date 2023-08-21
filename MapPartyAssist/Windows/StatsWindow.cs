@@ -14,6 +14,7 @@ namespace MapPartyAssist.Windows {
         Current,
         PastDay,
         PastWeek,
+        SinceLastClear,
         All,
         AllLegacy
     }
@@ -21,17 +22,22 @@ namespace MapPartyAssist.Windows {
     internal class StatsWindow : Window, IDisposable {
 
         private Plugin Plugin;
+        private ViewDutyResultsImportsWindow ViewDutyResultsImportsWindow;
         private StatRange _statRange = StatRange.All;
         private int _dutyId = 276;
         private int _selectedDuty = 2;
         private List<DutyResults> _dutyResults = new();
+        private List<DutyResultsImport> _dutyResultsImports = new();
 
         public StatsWindow(Plugin plugin) : base("Treasure Dungeon Stats") {
             this.SizeConstraints = new WindowSizeConstraints {
                 MinimumSize = new Vector2(300, 50),
-                MaximumSize = new Vector2(800, 1000)
+                MaximumSize = new Vector2(600, 1000)
             };
             this.Plugin = plugin;
+            ViewDutyResultsImportsWindow = new ViewDutyResultsImportsWindow(plugin, this);
+            ViewDutyResultsImportsWindow.IsOpen = false;
+            Plugin.WindowSystem.AddWindow(ViewDutyResultsImportsWindow);
         }
 
         public void Dispose() {
@@ -39,6 +45,12 @@ namespace MapPartyAssist.Windows {
 
         public void Refresh() {
             UpdateDutyResults();
+            ViewDutyResultsImportsWindow.Refresh();
+        }
+
+        public override void OnClose() {
+            ViewDutyResultsImportsWindow.IsOpen = false;
+            base.OnClose();
         }
 
         private void UpdateDutyResults() {
@@ -50,15 +62,19 @@ namespace MapPartyAssist.Windows {
                 _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToEnumerable().Where(dr => (DateTime.Now - dr.Time).TotalHours < 24).ToList();
             } else if(_statRange == StatRange.PastWeek) {
                 _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToEnumerable().Where(dr => (DateTime.Now - dr.Time).TotalDays < 7).ToList();
-            } else {
+            } else if(_statRange == StatRange.All) {
                 _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+            } else if(_statRange == StatRange.AllLegacy) {
+                _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+                _dutyResultsImports = Plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted && i.DutyId == _dutyId).OrderBy(i => i.Time).ToList();
+            } else if(_statRange == StatRange.SinceLastClear) {
+                var lastClear = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList().Where(dr => dr.CheckpointResults.Count == Plugin.DutyManager.Duties[_dutyId].Checkpoints.Count && dr.CheckpointResults.Last().IsReached).LastOrDefault();
+                if(lastClear != null) {
+                    _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId && dr.Time > lastClear.Time).OrderBy(dr => dr.Time).ToList();
+                } else {
+                    _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+                }
             }
-
-            //_dutyResults = Plugin.Configuration.DutyResults.Where(dr => {
-            //    MPAMap? map = Plugin.MapManager.FindMapForDutyResults(dr);
-            //    bool isCurrent = map != null && !map.IsArchived && !map.IsDeleted;
-            //    return dr.IsComplete && dr.DutyId == _dutyId && (_statRange != StatRange.Current || isCurrent);
-            //}).ToList();
         }
 
         public override void Draw() {
@@ -100,53 +116,25 @@ namespace MapPartyAssist.Windows {
             }
 
             int statRangeToInt = (int)_statRange;
-            string[] includes = { "Current", "Last Day", "Last Week", "All-Time", "All-Time with imported data" };
-            if(ImGui.Combo($"Data Range##includesCombo", ref statRangeToInt, includes, 4)) {
+            string[] includes = { "Current", "Last Day", "Last Week", "Since last clear", "All-Time", "All-Time with imported data" };
+            if(ImGui.Combo($"Data Range##includesCombo", ref statRangeToInt, includes, 6)) {
                 _statRange = (StatRange)statRangeToInt;
                 UpdateDutyResults();
+            }
+
+            if(_statRange == StatRange.AllLegacy) {
+                if(ImGui.Button("Manage Imports")) {
+                    if(!ViewDutyResultsImportsWindow.IsOpen) {
+                        ViewDutyResultsImportsWindow.Position = new Vector2(ImGui.GetWindowPos().X + 50f * ImGuiHelpers.GlobalScale, ImGui.GetWindowPos().Y + 50f * ImGuiHelpers.GlobalScale);
+                        ViewDutyResultsImportsWindow.IsOpen = true;
+                    }
+                }
             }
 
             ProgressTable(_dutyResults, _dutyId);
             if(Plugin.DutyManager.Duties[_dutyId].Structure == DutyStructure.Roulette) {
                 SummonTable(_dutyResults, _dutyId);
             }
-
-            //if(ImGui.BeginTabBar("StatsTabBar", ImGuiTabBarFlags.FittingPolicyMask)) {
-            //    if(ImGui.BeginTabItem("Hidden Canals of Uznair")) {
-            //        if(_dutyId != 276) {
-            //            _dutyId = 276;
-            //            UpdateDutyResults();
-            //        }
-            //        ProgressTable(_dutyResults, _dutyId);
-            //        ImGui.EndTabItem();
-            //    }
-            //    if(ImGui.BeginTabItem("Lost Canals of Uznair")) {
-            //        if(_dutyId != 268) {
-            //            _dutyId = 268;
-            //            UpdateDutyResults();
-            //        }
-            //        ProgressTable(_dutyResults, _dutyId);
-            //        ImGui.EndTabItem();
-            //    }
-            //    if(ImGui.BeginTabItem("Shifting Altars of Uznair")) {
-            //        if(_dutyId != 586) {
-            //            _dutyId = 586;
-            //            UpdateDutyResults();
-            //        }
-            //        ProgressTable(_dutyResults, _dutyId);
-            //        SummonTable(_dutyResults, _dutyId);
-            //        ImGui.EndTabItem();
-            //    }
-            //    if(ImGui.BeginTabItem("Aquapolis")) {
-            //        if(_dutyId != 179) {
-            //            _dutyId = 179;
-            //            UpdateDutyResults();
-            //        }
-            //        ProgressTable(_dutyResults, _dutyId);
-            //        ImGui.EndTabItem();
-            //    }
-            //    ImGui.EndTabBar();
-            //}
         }
 
         public override void PreDraw() {
@@ -169,6 +157,7 @@ namespace MapPartyAssist.Windows {
             string successVerb = isRoulette ? "Complete" : "Open";
             string passiveSuccessVerb = isRoulette ? "Completed" : "Reached";
             string stageNoun = isRoulette ? "summon" : "chamber";
+            string chamberPattern = @"(?<=(Open|Complete) )[\d|final]+(?=(st|nd|rd|th)? (chamber|summon|trial))";
 
             int[] openChambers = new int[numChambers - 1];
             float[] openChambersRates = new float[numChambers - 1];
@@ -176,9 +165,115 @@ namespace MapPartyAssist.Windows {
             int totalGil = 0;
             int runsSinceLastClear = 0;
             int totalClears = 0;
+            int totalRuns = dutyResults.Count();
+
             List<int> clearSequence = new();
             List<DutyResults> clearDuties = new();
+
+            //import specific stuff
+            int currentImportIndex = 0;
+            bool hasSequence = true;
+            bool hasFloors = true;
+            bool hasGil = true;
+
+            var processImport = (DutyResultsImport import) => {
+                totalRuns += (int)import.TotalRuns;
+                totalClears += (int)import.TotalClears;
+                //check for gil
+                if(import.TotalGil != null) {
+                    totalGil += (int)import.TotalGil!;
+                } else {
+                    hasGil = false;
+                }
+                //checkfor checkpoint totals
+                if(import.CheckpointTotals != null) {
+                    //var importOpenChambers = currentImport.CheckpointTotals.Where(cpt => Plugin.DutyManager.Duties[currentImport.DutyId].Checkpoints[])
+                    for(int i = 0; i < import.CheckpointTotals.Count; i++) {
+                        var currentCheckpointTotal = import.CheckpointTotals[i];
+                        Match importChamberMatch = Regex.Match(duty.Checkpoints![i].Name, chamberPattern, RegexOptions.IgnoreCase);
+                        if(importChamberMatch.Success) {
+                            int importChamberNumber;
+                            if(int.TryParse(importChamberMatch.Value, out importChamberNumber) && importChamberNumber != 1) {
+                                openChambers[importChamberNumber - 2] += (int)currentCheckpointTotal;
+                            } else if(importChamberMatch.Value.Equals("final", StringComparison.OrdinalIgnoreCase)) {
+                                openChambers[openChambers.Length - 1] += (int)currentCheckpointTotal;
+                            }
+                        }
+                    }
+                } else {
+                    hasFloors = false;
+                }
+                //check for clear sequence
+                if(import.TotalClears == 0) {
+                    runsSinceLastClear += (int)import.TotalRuns;
+                } else if(import.ClearSequence != null) {
+                    for(int i = 0; i < import.ClearSequence!.Count; i++) {
+                        int curSequenceValue = (int)import.ClearSequence![i];
+                        if(i == 0) {
+                            clearSequence.Add(runsSinceLastClear + curSequenceValue);
+                            runsSinceLastClear = 0;
+                        } else {
+                            clearSequence.Add(curSequenceValue);
+                        }
+                    }
+                    runsSinceLastClear += (int)import.RunsSinceLastClear!;
+                } else {
+                    hasSequence = false;
+                }
+            };
+
+
             foreach(var result in dutyResults) {
+
+                //add import data
+                while(_statRange == StatRange.AllLegacy && currentImportIndex < _dutyResultsImports.Count && _dutyResultsImports[currentImportIndex].Time < result.Time) {
+                    processImport(_dutyResultsImports[currentImportIndex]);
+                    //var currentImport = _dutyResultsImports[currentImportIndex];
+                    //totalRuns += (int)currentImport.TotalRuns;
+                    //totalClears += (int)currentImport.TotalClears;
+                    ////check for gil
+                    //if(currentImport.TotalGil != null) {
+                    //    totalGil += (int)currentImport.TotalGil!;
+                    //} else {
+                    //    hasGil = false;
+                    //}
+                    ////checkfor checkpoint totals
+                    //if(currentImport.CheckpointTotals != null) {
+                    //    //var importOpenChambers = currentImport.CheckpointTotals.Where(cpt => Plugin.DutyManager.Duties[currentImport.DutyId].Checkpoints[])
+                    //    for(int i = 0; i < currentImport.CheckpointTotals.Count; i++) {
+                    //        var currentCheckpointTotal = currentImport.CheckpointTotals[i];
+                    //        Match importChamberMatch = Regex.Match(duty.Checkpoints![i].Name, chamberPattern, RegexOptions.IgnoreCase);
+                    //        if(importChamberMatch.Success) {
+                    //            int importChamberNumber;
+                    //            if(int.TryParse(importChamberMatch.Value, out importChamberNumber) && importChamberNumber != 1) {
+                    //                openChambers[importChamberNumber - 2] += (int)currentCheckpointTotal;
+                    //            } else if(importChamberMatch.Value.Equals("final", StringComparison.OrdinalIgnoreCase)) {
+                    //                openChambers[openChambers.Length - 1] += (int)currentCheckpointTotal;
+                    //            }
+                    //        }
+                    //    }
+                    //} else {
+                    //    hasFloors = false;
+                    //}
+                    ////check for clear sequence
+                    //if(currentImport.TotalClears == 0) {
+                    //    runsSinceLastClear += (int)currentImport.TotalRuns;
+                    //} else if(currentImport.ClearSequence != null) {
+                    //    for(int i = 0; i < currentImport.ClearSequence!.Count; i++) {
+                    //        int curSequenceValue = (int)currentImport.ClearSequence![i];
+                    //        if(i == 0) {
+                    //            clearSequence.Add(runsSinceLastClear + curSequenceValue);
+                    //        } else {
+                    //            clearSequence.Add(curSequenceValue);
+                    //        }
+                    //    }
+                    //    runsSinceLastClear += (int)currentImport.RunsSinceLastClear!;
+                    //} else {
+                    //    hasSequence = false;
+                    //}
+                    currentImportIndex++;
+                }
+
                 runsSinceLastClear++;
                 totalGil += result.TotalGil;
 
@@ -209,7 +304,7 @@ namespace MapPartyAssist.Windows {
                     continue;
                 }
 
-                Match chamberMatch = Regex.Match(lastCheckpoint.Checkpoint.Name, @"(?<=(Open|Complete) )[\d|final]+(?=(st|nd|rd|th)? (chamber|summon|trial))", RegexOptions.IgnoreCase);
+                Match chamberMatch = Regex.Match(lastCheckpoint.Checkpoint.Name, chamberPattern, RegexOptions.IgnoreCase);
                 int chamberNumber;
                 if(!chamberMatch.Success) {
                     //did not find a match
@@ -226,10 +321,18 @@ namespace MapPartyAssist.Windows {
                     continue;
                 }
             }
+            //check for remaining imports
+            if(_statRange == StatRange.AllLegacy && currentImportIndex != _dutyResultsImports.Count) {
+                while(currentImportIndex < _dutyResultsImports.Count) {
+                    processImport(_dutyResultsImports[currentImportIndex]);
+                    currentImportIndex++;
+                }
+            }
 
+            //calculate chamber rates
             for(int i = 0; i < numChambers - 1; i++) {
                 if(i == 0) {
-                    openChambersRates[i] = dutyResults.Count() > 0 ? (float)openChambers[i] / dutyResults.Count() : 0f;
+                    openChambersRates[i] = totalRuns > 0 ? (float)openChambers[i] / totalRuns : 0f;
                 } else {
                     openChambersRates[i] = openChambers[i - 1] > 0 ? (float)openChambers[i] / openChambers[i - 1] : 0f;
                 }
@@ -242,74 +345,78 @@ namespace MapPartyAssist.Windows {
 
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
-                ImGui.Text("Total gil earned: ");
-                ImGui.TableNextColumn();
-                ImGui.Text($"{totalGil.ToString("N0")}");
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
-                ImGui.Text("Total clears: ");
-                ImGui.TableNextColumn();
-                ImGui.Text($"{totalClears}");
-                ImGui.TableNextColumn();
-                if(dutyResults.Count() > 0) {
-                    ImGui.Text($"{string.Format("{0:P}%", (double)totalClears / dutyResults.Count())}");
+
+                if(_statRange != StatRange.AllLegacy || hasGil) {
+                    ImGui.Text("Total gil earned: ");
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"{totalGil.ToString("N0")}");
+                    ImGui.TableNextColumn();
+                    ImGui.TableNextColumn();
                 }
-                ImGui.TableNextColumn();
-                //if(totalClears > 0) {
-                //    ImGui.Text("Runs since last clear: ");
-                //    ImGui.TableNextColumn();
-                //    ImGui.Text($"{runsSinceLastClear}");
-                //    ImGui.TableNextColumn();
-                //    ImGui.TableNextColumn();
-                //}
+                if(_statRange != StatRange.SinceLastClear) {
+                    ImGui.Text("Total clears: ");
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"{totalClears}");
+                    ImGui.TableNextColumn();
+                    if(totalRuns > 0) {
+                        ImGui.Text($"{string.Format("{0:P}%", (double)totalClears / totalRuns)}");
+                    }
+                    ImGui.TableNextColumn();
+                }
                 ImGui.Text("Total runs:");
                 ImGui.TableNextColumn();
-                ImGui.Text($"{dutyResults.Count()}");
+                ImGui.Text($"{totalRuns}");
                 ImGui.TableNextColumn();
                 ImGui.TableNextColumn();
 
-                for(int i = 0; i < openChambers.Length; i++) {
-                    if(i == numChambers - 2) {
-                        ImGui.Text($"{passiveSuccessVerb} final {stageNoun}:");
-                    } else {
-                        ImGui.Text($"{passiveSuccessVerb} {AddOrdinal(i + 2)} {stageNoun}:");
-                    }
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{openChambers[i]}");
-                    ImGui.TableNextColumn();
-                    if((i == 0 && dutyResults.Count() != 0) || (i != 0 && openChambers[i - 1] != 0)) {
-                        ImGui.Text($"{string.Format("{0:P}%", openChambersRates[i])}");
-                    }
-                    ImGui.TableNextColumn();
-                }
-
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
-
-                //todo make this a configuration variable
-                if(_dutyId == 276) {
-                    for(int i = 0; i < clearSequence.Count; i++) {
-                        ImGui.Text($"{AddOrdinal(i + 1)} clear:");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{clearSequence[i].ToString().PadRight(3)}");
-                        if(ImGui.IsItemHovered()) {
-                            ImGui.BeginTooltip();
-                            ImGui.Text($"{clearDuties[i].CompletionTime.ToString()}");
-                            ImGui.Text($"{clearDuties[i].Owner}");
-                            ImGui.EndTooltip();
+                if(_statRange != StatRange.AllLegacy || hasFloors) {
+                    for(int i = 0; i < openChambers.Length; i++) {
+                        if(i == numChambers - 2) {
+                            ImGui.Text($"{passiveSuccessVerb} final {stageNoun}:");
+                        } else {
+                            ImGui.Text($"{passiveSuccessVerb} {AddOrdinal(i + 2)} {stageNoun}:");
                         }
                         ImGui.TableNextColumn();
+                        ImGui.Text($"{openChambers[i]}");
+                        ImGui.TableNextColumn();
+                        if((i == 0 && totalRuns != 0) || (i != 0 && openChambers[i - 1] != 0)) {
+                            ImGui.Text($"{string.Format("{0:P}%", openChambersRates[i])}");
+                        }
                         ImGui.TableNextColumn();
                     }
                 }
 
-                if(totalClears > 0) {
-                    ImGui.Text("Runs since last clear: ");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{runsSinceLastClear}");
-                    ImGui.TableNextColumn();
-                    ImGui.TableNextColumn();
+                ImGui.TableNextColumn();
+                ImGui.TableNextColumn();
+                ImGui.TableNextColumn();
+
+                if(_statRange != StatRange.AllLegacy || hasSequence) {
+                    //todo make this a configuration variable
+                    if(_dutyId == 276) {
+                        for(int i = 0; i < clearSequence.Count; i++) {
+                            ImGui.Text($"{AddOrdinal(i + 1)} clear:");
+                            ImGui.TableNextColumn();
+                            ImGui.Text($"{clearSequence[i].ToString().PadRight(3)}");
+                            if(_statRange != StatRange.AllLegacy) {
+                                if(ImGui.IsItemHovered()) {
+                                    ImGui.BeginTooltip();
+                                    ImGui.Text($"{clearDuties[i].CompletionTime.ToString()}");
+                                    ImGui.Text($"{clearDuties[i].Owner}");
+                                    ImGui.EndTooltip();
+                                }
+                            }
+                            ImGui.TableNextColumn();
+                            ImGui.TableNextColumn();
+                        }
+                    }
+
+                    if(totalClears > 0) {
+                        ImGui.Text("Runs since last clear: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{runsSinceLastClear}");
+                        ImGui.TableNextColumn();
+                        ImGui.TableNextColumn();
+                    }
                 }
 
                 ImGui.EndTable();
@@ -317,12 +424,29 @@ namespace MapPartyAssist.Windows {
         }
 
         private void SummonTable(List<DutyResults> dutyResults, int dutyId) {
-            int lesserCount = 0;
-            int greaterCount = 0;
-            int elderCount = 0;
-            int circleCount = 0;
-            int abominationCount = 0;
-            int saveCount = 0;
+            uint lesserCount = 0;
+            uint greaterCount = 0;
+            uint elderCount = 0;
+            uint circleCount = 0;
+            uint abominationCount = 0;
+            uint saveCount = 0;
+            bool hasSummons = true;
+
+            //check import data
+            if(_statRange == StatRange.AllLegacy) {
+                foreach(var import in _dutyResultsImports) {
+                    if(import.SummonTotals != null) {
+                        lesserCount += import.SummonTotals[Summon.Lesser];
+                        greaterCount += import.SummonTotals[Summon.Greater];
+                        elderCount += import.SummonTotals[Summon.Elder];
+                        circleCount += import.SummonTotals[Summon.Gold];
+                        abominationCount += import.SummonTotals[Summon.Silver];
+                    } else {
+                        hasSummons = false;
+                    }
+                }
+            }
+
             foreach(var result in dutyResults) {
                 foreach(var checkpoint in result.CheckpointResults.Where(c => c.IsReached)) {
                     switch(checkpoint.SummonType) {
@@ -350,39 +474,41 @@ namespace MapPartyAssist.Windows {
                 }
             }
 
-            if(ImGui.BeginTable($"##{dutyId}-SummonTable", 3, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip)) {
-                ImGui.TableSetupColumn("summon", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 158f);
-                ImGui.TableSetupColumn($"rawNumber", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
-                ImGui.TableSetupColumn($"rate", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
+            if(hasSummons) {
+                if(ImGui.BeginTable($"##{dutyId}-SummonTable", 3, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip)) {
+                    ImGui.TableSetupColumn("summon", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 158f);
+                    ImGui.TableSetupColumn($"rawNumber", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
+                    ImGui.TableSetupColumn($"rate", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
 
-                ImGui.TableNextRow();
-                ImGui.TableNextColumn();
-                ImGui.Text("Lesser summons: ");
-                ImGui.TableNextColumn();
-                ImGui.Text($"{lesserCount}");
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
-                ImGui.Text("Greater summons: ");
-                ImGui.TableNextColumn();
-                ImGui.Text($"{greaterCount}");
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
-                ImGui.Text("Elder summons: ");
-                ImGui.TableNextColumn();
-                ImGui.Text($"{elderCount}");
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
-                ImGui.Text("Circle shifts: ");
-                ImGui.TableNextColumn();
-                ImGui.Text($"{circleCount}");
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
-                ImGui.Text("Abominations: ");
-                ImGui.TableNextColumn();
-                ImGui.Text($"{abominationCount}");
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
-                ImGui.EndTable();
+                    ImGui.TableNextRow();
+                    ImGui.TableNextColumn();
+                    ImGui.Text("Lesser summons: ");
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"{lesserCount}");
+                    ImGui.TableNextColumn();
+                    ImGui.TableNextColumn();
+                    ImGui.Text("Greater summons: ");
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"{greaterCount}");
+                    ImGui.TableNextColumn();
+                    ImGui.TableNextColumn();
+                    ImGui.Text("Elder summons: ");
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"{elderCount}");
+                    ImGui.TableNextColumn();
+                    ImGui.TableNextColumn();
+                    ImGui.Text("Circle shifts: ");
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"{circleCount}");
+                    ImGui.TableNextColumn();
+                    ImGui.TableNextColumn();
+                    ImGui.Text("Abominations: ");
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"{abominationCount}");
+                    ImGui.TableNextColumn();
+                    ImGui.TableNextColumn();
+                    ImGui.EndTable();
+                }
             }
         }
 

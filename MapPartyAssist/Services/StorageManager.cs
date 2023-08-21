@@ -13,6 +13,7 @@ namespace MapPartyAssist.Services {
 
         public const string MapTable = "map";
         public const string DutyResultsTable = "dutyresults";
+        public const string StatsImportTable = "dutyresultsimport";
         public const string PlayerTable = "player";
 
         private Plugin Plugin;
@@ -42,6 +43,10 @@ namespace MapPartyAssist.Services {
             drCollection.EnsureIndex(dr => dr.DutyName);
             drCollection.EnsureIndex(dr => dr.DutyId);
 
+            var importCollection = Database.GetCollection<DutyResultsImport>(StatsImportTable);
+            importCollection.EnsureIndex(i => i.Time);
+            importCollection.EnsureIndex(i => i.DutyId);
+
             var playerCollection = Database.GetCollection<MPAMember>(PlayerTable);
             playerCollection.EnsureIndex(p => p.Name);
             playerCollection.EnsureIndex(p => p.HomeWorld);
@@ -53,7 +58,6 @@ namespace MapPartyAssist.Services {
         public void Dispose() {
             Database.Dispose();
         }
-
 
         //wip
         public void Import() {
@@ -122,7 +126,6 @@ namespace MapPartyAssist.Services {
             return Database.GetCollection<MPAMap>(MapTable);
         }
 
-
         public Task AddPlayer(MPAMember player) {
             var playerCollection = Database.GetCollection<MPAMember>(PlayerTable);
             return AsyncWriteToDatabase(() => playerCollection.Insert(player), false);
@@ -159,6 +162,20 @@ namespace MapPartyAssist.Services {
 
         public ILiteCollection<DutyResults> GetDutyResults() {
             return Database.GetCollection<DutyResults>(DutyResultsTable);
+        }
+
+        public Task AddDutyResultsImport(DutyResultsImport import) {
+            var importCollection = Database.GetCollection<DutyResultsImport>(StatsImportTable);
+            return AsyncWriteToDatabase(() => importCollection.Insert(import));
+        }
+
+        public Task UpdateDutyResultsImport(DutyResultsImport import) {
+            var importCollection = Database.GetCollection<DutyResultsImport>(StatsImportTable);
+            return AsyncWriteToDatabase(() => importCollection.Update(import));
+        }
+
+        public ILiteCollection<DutyResultsImport> GetDutyResultsImports() {
+            return Database.GetCollection<DutyResultsImport>(StatsImportTable);
         }
 
         private void HandleTaskExceptions(Task task) {

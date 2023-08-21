@@ -45,6 +45,7 @@ namespace MapPartyAssist {
         internal DutyManager DutyManager { get; init; }
         internal MapManager MapManager { get; init; }
         internal StorageManager StorageManager { get; init; }
+        internal ImportManager ImportManager { get; init; }
         public Configuration Configuration { get; init; }
         internal GameFunctions Functions { get; }
         public WindowSystem WindowSystem = new("Map Party Assist");
@@ -100,6 +101,7 @@ namespace MapPartyAssist {
             Functions = new GameFunctions();
             DutyManager = new DutyManager(this);
             MapManager = new MapManager(this);
+            ImportManager = new ImportManager(this);
 
             MainWindow = new MainWindow(this);
             ConfigWindow = new ConfigWindow(this);
@@ -344,6 +346,7 @@ namespace MapPartyAssist {
                 case 19632: //party member companion loses beneficial effect
                 case 22571: //other companion
                 case 22825:
+                case 23081:
                 case 23082: //other
                 case 23085: //other
                 case 23086: //other

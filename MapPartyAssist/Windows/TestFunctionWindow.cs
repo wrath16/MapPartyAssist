@@ -44,6 +44,10 @@ namespace MapPartyAssist.Windows {
                 ShowDRTable();
             }
 
+            if(ImGui.Button("Import Table")) {
+                ShowImportTable();
+            }
+
 
             if(ImGui.Button("Last 3 DutyResults")) {
                 var dutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderByDescending(dr => dr.Time).Limit(3).ToList();
@@ -70,8 +74,13 @@ namespace MapPartyAssist.Windows {
                 Plugin.Save();
             }
 
-            if(ImGui.Button("Import")) {
+            if(ImGui.Button("Import Config")) {
                 Plugin.StorageManager.Import();
+            }
+
+
+            if(ImGui.Button("Drop Import Table")) {
+                Plugin.StorageManager.GetDutyResultsImports().DeleteAll();
             }
 
             if(ImGui.Button("fix record")) {
@@ -143,6 +152,13 @@ namespace MapPartyAssist.Windows {
             var dutyResults = Plugin.StorageManager.GetDutyResults().Query().ToList();
             foreach(var results in dutyResults) {
                 PrintDutyResults(results);
+            }
+        }
+
+        private void ShowImportTable() {
+            var imports = Plugin.StorageManager.GetDutyResultsImports().Query().ToList();
+            foreach(var import in imports) {
+                PluginLog.Debug(String.Format("Time: {0,-23} DutyId: {1,-4} Runs: {2,-5} Clears: {3,-5} HasGil: {4, -5} HasCheckpoints: {5, -5} HasSequence: {6, -5} HasSummons: {7, -5}", import.Time, import.DutyId, import.TotalRuns, import.TotalClears, import.TotalGil != null, import.CheckpointTotals != null, import.ClearSequence != null, import.SummonTotals != null));
             }
         }
 
