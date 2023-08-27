@@ -133,7 +133,7 @@ namespace MapPartyAssist {
 #endif
 
             PluginInterface.UiBuilder.Draw += DrawUI;
-            //PluginInterface.UiBuilder.OpenConfigUi += DrawUI;
+            PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
 
             Framework.Update += OnFrameworkUpdate;
             ChatGui.ChatMessage += OnChatMessage;

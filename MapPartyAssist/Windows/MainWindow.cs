@@ -1,6 +1,7 @@
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
+using Dalamud.Logging;
 using Dalamud.Utility;
 using ImGuiNET;
 using MapPartyAssist.Types;
@@ -9,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
+using static FFXIVClientStructs.FFXIV.Client.UI.Misc.RaptureMacroModule.Macro;
 
 namespace MapPartyAssist.Windows;
 
@@ -53,6 +55,7 @@ public class MainWindow : Window, IDisposable {
 
     public void Refresh() {
         UpdateMaps();
+        ZoneCountWindow.Refresh();
     }
 
     //private string SortList(KeyValuePair<MPAMember, List<MPAMap>> kvp) {
@@ -128,20 +131,43 @@ public class MainWindow : Window, IDisposable {
     public override void PreDraw() {
         base.PreDraw();
         ZoneCountWindow.IsOpen = false;
-        //CurrentPosition = ImGui.GetWindowPos();
-        //CurrentSize = ImGui.GetWindowSize();
+
+        //bool mainWindowOpen = MainWindow.IsOpen && (MainWindow.Collapsed == null || (bool)!MainWindow.Collapsed);
     }
 
     public override void Draw() {
         CurrentPosition = ImGui.GetWindowPos();
         CurrentSize = ImGui.GetWindowSize();
 
+        //set zone count window visibility
+        if(Plugin.Configuration.HideZoneTableWhenEmpty) {
+            ZoneCountWindow.IsOpen = ZoneCountWindow.Zones.Count > 0;
+        } else {
+            ZoneCountWindow.IsOpen = true;
+        }
+
         if(!Plugin.IsEnglishClient()) {
             ImGui.TextColored(ImGuiColors.DalamudRed, $"Non-English client, automatic tracking unavailable.");
         }
 
         if(ImGui.Button("Clear All")) {
-            Plugin.MapManager.ClearAllMaps();
+            if(!Plugin.Configuration.RequireDoubleClickOnClearAll) {
+                Plugin.MapManager.ClearAllMaps();
+            }
+        }
+        if(ImGui.IsItemHovered()) {
+            //check for double clicks
+            if(ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)) {
+                PluginLog.Log($"'Clear All' has been double-clicked!");
+                if(Plugin.Configuration.RequireDoubleClickOnClearAll) {
+                    Plugin.MapManager.ClearAllMaps();
+                }
+            }
+            if(Plugin.Configuration.RequireDoubleClickOnClearAll) {
+                ImGui.BeginTooltip();
+                ImGui.Text($"Double click to clear all.");
+                ImGui.EndTooltip();
+            }
         }
 
         ImGui.SameLine();
@@ -165,8 +191,6 @@ public class MainWindow : Window, IDisposable {
         } else {
             MapTable(_currentPlayerMaps);
         }
-
-        ZoneCountWindow.IsOpen = true;
 
         if(_recentPlayerMaps.Count > 0) {
             ImGui.Text("Recent party members:");
@@ -209,6 +233,8 @@ public class MainWindow : Window, IDisposable {
                 if(ImGui.BeginPopupContextItem($"##{playerMaps.Key.GetHashCode()}--NameContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
                     if(ImGui.MenuItem($"Add map manually##{playerMaps.Key.GetHashCode()}--NameAddMap")) {
                         Plugin.MapManager.AddMap(playerMaps.Key, "", "Manually-added map", true);
+                    } else if(ImGui.MenuItem($"Clear map link##{playerMaps.Key.GetHashCode()}--ClearMapLink")) {
+                        Plugin.MapManager.ClearMapLink(playerMaps.Key);
                     }
                     ImGui.EndPopup();
                 }
@@ -290,15 +316,6 @@ public class MainWindow : Window, IDisposable {
                 }
             }
 
-            //todo move these to plugin layer
-            //foreach(var map in toArchive) {
-            //    map.IsArchived = true;
-            //}
-
-            //foreach(var map in toDelete) {
-            //    map.IsDeleted = true;
-            //}
-
             if(toArchive.Count > 0) {
                 Plugin.MapManager.ArchiveMaps(toArchive);
             }
@@ -307,12 +324,6 @@ public class MainWindow : Window, IDisposable {
                 Plugin.MapManager.DeleteMaps(toDelete);
             }
 
-
-            //if(toArchive.Count > 0 || toDelete.Count > 0) {
-            //    Plugin.MapManager.DeleteMaps(toDelete);
-            //    Plugin.MapManager.ArchiveMaps(toArchive);
-            //    Plugin.Save();
-            //}
             ImGui.EndTable();
         }
     }

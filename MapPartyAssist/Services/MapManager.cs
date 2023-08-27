@@ -240,6 +240,12 @@ namespace MapPartyAssist.Services {
             Plugin.Save();
         }
 
+        public void ClearMapLink(MPAMember player) {
+            player.MapLink = null;
+            Plugin.StorageManager.UpdatePlayer(player);
+            Plugin.Save();
+        }
+
         public MPAMap? FindMapForDutyResults(DutyResults results) {
             MPAMap? topCandidateMap = null;
             //foreach(var player in Plugin.Configuration.RecentPartyList) {
