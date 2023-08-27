@@ -14,6 +14,7 @@ namespace MapPartyAssist.Windows {
         private Plugin Plugin;
         private List<DutyResults> _dutyResults = new();
         int currentPage = 0;
+        private bool _collapseAll = false;
 
         public DutyResultsWindow(Plugin plugin) : base("Edit Duty Results") {
             this.SizeConstraints = new WindowSizeConstraints {
@@ -23,11 +24,16 @@ namespace MapPartyAssist.Windows {
             this.Plugin = plugin;
         }
 
-        public void Refresh(int pageIndex = 0) {
-            //limit to last 5
-            //_dutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderByDescending(dr => dr.Time).Limit(10).ToList();
-            _dutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderByDescending(dr => dr.Time).Offset(pageIndex * 100).Limit(100).ToList();
-            currentPage = pageIndex;
+        //null index = stay on same page
+        public void Refresh(int? pageIndex = null) {
+            if(pageIndex == null) {
+                pageIndex = currentPage;
+            } else {
+                _collapseAll = true;
+            }
+
+            _dutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderByDescending(dr => dr.Time).Offset((int)pageIndex * 100).Limit(100).ToList();
+            currentPage = (int)pageIndex;
         }
 
         public void Dispose() {
@@ -35,7 +41,7 @@ namespace MapPartyAssist.Windows {
 
         public override void OnClose() {
             base.OnClose();
-            Refresh();
+            Refresh(0);
         }
 
         public override void Draw() {
@@ -51,14 +57,22 @@ namespace MapPartyAssist.Windows {
 
             ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true);
             foreach(var results in _dutyResults) {
+                if(_collapseAll) {
+                    ImGui.SetNextItemOpen(false);
+                }
                 DrawDutyResults(results);
             }
+            _collapseAll = false;
 
             ImGui.EndChild();
 
-
             if(ImGui.Button("Save")) {
                 Plugin.StorageManager.UpdateDutyResults(_dutyResults.Where(dr => dr.IsEdited));
+            }
+
+            ImGui.SameLine();
+            if(ImGui.Button("Collapse All")) {
+                _collapseAll = true;
             }
 
             if(currentPage > 0) {
@@ -89,7 +103,10 @@ namespace MapPartyAssist.Windows {
                 lastCheckpoints.Add(checkpoint.Name);
             }
 
+            //ImGui.SetNextItemOpen(true, _openCond);
+
             if(ImGui.CollapsingHeader(String.Format("{0:-23}     {1:-40}", dutyResults.Time.ToString(), dutyResults.DutyName))) {
+                //_openCond = ImGuiCond.None;
                 if(ImGui.Checkbox($"Completed##{dutyResults.Id}", ref isCompleted)) {
                     dutyResults.IsEdited = true;
                     dutyResults.IsComplete = isCompleted;

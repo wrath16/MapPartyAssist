@@ -10,7 +10,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
-using static FFXIVClientStructs.FFXIV.Client.UI.Misc.RaptureMacroModule.Macro;
 
 namespace MapPartyAssist.Windows;
 

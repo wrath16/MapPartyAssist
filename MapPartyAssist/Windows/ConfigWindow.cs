@@ -13,7 +13,7 @@ namespace MapPartyAssist.Windows {
         public ConfigWindow(Plugin plugin) : base("Map Party Assist Settings") {
             this.SizeConstraints = new WindowSizeConstraints {
                 MinimumSize = new Vector2(300, 50),
-                MaximumSize = new Vector2(400, 500)
+                MaximumSize = new Vector2(400, 800)
             };
             this.Plugin = plugin;
         }
@@ -46,6 +46,64 @@ namespace MapPartyAssist.Windows {
             ImGui.Spacing();
 
             ImGui.TextColored(ImGuiColors.DalamudViolet, "Stats Window");
+
+            //bool showDeaths = Plugin.Configuration.ShowDeaths;
+            //if(ImGui.Checkbox("Show Deaths", ref showDeaths)) {
+            //    Plugin.Configuration.ShowDeaths = showDeaths;
+            //    Plugin.Save();
+            //}
+
+            ImGui.Text("All duties:");
+
+
+            bool allDeaths = true;
+            bool allSequences = true;
+            foreach(var dutyConfig in Plugin.Configuration.DutyConfigurations) {
+                allDeaths = allDeaths && dutyConfig.Value.DisplayDeaths;
+                allSequences = allSequences && dutyConfig.Value.DisplayClearSequence;
+            }
+
+            if(ImGui.BeginTable($"##allDutiesConfigTable", 2, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX)) {
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                if(ImGui.Checkbox("Display Clear Sequence", ref allSequences)) {
+                    foreach(var dutyConfig in Plugin.Configuration.DutyConfigurations) {
+                        dutyConfig.Value.DisplayClearSequence = allSequences;
+                    }
+                    Plugin.Save();
+                }
+                ImGui.TableNextColumn();
+                if(ImGui.Checkbox("Display Deaths", ref allDeaths)) {
+                    foreach(var dutyConfig in Plugin.Configuration.DutyConfigurations) {
+                        dutyConfig.Value.DisplayDeaths = allDeaths;
+                    }
+                    Plugin.Save();
+                }
+            }
+            ImGui.EndTable();
+
+            foreach(var dutyConfig in Plugin.Configuration.DutyConfigurations) {
+                if(ImGui.CollapsingHeader($"{Plugin.DutyManager.Duties[dutyConfig.Key].GetDisplayName()}##Header")) {
+                    if(ImGui.BeginTable($"##{dutyConfig.Key}-ConfigTable", 2, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX)) {
+                        //ImGui.TableSetupColumn("config1", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 200f);
+                        //ImGui.TableSetupColumn($"config2", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 200f);
+                        ImGui.TableNextRow();
+                        ImGui.TableNextColumn();
+                        bool displayClearSequence = dutyConfig.Value.DisplayClearSequence;
+                        if(ImGui.Checkbox($"Display Clear Sequence##{dutyConfig.Key}", ref displayClearSequence)) {
+                            dutyConfig.Value.DisplayClearSequence = displayClearSequence;
+                            Plugin.Save();
+                        }
+                        ImGui.TableNextColumn();
+                        bool showDeaths = dutyConfig.Value.DisplayDeaths;
+                        if(ImGui.Checkbox($"Display Deaths##{dutyConfig.Key}", ref showDeaths)) {
+                            dutyConfig.Value.DisplayDeaths = showDeaths;
+                            Plugin.Save();
+                        }
+                    }
+                    ImGui.EndTable();
+                }
+            }
         }
     }
 }

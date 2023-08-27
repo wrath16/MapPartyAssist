@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using static FFXIVClientStructs.FFXIV.Client.UI.Misc.RaptureMacroModule.Macro;
 
 namespace MapPartyAssist.Windows {
     public class ZoneCountWindow : Window, IDisposable {

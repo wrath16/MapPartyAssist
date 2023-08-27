@@ -166,6 +166,7 @@ namespace MapPartyAssist.Windows {
             int runsSinceLastClear = 0;
             int totalClears = 0;
             int totalRuns = dutyResults.Count();
+            int totalDeaths = 0;
 
             List<int> clearSequence = new();
             List<DutyResults> clearDuties = new();
@@ -279,6 +280,7 @@ namespace MapPartyAssist.Windows {
 
                 //no checkpoint results
                 if(result.CheckpointResults.Count <= 0) {
+                    totalDeaths++;
                     continue;
                 }
 
@@ -286,12 +288,17 @@ namespace MapPartyAssist.Windows {
 
                 //check for clear
                 //string finalChamberCheckpoint = isRoulette ? "Defeat final summon" : "Clear final chamber";
-                string finalChamberCheckpoint = Plugin.DutyManager.Duties[result.DutyId].Checkpoints.Last().Name;
-                if(lastCheckpoint.Checkpoint.Name.Equals(finalChamberCheckpoint, StringComparison.OrdinalIgnoreCase)) {
+                string finalChamberCheckpoint = duty.Checkpoints.Last().Name;
+                if(lastCheckpoint.Checkpoint.Name.Equals(finalChamberCheckpoint, StringComparison.OrdinalIgnoreCase) && lastCheckpoint.IsReached) {
                     clearSequence.Add(runsSinceLastClear);
                     clearDuties.Add(result);
                     runsSinceLastClear = 0;
                     totalClears++;
+                }
+
+                //check for death/abandon
+                if(lastCheckpoint.Checkpoint.Name.StartsWith(successVerb, StringComparison.OrdinalIgnoreCase) && lastCheckpoint.IsReached) {
+                    totalDeaths++;
                 }
 
                 //find the last reached door checkpoint
@@ -363,6 +370,18 @@ namespace MapPartyAssist.Windows {
                     }
                     ImGui.TableNextColumn();
                 }
+                if(_statRange != StatRange.AllLegacy && Plugin.Configuration.DutyConfigurations[_dutyId].DisplayDeaths) {
+                    ImGui.Text("Total deaths:");
+                    if(ImGui.IsItemHovered()) {
+                        ImGui.BeginTooltip();
+                        ImGui.Text($"Inferred from last checkpoint.");
+                        ImGui.EndTooltip();
+                    }
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"{totalDeaths}");
+                    ImGui.TableNextColumn();
+                    ImGui.TableNextColumn();
+                }
                 ImGui.Text("Total runs:");
                 ImGui.TableNextColumn();
                 ImGui.Text($"{totalRuns}");
@@ -392,7 +411,7 @@ namespace MapPartyAssist.Windows {
 
                 if(_statRange != StatRange.AllLegacy || hasSequence) {
                     //todo make this a configuration variable
-                    if(_dutyId == 276) {
+                    if(Plugin.Configuration.DutyConfigurations[_dutyId].DisplayClearSequence) {
                         for(int i = 0; i < clearSequence.Count; i++) {
                             ImGui.Text($"{AddOrdinal(i + 1)} clear:");
                             ImGui.TableNextColumn();

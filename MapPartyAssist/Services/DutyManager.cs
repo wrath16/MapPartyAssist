@@ -195,7 +195,7 @@ namespace MapPartyAssist.Services {
                     _currentDutyResults.Map = null;
                     _currentDutyResults.Owner = "UNKNOWN OWNER";
                 }
-                
+
                 Plugin.StorageManager.AddDutyResults(_currentDutyResults);
                 Plugin.Save();
             }

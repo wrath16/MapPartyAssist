@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace MapPartyAssist.Types {
     internal class Duty {
@@ -58,6 +60,13 @@ namespace MapPartyAssist.Types {
                 }
             }
             return pattern;
+        }
+
+        public string GetDisplayName() {
+            string displayName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(Name);
+            //re-lowercase 'of'
+            displayName = Regex.Replace(displayName, @"(?<!^)\bof\b", "of", RegexOptions.IgnoreCase);
+            return displayName;
         }
     }
 

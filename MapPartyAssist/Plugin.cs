@@ -15,11 +15,13 @@ using Dalamud.Logging;
 using Dalamud.Plugin;
 using LiteDB;
 using MapPartyAssist.Services;
+using MapPartyAssist.Settings;
 using MapPartyAssist.Types;
 using MapPartyAssist.Windows;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -28,12 +30,13 @@ namespace MapPartyAssist {
     public sealed class Plugin : IDalamudPlugin {
         public string Name => "Map Party Assist";
         private const string CommandName = "/mparty";
+        private const string ConfigCommandName = "/mpartyconfig";
         private const string StatsCommandName = "/mpartystats";
         private const string DutyResultsCommandName = "/mpartydutyresults";
         private const string TestCommandName = "/mpartytest";
 
         //Dalamud services
-        private DalamudPluginInterface PluginInterface { get; init; }
+        internal DalamudPluginInterface PluginInterface { get; init; }
         private CommandManager CommandManager { get; init; }
         internal DataManager DataManager { get; init; }
         internal ClientState ClientState { get; init; }
@@ -89,19 +92,22 @@ namespace MapPartyAssist {
 
             PluginLog.Log("Begin Config loading");
             Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-            Configuration.Initialize(PluginInterface);
             PluginLog.Log("Done Config loading");
 
             PluginLog.Debug($"Client language: {ClientState.ClientLanguage}");
+            PluginLog.Debug($"Current culture: {CultureInfo.CurrentCulture.Name}");
             if(!IsEnglishClient()) {
                 PluginLog.Warning("Client is not in English, most functions will be unavailable.");
             }
+
 
             StorageManager = new StorageManager(this, $"{PluginInterface.GetPluginConfigDirectory()}\\data.db");
             Functions = new GameFunctions();
             DutyManager = new DutyManager(this);
             MapManager = new MapManager(this);
             ImportManager = new ImportManager(this);
+
+            Configuration.Initialize(this);
 
             MainWindow = new MainWindow(this);
             ConfigWindow = new ConfigWindow(this);
@@ -112,12 +118,17 @@ namespace MapPartyAssist {
             WindowSystem.AddWindow(DutyResultsWindow);
             WindowSystem.AddWindow(StatsWindow);
 
+
             CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand) {
                 HelpMessage = "Opens map party assist."
             });
 
             CommandManager.AddHandler(StatsCommandName, new CommandInfo(OnStatsCommand) {
                 HelpMessage = "Opens stats window."
+            });
+
+            CommandManager.AddHandler(ConfigCommandName, new CommandInfo(OnConfigCommand) {
+                HelpMessage = "Open settings window."
             });
 
             CommandManager.AddHandler(DutyResultsCommandName, new CommandInfo(OnDutyResultsCommand) {
@@ -128,7 +139,7 @@ namespace MapPartyAssist {
             TestFunctionWindow = new TestFunctionWindow(this);
             WindowSystem.AddWindow(TestFunctionWindow);
             CommandManager.AddHandler(TestCommandName, new CommandInfo(OnTestCommand) {
-                HelpMessage = "Opens test window."
+                HelpMessage = "Opens test functions window. (Debug)"
             });
 #endif
 
@@ -204,6 +215,10 @@ namespace MapPartyAssist {
             StatsWindow.IsOpen = true;
         }
 
+        private void OnConfigCommand(string command, string args) {
+            DrawConfigUI();
+        }
+
         private void OnDutyResultsCommand(string command, string args) {
             DutyResultsWindow.IsOpen = true;
         }
@@ -217,7 +232,7 @@ namespace MapPartyAssist {
         }
 
         public void DrawConfigUI() {
-            WindowSystem.GetWindow("Map Party Assist Settings").IsOpen = true;
+            ConfigWindow.IsOpen = true;
         }
 
         private void OnFrameworkUpdate(Framework framework) {
