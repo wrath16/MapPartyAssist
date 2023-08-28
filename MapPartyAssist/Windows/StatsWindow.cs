@@ -75,6 +75,10 @@ namespace MapPartyAssist.Windows {
                     _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
                 }
             }
+
+            if(Plugin.Configuration.CurrentCharacterStatsOnly) {
+                _dutyResults = _dutyResults.Where(dr => dr.Players.Contains(Plugin.GetCurrentPlayer())).ToList();
+            }
         }
 
         public override void Draw() {
@@ -371,7 +375,7 @@ namespace MapPartyAssist.Windows {
                     ImGui.TableNextColumn();
                 }
                 if(_statRange != StatRange.AllLegacy && Plugin.Configuration.DutyConfigurations[_dutyId].DisplayDeaths) {
-                    ImGui.Text("Total deaths:");
+                    ImGui.Text("Total wipes:");
                     if(ImGui.IsItemHovered()) {
                         ImGui.BeginTooltip();
                         ImGui.Text($"Inferred from last checkpoint.");

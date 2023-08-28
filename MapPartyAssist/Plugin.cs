@@ -151,7 +151,6 @@ namespace MapPartyAssist {
             ClientState.Login += OnLogin;
             ClientState.Logout += OnLogout;
 
-
             //import data
             if(Configuration.Version < 2) {
                 StorageManager.Import();
@@ -184,10 +183,11 @@ namespace MapPartyAssist {
 
             WindowSystem.RemoveAllWindows();
             CommandManager.RemoveHandler(CommandName);
+            CommandManager.RemoveHandler(ConfigCommandName);
             CommandManager.RemoveHandler(StatsCommandName);
             CommandManager.RemoveHandler(DutyResultsCommandName);
 #if DEBUG
-            CommandManager.RemoveHandler("/mpartytest");
+            CommandManager.RemoveHandler(TestCommandName);
 #endif
 
             Framework.Update -= OnFrameworkUpdate;
@@ -474,6 +474,16 @@ namespace MapPartyAssist {
         public int GetCurrentTerritoryId() {
             return ClientState.TerritoryType;
             //return DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name;
+        }
+
+        public string GetCurrentPlayer() {
+            if(!ClientState.IsLoggedIn) {
+                return "";
+            }
+
+            string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
+            string currentPlayerWorld = ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
+            return $"{currentPlayerName} {currentPlayerWorld}";
         }
 
         public bool IsEnglishClient() {

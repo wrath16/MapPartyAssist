@@ -14,6 +14,7 @@ namespace MapPartyAssist.Settings {
         public bool RequireDoubleClickOnClearAll { get; set; } = false;
         public bool EnableWhileSolo { get; set; } = true;
         //public bool ShowDeaths { get; set; } = false;
+        public bool CurrentCharacterStatsOnly { get; set; } = false;
         public Dictionary<int, DutyConfiguration> DutyConfigurations { get; set; }
         public Dictionary<string, MPAMember> RecentPartyList { get; set; }
         public List<DutyResults> DutyResults { get; set; }

@@ -29,7 +29,6 @@ namespace MapPartyAssist.Windows {
 
             ImGui.TextColored(ImGuiColors.DalamudViolet, "Map Window");
 
-
             bool hideZoneTable = Plugin.Configuration.HideZoneTableWhenEmpty;
             if(ImGui.Checkbox("Hide 'Map Links by Zone' when empty", ref hideZoneTable)) {
                 Plugin.Configuration.HideZoneTableWhenEmpty = hideZoneTable;
@@ -47,14 +46,13 @@ namespace MapPartyAssist.Windows {
 
             ImGui.TextColored(ImGuiColors.DalamudViolet, "Stats Window");
 
-            //bool showDeaths = Plugin.Configuration.ShowDeaths;
-            //if(ImGui.Checkbox("Show Deaths", ref showDeaths)) {
-            //    Plugin.Configuration.ShowDeaths = showDeaths;
-            //    Plugin.Save();
-            //}
+            bool separateStatsByPlayer = Plugin.Configuration.CurrentCharacterStatsOnly;
+            if(ImGui.Checkbox("Only include stats for current character", ref separateStatsByPlayer)) {
+                Plugin.Configuration.CurrentCharacterStatsOnly = separateStatsByPlayer;
+                Plugin.Save();
+            }
 
             ImGui.Text("All duties:");
-
 
             bool allDeaths = true;
             bool allSequences = true;
@@ -66,14 +64,14 @@ namespace MapPartyAssist.Windows {
             if(ImGui.BeginTable($"##allDutiesConfigTable", 2, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX)) {
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
-                if(ImGui.Checkbox("Display Clear Sequence", ref allSequences)) {
+                if(ImGui.Checkbox("Display clear sequence", ref allSequences)) {
                     foreach(var dutyConfig in Plugin.Configuration.DutyConfigurations) {
                         dutyConfig.Value.DisplayClearSequence = allSequences;
                     }
                     Plugin.Save();
                 }
                 ImGui.TableNextColumn();
-                if(ImGui.Checkbox("Display Deaths", ref allDeaths)) {
+                if(ImGui.Checkbox("Display wipes", ref allDeaths)) {
                     foreach(var dutyConfig in Plugin.Configuration.DutyConfigurations) {
                         dutyConfig.Value.DisplayDeaths = allDeaths;
                     }
@@ -90,13 +88,13 @@ namespace MapPartyAssist.Windows {
                         ImGui.TableNextRow();
                         ImGui.TableNextColumn();
                         bool displayClearSequence = dutyConfig.Value.DisplayClearSequence;
-                        if(ImGui.Checkbox($"Display Clear Sequence##{dutyConfig.Key}", ref displayClearSequence)) {
+                        if(ImGui.Checkbox($"Display clear sequence##{dutyConfig.Key}", ref displayClearSequence)) {
                             dutyConfig.Value.DisplayClearSequence = displayClearSequence;
                             Plugin.Save();
                         }
                         ImGui.TableNextColumn();
                         bool showDeaths = dutyConfig.Value.DisplayDeaths;
-                        if(ImGui.Checkbox($"Display Deaths##{dutyConfig.Key}", ref showDeaths)) {
+                        if(ImGui.Checkbox($"Display wipes##{dutyConfig.Key}", ref showDeaths)) {
                             dutyConfig.Value.DisplayDeaths = showDeaths;
                             Plugin.Save();
                         }
