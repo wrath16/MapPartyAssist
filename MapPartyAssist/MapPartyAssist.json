@@ -6,7 +6,7 @@
   "InternalName": "MapPartyAssist",
   "RepoUrl": "https://github.com/wrath16/MapPartyAssist",
   "ApplicableVersion": "any",
-  "Changelog":  "Added stats imports and new configuration options.",
+  "Changelog":  "Fix for game locking up.",
   "Tags": [
     "treasure maps",
     "maps",
