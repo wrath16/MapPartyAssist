@@ -173,13 +173,13 @@ namespace MapPartyAssist.Services {
         }
 
         public void RemoveLastMap(MPAMember player) {
-            var lastMap = player.Maps.Where(m => !m.IsDeleted && !m.IsArchived).Last();
+            var lastMap = player.Maps.Where(m => !m.IsDeleted && !m.IsArchived).LastOrDefault();
             if(lastMap != null) {
                 lastMap.IsDeleted = true;
 
                 Plugin.Save();
 
-                var lastMapStorage = Plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted && !m.IsArchived).ToList().Last();
+                var lastMapStorage = Plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted && !m.IsArchived).ToList().LastOrDefault();
                 if(lastMapStorage != null) {
                     lastMapStorage.IsDeleted = true;
                     Plugin.StorageManager.UpdateMap(lastMapStorage);

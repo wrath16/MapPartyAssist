@@ -67,7 +67,7 @@ public class MainWindow : Window, IDisposable {
 
     private void UpdateMaps() {
 
-        _updateMapsLock.Wait();
+        //_updateMapsLock.Wait();
         //PluginLog.Debug("Updating maps windoW!");
 
 
@@ -119,7 +119,7 @@ public class MainWindow : Window, IDisposable {
         }
 
         //PluginLog.Debug($"total maps: {_currentMapCount}");
-        _updateMapsLock.Release();
+        //_updateMapsLock.Release();
     }
 
     public override void OnClose() {
@@ -157,7 +157,7 @@ public class MainWindow : Window, IDisposable {
         if(ImGui.IsItemHovered()) {
             //check for double clicks
             if(ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)) {
-                PluginLog.Log($"'Clear All' has been double-clicked!");
+                PluginLog.Debug($"'Clear All' has been double-clicked!");
                 if(Plugin.Configuration.RequireDoubleClickOnClearAll) {
                     Plugin.MapManager.ClearAllMaps();
                 }

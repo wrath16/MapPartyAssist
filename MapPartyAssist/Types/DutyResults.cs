@@ -24,8 +24,8 @@ namespace MapPartyAssist.Types {
         public string DutyName { get; set; }
         public DateTime Time { get; init; }
         public DateTime CompletionTime { get; set; }
-        public string[] Players { get; init; }
-        public string Owner { get; set; }
+        public string[] Players { get; set; }
+        public string Owner { get; set; } = "";
         [BsonRef("map")]
         [JsonIgnore]
         public MPAMap? Map { get; set; }

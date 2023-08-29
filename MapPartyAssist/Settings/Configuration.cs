@@ -1,4 +1,5 @@
 using Dalamud.Configuration;
+using Dalamud.Logging;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
@@ -15,35 +16,23 @@ namespace MapPartyAssist.Settings {
         public bool EnableWhileSolo { get; set; } = true;
         //public bool ShowDeaths { get; set; } = false;
         public bool CurrentCharacterStatsOnly { get; set; } = false;
-        public Dictionary<int, DutyConfiguration> DutyConfigurations { get; set; }
-        public Dictionary<string, MPAMember> RecentPartyList { get; set; }
-        public List<DutyResults> DutyResults { get; set; }
-
-        // the below exist just to make saving less cumbersome
-        [NonSerialized]
-        private Plugin? Plugin;
+        public Dictionary<int, DutyConfiguration> DutyConfigurations { get; set; } = new();
+        public Dictionary<string, MPAMember> RecentPartyList { get; set; } = new();
+        public List<DutyResults> DutyResults { get; set; } = new();
 
         [NonSerialized]
-        private SemaphoreSlim _fileLock;
+        private Plugin? _plugin;
+        [NonSerialized]
+        private SemaphoreSlim _fileLock = new SemaphoreSlim(1, 1);
 
         public Configuration() {
-            RecentPartyList = new Dictionary<string, MPAMember>();
-            DutyResults = new();
-            DutyConfigurations = new();
-            //DutyConfigurations = new() {
-            //    { 179, new DutyConfiguration() },
-            //    { 268, new DutyConfiguration() },
-            //    { 276, new DutyConfiguration() }
-            //};
-            //DutyConfigurations[276].DisplayClearSequence = true;
-            _fileLock = new SemaphoreSlim(1, 1);
         }
 
         public void Initialize(Plugin plugin) {
-            Plugin = plugin;
+            _plugin = plugin;
 
             // add new duty configurations...
-            foreach(var duty in Plugin.DutyManager.Duties) {
+            foreach(var duty in _plugin.DutyManager.Duties) {
                 if(!DutyConfigurations.ContainsKey(duty.Key)) {
                     DutyConfigurations.Add(duty.Key, new DutyConfiguration(duty.Key, false));
                     //hidden canals
@@ -56,9 +45,15 @@ namespace MapPartyAssist.Settings {
         }
 
         public void Save() {
-            _fileLock.Wait();
-            Plugin.PluginInterface!.SavePluginConfig(this);
-            _fileLock.Release();
+            try {
+                _fileLock.Wait();
+                _plugin!.PluginInterface.SavePluginConfig(this);
+                _fileLock.Release();
+            } catch(Exception e) {
+                _fileLock.Release();
+                PluginLog.Error($"Save config error: {e.Message}");
+                PluginLog.Error($"{e.StackTrace}");
+            }
         }
 
         //removes players who have 0 maps and last joined >24 hours

@@ -5,12 +5,10 @@
         public bool DisplayRunsSinceLastClear { get; set; } = true;
         public bool DisplayDeaths { get; set; } = false;
 
-        public DutyConfiguration() {
-        }
-
-        public DutyConfiguration(int dutyId, bool displayClearSequence) {
+        public DutyConfiguration(int dutyId, bool displayClearSequence = false, bool displayDeaths = false) {
             DutyId = dutyId;
             DisplayClearSequence = displayClearSequence;
+            DisplayDeaths = displayDeaths;
         }
     }
 }

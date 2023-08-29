@@ -13,7 +13,6 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
-using LiteDB;
 using MapPartyAssist.Services;
 using MapPartyAssist.Settings;
 using MapPartyAssist.Types;
@@ -45,28 +44,28 @@ namespace MapPartyAssist {
         internal ChatGui ChatGui { get; init; }
         private GameGui GameGui { get; init; }
         private Framework Framework { get; init; }
+
+        //internal services
         internal DutyManager DutyManager { get; init; }
         internal MapManager MapManager { get; init; }
         internal StorageManager StorageManager { get; init; }
         internal ImportManager ImportManager { get; init; }
         public Configuration Configuration { get; init; }
-        internal GameFunctions Functions { get; }
-        public WindowSystem WindowSystem = new("Map Party Assist");
+        internal GameFunctions Functions { get; init; }
 
+        //UI
+        internal WindowSystem WindowSystem = new("Map Party Assist");
         private MainWindow MainWindow;
         private StatsWindow StatsWindow;
         private ConfigWindow ConfigWindow;
         private DutyResultsWindow DutyResultsWindow;
         private TestFunctionWindow TestFunctionWindow;
 
-        internal LiteDatabase Database { get; init; }
-
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
         public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
-
         private int _lastPartySize;
 
-        private SemaphoreSlim _saveLock;
+        private SemaphoreSlim _saveLock = new SemaphoreSlim(1, 1);
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -88,11 +87,13 @@ namespace MapPartyAssist {
             GameGui = gameGui;
             Framework = framework;
 
-            _saveLock = new SemaphoreSlim(1, 1);
-
-            PluginLog.Log("Begin Config loading");
+#if DEBUG
+            PluginLog.Debug("Begin Config loading");
+#endif
             Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-            PluginLog.Log("Done Config loading");
+#if DEBUG
+            PluginLog.Debug("Done Config loading");
+#endif
 
             PluginLog.Debug($"Client language: {ClientState.ClientLanguage}");
             PluginLog.Debug($"Current culture: {CultureInfo.CurrentCulture.Name}");
@@ -100,37 +101,35 @@ namespace MapPartyAssist {
                 PluginLog.Warning("Client is not in English, most functions will be unavailable.");
             }
 
-
             StorageManager = new StorageManager(this, $"{PluginInterface.GetPluginConfigDirectory()}\\data.db");
             Functions = new GameFunctions();
             DutyManager = new DutyManager(this);
             MapManager = new MapManager(this);
             ImportManager = new ImportManager(this);
 
+            //needs DutyManager to be initialized first
             Configuration.Initialize(this);
 
             MainWindow = new MainWindow(this);
-            ConfigWindow = new ConfigWindow(this);
-            StatsWindow = new StatsWindow(this);
-            DutyResultsWindow = new DutyResultsWindow(this);
             WindowSystem.AddWindow(MainWindow);
-            WindowSystem.AddWindow(ConfigWindow);
-            WindowSystem.AddWindow(DutyResultsWindow);
-            WindowSystem.AddWindow(StatsWindow);
-
-
             CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand) {
                 HelpMessage = "Opens map party assist."
             });
 
+            StatsWindow = new StatsWindow(this);
+            WindowSystem.AddWindow(StatsWindow);
             CommandManager.AddHandler(StatsCommandName, new CommandInfo(OnStatsCommand) {
                 HelpMessage = "Opens stats window."
             });
 
+            ConfigWindow = new ConfigWindow(this);
+            WindowSystem.AddWindow(ConfigWindow);
             CommandManager.AddHandler(ConfigCommandName, new CommandInfo(OnConfigCommand) {
                 HelpMessage = "Open settings window."
             });
 
+            DutyResultsWindow = new DutyResultsWindow(this);
+            WindowSystem.AddWindow(DutyResultsWindow);
             CommandManager.AddHandler(DutyResultsCommandName, new CommandInfo(OnDutyResultsCommand) {
                 HelpMessage = "Edit duty results (Advanced)."
             });
@@ -151,7 +150,7 @@ namespace MapPartyAssist {
             ClientState.Login += OnLogin;
             ClientState.Logout += OnLogout;
 
-            //import data
+            //import data from old configuration to database
             if(Configuration.Version < 2) {
                 StorageManager.Import();
             }
@@ -166,6 +165,7 @@ namespace MapPartyAssist {
             }
         }
 
+        //Custom config loader. Unused
         public IPluginConfiguration? GetPluginConfig() {
             //string pluginName = PluginInterface.InternalName;
             FileInfo configFile = PluginInterface.ConfigFile;
@@ -179,7 +179,9 @@ namespace MapPartyAssist {
         }
 
         public void Dispose() {
-            PluginLog.Debug("disposing...");
+#if DEBUG
+            PluginLog.Debug("disposing plugin");
+#endif
 
             WindowSystem.RemoveAllWindows();
             CommandManager.RemoveHandler(CommandName);
@@ -194,17 +196,12 @@ namespace MapPartyAssist {
             ChatGui.ChatMessage -= OnChatMessage;
             ClientState.Login -= OnLogin;
             ClientState.Logout -= OnLogout;
-            //ClientState.TerritoryChanged -= OnTerritoryChanged;
-            //DutyState.DutyStarted -= OnDutyStart;
-            //DutyState.DutyCompleted -= OnDutyCompleted;
-            //DutyState.DutyWiped -= OnDutyWiped;
-            //DutyState.DutyCompleted -= OnDutyRecommenced;
 
             MapManager.Dispose();
             DutyManager.Dispose();
             StorageManager.Dispose();
 
-            Configuration.PruneRecentPartyList();
+            //Configuration.PruneRecentPartyList();
         }
 
         private void OnCommand(string command, string args) {
@@ -231,31 +228,24 @@ namespace MapPartyAssist {
             WindowSystem.Draw();
         }
 
-        public void DrawConfigUI() {
+        private void DrawConfigUI() {
             ConfigWindow.IsOpen = true;
         }
 
         private void OnFrameworkUpdate(Framework framework) {
             var playerJob = ClientState.LocalPlayer?.ClassJob.GameData?.Abbreviation;
             var currentTerritory = ClientState.TerritoryType;
-
             var currentPartySize = PartyList.Length;
 
             if(playerJob != null && currentPartySize != _lastPartySize) {
                 PluginLog.Debug($"Party size has changed: {_lastPartySize} to {currentPartySize}");
                 BuildCurrentPartyList();
                 BuildRecentPartyList();
-                //this.Configuration.Save();
                 _lastPartySize = currentPartySize;
             }
         }
 
-        //private void OnTerritoryChanged(object? sender, ushort territoryId) {
-        //    ResetDigStatus();
-        //}
-
         private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled) {
-
             //filter nuisance combat messages...
             switch((int)type) {
                 case 2091:
@@ -320,7 +310,7 @@ namespace MapPartyAssist {
                 case 11305: //companion
                 case 11306: //companion
                 case 12331:
-                case 12457: //
+                case 12457:
                 case 12458:
                 case 12585: //hits party member
                 case 12586: //attack misses party member
@@ -376,24 +366,21 @@ namespace MapPartyAssist {
         }
 
         private void OnLogin(object? sender, EventArgs e) {
+#if DEBUG
             PluginLog.Debug("logging in");
-            //Configuration.PruneRecentPartyList();
+#endif
             BuildCurrentPartyList();
             BuildRecentPartyList();
             MapManager.CheckAndArchiveMaps(Configuration.RecentPartyList);
-            //ResetDigStatus();
-            //this.Configuration.Save();
         }
 
         private void OnLogout(object? sender, EventArgs e) {
             //remove all party members
             CurrentPartyList = new();
-            //ResetDigStatus();
-            Configuration.PruneRecentPartyList();
             Save();
         }
 
-        //builds current party list, from scratch
+        //builds current party list from scratch
         public void BuildCurrentPartyList() {
             _saveLock.Wait();
             string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
@@ -417,7 +404,7 @@ namespace MapPartyAssist {
             } else {
                 foreach(PartyMember p in PartyList) {
                     string partyMemberName = p.Name.ToString();
-                    string partyMemberWorld = p.World.GameData.Name.ToString();
+                    string partyMemberWorld = p.World.GameData!.Name.ToString();
                     var key = $"{partyMemberName} {partyMemberWorld}";
                     bool isCurrentPlayer = partyMemberName.Equals(currentPlayerName) && partyMemberWorld.Equals(currentPlayerWorld);
                     var findPlayer = allPlayers.Query().Where(p => p.Key == key).FirstOrDefault();
@@ -447,23 +434,15 @@ namespace MapPartyAssist {
             var currentMaps = StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted).ToList();
             foreach(var player in allPlayers.Query().ToList()) {
                 TimeSpan timeSpan = DateTime.Now - player.LastJoined;
-                var isRecent = timeSpan.TotalHours <= Configuration.ArchiveThresholdHours;
-                var hasMaps = currentMaps.Where(m => m.Owner.Equals(player.Key)).Any();
-
-                var notCurrent = !CurrentPartyList.ContainsKey(player.Key);
-                var notSelf = !player.IsSelf;
+                bool isRecent = timeSpan.TotalHours <= Configuration.ArchiveThresholdHours;
+                bool hasMaps = currentMaps.Where(m => m.Owner.Equals(player.Key)).Any();
+                bool notCurrent = !CurrentPartyList.ContainsKey(player.Key);
+                bool notSelf = !player.IsSelf;
                 if(isRecent && hasMaps && notCurrent) {
                     RecentPartyList.Add(player.Key, player);
                 }
             }
             _saveLock.Release();
-            Save();
-        }
-
-        public void ToggleEnableSolo(bool toSet) {
-            Configuration.EnableWhileSolo = toSet;
-            BuildCurrentPartyList();
-            BuildRecentPartyList();
             Save();
         }
 
@@ -477,12 +456,17 @@ namespace MapPartyAssist {
         }
 
         public string GetCurrentPlayer() {
-            if(!ClientState.IsLoggedIn) {
+            //if(!ClientState.IsLoggedIn || ClientState.LocalPlayer == null) {
+            //    return "";
+            //}
+
+            string currentPlayerName = ClientState.LocalPlayer?.Name.ToString()!;
+            string currentPlayerWorld = ClientState.LocalPlayer?.HomeWorld.GameData?.Name!;
+            if(currentPlayerName == null || currentPlayerWorld == null) {
+                //throw exception?
                 return "";
             }
 
-            string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
-            string currentPlayerWorld = ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
             return $"{currentPlayerName} {currentPlayerWorld}";
         }
 
@@ -491,12 +475,19 @@ namespace MapPartyAssist {
         }
 
         public void Save() {
-            _saveLock.Wait();
-            Configuration.Save();
-            StatsWindow.Refresh();
-            MainWindow.Refresh();
-            DutyResultsWindow.Refresh();
-            _saveLock.Release();
+            try {
+                _saveLock.Wait();
+                Configuration.Save();
+                StatsWindow.Refresh();
+                MainWindow.Refresh();
+                DutyResultsWindow.Refresh();
+                _saveLock.Release();
+            } catch(Exception e) {
+                _saveLock.Release();
+                PluginLog.Error($"Save error: {e.Message}");
+                PluginLog.Error($"{e.StackTrace}");
+            }
+
         }
     }
 }

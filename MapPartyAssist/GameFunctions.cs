@@ -1,9 +1,6 @@
 using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using FFXIVClientStructs.FFXIV.Component.GUI;
-using System;
-using System.Runtime.InteropServices;
 
 namespace MapPartyAssist;
 
@@ -36,20 +33,7 @@ internal unsafe class GameFunctions {
         AgentMap.Instance()->SetFlagMapMarker(territoryId, mapId, mapX, mapY);
     }
 
-
     internal int GetCurrentDutyId() {
         return GameMain.Instance()->CurrentContentFinderConditionId;
-    }
-
-    //internal int GetCurrentNonInstanceDutyId() {
-    //    //return GameMain.Instance()->C
-    //}
-
-    internal string testfunc(nint ptr) {
-        var toDoListBasePtr = (AtkUnitBase*)ptr;
-        AtkComponentNode* x = (AtkComponentNode*)toDoListBasePtr->RootNode;
-        AtkTextNode* y = (AtkTextNode*)x->Component->UldManager.RootNode;
-        string z = Marshal.PtrToStringAnsi((new IntPtr(y->NodeText.StringPtr)));
-        return z;
     }
 }

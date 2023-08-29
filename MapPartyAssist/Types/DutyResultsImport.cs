@@ -12,7 +12,7 @@ namespace MapPartyAssist.Types {
         public int DutyId { get; set; }
         public DateTime Time { get; set; }
         public DateTime CreationTime { get; set; }
-        public string Player { get; set; }
+        public string? Player { get; set; }
         public uint TotalClears { get; set; }
         public uint TotalRuns { get; set; }
         public uint? TotalGil { get; set; }

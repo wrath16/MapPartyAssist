@@ -1,6 +1,7 @@
 ﻿using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Logging;
+using Dalamud.Utility;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Types;
 using System;
@@ -186,11 +187,13 @@ namespace MapPartyAssist.Services {
             }
 
             if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null) {
+                PluginLog.Information($"Starting new duty results for id {dutyId}");
                 _currentDutyResults = new DutyResults(dutyId, Duties[dutyId].Name, players, owner);
                 //assume last map is the one...10 min fallback for missed maps
                 var lastMap = Plugin.StorageManager.GetMaps().Query().OrderBy(dr => dr.Time).ToList().Last();
                 if((DateTime.Now - lastMap.Time).TotalMinutes < 10) {
                     _currentDutyResults.Map = Plugin.StorageManager.GetMaps().Query().OrderBy(dr => dr.Time).ToList().Last();
+                    _currentDutyResults.Owner = lastMap.Owner;
                 } else {
                     _currentDutyResults.Map = null;
                     _currentDutyResults.Owner = "UNKNOWN OWNER";
@@ -236,6 +239,20 @@ namespace MapPartyAssist.Services {
             return null;
         }
 
+        public bool ValidateUpdateDutyResults(DutyResults dutyResults) {
+            //check for no players
+            if(dutyResults.Players == null || dutyResults.Players.Length <= 0) {
+                PluginLog.Warning("No players on duty results");
+                if(dutyResults.Owner.IsNullOrEmpty()) {
+                    PluginLog.Warning("No owner on duty results");
+                } else {
+                    dutyResults.Players = new[] { dutyResults.Owner };
+                }
+                return false;
+            }
+            return true;
+        }
+
         private void OnDutyStart(object? sender, ushort territoryId) {
             PluginLog.Debug($"Duty has started with territory id: {territoryId} name: {Plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId)?.PlaceName.Value?.Name} ");
             var dutyId = Plugin.Functions.GetCurrentDutyId();
@@ -268,9 +285,9 @@ namespace MapPartyAssist.Services {
             PluginLog.Debug($"Territory changed: {territoryId}, Current duty: {Plugin.Functions.GetCurrentDutyId()}");
 
             if(IsDutyInProgress()) {
-                //end duty if it was completed successfully or clear as a fallback. attempt to pickup otherwise on disconnect
+                //clear current duty if it was completed successfully or clear as a fallback. attempt to pickup otherwise on disconnect
                 if(_currentDutyResults!.IsComplete || dutyId != _currentDutyResults.DutyId) {
-                    EndDuty();
+                    EndCurrentDuty();
                 }
             } else if(duty != null) {
                 //attempt to pickup if game closed without completing properly
@@ -422,8 +439,14 @@ namespace MapPartyAssist.Services {
             //(CheckpointResults[size].Checkpoint as RouletteCheckpoint).Enemy = enemy;
         }
 
-        private void EndDuty(bool success = false) {
+        private void EndCurrentDuty() {
             if(IsDutyInProgress()) {
+                _currentDutyResults!.IsComplete = true;
+                if(_currentDutyResults.CompletionTime.Ticks == 0) {
+                    _currentDutyResults.CompletionTime = DateTime.Now;
+                }
+                //check for malformed data
+                ValidateUpdateDutyResults(_currentDutyResults);
                 _currentDutyResults = null;
                 Plugin.Save();
             }

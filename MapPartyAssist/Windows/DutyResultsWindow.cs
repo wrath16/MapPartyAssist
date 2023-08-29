@@ -96,7 +96,7 @@ namespace MapPartyAssist.Windows {
             List<string> lastCheckpoints = new() {
                 "None"
             };
-            var owner = dutyResults.Owner;
+            var owner = dutyResults.Owner ?? "";
             var gil = dutyResults.TotalGil.ToString();
             var isCompleted = dutyResults.IsComplete;
             foreach(var checkpoint in Plugin.DutyManager.Duties[dutyResults.DutyId].Checkpoints!) {
