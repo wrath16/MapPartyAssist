@@ -136,7 +136,7 @@ namespace MapPartyAssist.Services {
 
         private Duty? _currentDuty {
             get {
-                return IsDutyInProgress() ? Duties[_currentDutyResults.DutyId] : null;
+                return IsDutyInProgress() ? Duties[_currentDutyResults!.DutyId] : null;
             }
         }
 
@@ -151,21 +151,23 @@ namespace MapPartyAssist.Services {
 
             //attempt to pickup
             if(Plugin.ClientState.IsLoggedIn && Plugin.IsEnglishClient() && !IsDutyInProgress()) {
-                var lastDutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderBy(dr => dr.Time).ToList().LastOrDefault();
-                var dutyId = Plugin.Functions.GetCurrentDutyId();
-                var duty = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
-                if(lastDutyResults != null && duty != null) {
-                    TimeSpan lastTimeDiff = DateTime.Now - lastDutyResults.Time;
-                    //pickup if duty is valid, and matches the last duty which was not completed and not more than an hour has elapsed (fallback)
-                    if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null && lastDutyResults.DutyId == dutyId && !lastDutyResults.IsComplete && !_firstTerritoryChange && lastTimeDiff.TotalHours < 1) {
-                        PluginLog.Debug("re-picking up duty results...");
-                        _currentDutyResults = lastDutyResults;
-                        _currentDutyResults.IsPickup = true;
-                        //can't save since this is called from Plugin constructor!
-                        //Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
-                        //Plugin.Save();
-                    }
-                }
+                //don't save since configuration isn't initialized yet!
+                PickupLastDuty(false);
+                //var lastDutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderBy(dr => dr.Time).ToList().LastOrDefault();
+                //var dutyId = Plugin.Functions.GetCurrentDutyId();
+                //var duty = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
+                //if(lastDutyResults != null && duty != null) {
+                //    TimeSpan lastTimeDiff = DateTime.Now - lastDutyResults.Time;
+                //    //pickup if duty is valid, and matches the last duty which was not completed and not more than an hour has elapsed (fallback)
+                //    if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null && lastDutyResults.DutyId == dutyId && !lastDutyResults.IsComplete && !_firstTerritoryChange && lastTimeDiff.TotalHours < 1) {
+                //        PluginLog.Debug("re-picking up duty results...");
+                //        _currentDutyResults = lastDutyResults;
+                //        _currentDutyResults.IsPickup = true;
+                //        //can't save since this is called from Plugin constructor!
+                //        //Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
+                //        //Plugin.Save();
+                //    }
+                //}
             }
         }
 
@@ -179,33 +181,38 @@ namespace MapPartyAssist.Services {
             Plugin.ChatGui.ChatMessage -= OnChatMessage;
         }
 
-        private void StartNewDuty(int dutyId, Dictionary<string, MPAMember> players, string owner) {
+        //attempt to start new duty results
+        //returns true if succesfully started
+        private bool StartNewDuty(int dutyId) {
 
             //abort if not in English-language client
             if(!Plugin.IsEnglishClient()) {
-                return;
+                return false;
             }
 
             if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null) {
-                PluginLog.Information($"Starting new duty results for id {dutyId}");
-                _currentDutyResults = new DutyResults(dutyId, Duties[dutyId].Name, players, owner);
                 //assume last map is the one...10 min fallback for missed maps
-                var lastMap = Plugin.StorageManager.GetMaps().Query().OrderBy(dr => dr.Time).ToList().Last();
+                var lastMap = Plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().Last();
+                PluginLog.Information($"Starting new duty results for id {dutyId}");
+                _currentDutyResults = new DutyResults(dutyId, Duties[dutyId].Name, Plugin.CurrentPartyList, "");
+                //10 min fallback for linking to most recent map
                 if((DateTime.Now - lastMap.Time).TotalMinutes < 10) {
-                    _currentDutyResults.Map = Plugin.StorageManager.GetMaps().Query().OrderBy(dr => dr.Time).ToList().Last();
+                    _currentDutyResults.Map = lastMap;
                     _currentDutyResults.Owner = lastMap.Owner;
                 } else {
                     _currentDutyResults.Map = null;
-                    _currentDutyResults.Owner = "UNKNOWN OWNER";
+                    _currentDutyResults.Owner = "";
                 }
 
                 Plugin.StorageManager.AddDutyResults(_currentDutyResults);
                 Plugin.Save();
+                return true;
             }
+            return false;
         }
 
         //returns true if duty was succesfully picked up
-        private bool PickupLastDuty() {
+        private bool PickupLastDuty(bool toSave = false) {
             var dutyId = Plugin.Functions.GetCurrentDutyId();
             var duty = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
             var lastDutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderBy(dr => dr.Time).ToList().LastOrDefault();
@@ -216,8 +223,13 @@ namespace MapPartyAssist.Services {
                     PluginLog.Debug("re-picking up duty results...");
                     _currentDutyResults = lastDutyResults;
                     _currentDutyResults.IsPickup = true;
-                    //Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
-                    //Plugin.Save();
+
+                    Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
+                    //if(toSave) {
+                    //    Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
+                    //    Plugin.Save();
+                    //}
+
                     return true;
                 } else {
                     return false;
@@ -239,15 +251,16 @@ namespace MapPartyAssist.Services {
             return null;
         }
 
-        public bool ValidateUpdateDutyResults(DutyResults dutyResults) {
+        private bool ValidateUpdateDutyResults(DutyResults dutyResults) {
             //check for no players
             if(dutyResults.Players == null || dutyResults.Players.Length <= 0) {
                 PluginLog.Warning("No players on duty results");
                 if(dutyResults.Owner.IsNullOrEmpty()) {
                     PluginLog.Warning("No owner on duty results");
                 } else {
-                    dutyResults.Players = new[] { dutyResults.Owner };
+                    //dutyResults.Players = new[] { dutyResults.Owner };
                 }
+                dutyResults.Players = Plugin.CurrentPartyList.Keys.ToArray();
                 return false;
             }
             return true;
@@ -291,23 +304,27 @@ namespace MapPartyAssist.Services {
                 }
             } else if(duty != null) {
                 //attempt to pickup if game closed without completing properly
-                var lastDutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderBy(dr => dr.Time).ToList().LastOrDefault();
-                if(lastDutyResults != null) {
-                    TimeSpan lastTimeDiff = DateTime.Now - lastDutyResults.Time;
-                    //pickup if duty is valid, and matches the last duty which was not completed and not more than an hour has elapsed (fallback)
-                    if(Plugin.IsEnglishClient() && Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null && lastDutyResults.DutyId == dutyId && !lastDutyResults.IsComplete && !_firstTerritoryChange && lastTimeDiff.TotalHours < 1) {
-                        PluginLog.Debug("re-picking up duty results...");
-                        _currentDutyResults = lastDutyResults;
-                        _currentDutyResults.IsPickup = true;
-                        Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
-                        Plugin.Save();
-                    } else {
-                        //otherwise attempt to start new duty!
-                        StartNewDuty(dutyId, Plugin.CurrentPartyList, Plugin.MapManager!.LastMapPlayerKey);
-                    }
-                } else {
-                    StartNewDuty(dutyId, Plugin.CurrentPartyList, Plugin.MapManager!.LastMapPlayerKey);
+                if(!PickupLastDuty(true)) {
+                    StartNewDuty(dutyId);
                 }
+
+                //var lastDutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderBy(dr => dr.Time).ToList().LastOrDefault();
+                //if(lastDutyResults != null) {
+                //    TimeSpan lastTimeDiff = DateTime.Now - lastDutyResults.Time;
+                //    //pickup if duty is valid, and matches the last duty which was not completed and not more than an hour has elapsed (fallback)
+                //    if(Plugin.IsEnglishClient() && Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null && lastDutyResults.DutyId == dutyId && !lastDutyResults.IsComplete && !_firstTerritoryChange && lastTimeDiff.TotalHours < 1) {
+                //        PluginLog.Debug("re-picking up duty results...");
+                //        _currentDutyResults = lastDutyResults;
+                //        _currentDutyResults.IsPickup = true;
+                //        Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
+                //        Plugin.Save();
+                //    } else {
+                //        //otherwise attempt to start new duty!
+                //        StartNewDuty(dutyId);
+                //    }
+                //} else {
+                //    StartNewDuty(dutyId);
+                //}
             }
             _firstTerritoryChange = true;
         }

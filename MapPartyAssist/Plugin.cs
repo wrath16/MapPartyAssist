@@ -2,6 +2,7 @@ using Dalamud.Configuration;
 using Dalamud.Data;
 using Dalamud.Game;
 using Dalamud.Game.ClientState;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Party;
 using Dalamud.Game.Command;
 using Dalamud.Game.DutyState;
@@ -26,6 +27,13 @@ using System.Linq;
 using System.Threading;
 
 namespace MapPartyAssist {
+
+    public enum StatusLevel {
+        OK,
+        CAUTION,
+        ERROR
+    }
+
     public sealed class Plugin : IDalamudPlugin {
         public string Name => "Map Party Assist";
         private const string CommandName = "/mparty";
@@ -39,6 +47,7 @@ namespace MapPartyAssist {
         private CommandManager CommandManager { get; init; }
         internal DataManager DataManager { get; init; }
         internal ClientState ClientState { get; init; }
+        internal Condition Condition { get; init; }
         internal DutyState DutyState { get; init; }
         private PartyList PartyList { get; init; }
         internal ChatGui ChatGui { get; init; }
@@ -72,6 +81,7 @@ namespace MapPartyAssist {
             [RequiredVersion("1.0")] CommandManager commandManager,
             [RequiredVersion("1.0")] DataManager dataManager,
             [RequiredVersion("1.0")] ClientState clientState,
+            [RequiredVersion("1.0")] Condition condition,
             [RequiredVersion("1.0")] DutyState dutyState,
             [RequiredVersion("1.0")] PartyList partyList,
             [RequiredVersion("1.0")] ChatGui chatGui,
@@ -81,6 +91,7 @@ namespace MapPartyAssist {
             CommandManager = commandManager;
             DataManager = dataManager;
             ClientState = clientState;
+            Condition = condition;
             DutyState = dutyState;
             PartyList = partyList;
             ChatGui = chatGui;
@@ -232,12 +243,25 @@ namespace MapPartyAssist {
             ConfigWindow.IsOpen = true;
         }
 
+        //to delete
+        private bool betweenAreas = false;
         private void OnFrameworkUpdate(Framework framework) {
             var playerJob = ClientState.LocalPlayer?.ClassJob.GameData?.Abbreviation;
             var currentTerritory = ClientState.TerritoryType;
             var currentPartySize = PartyList.Length;
 
-            if(playerJob != null && currentPartySize != _lastPartySize) {
+            //ConditionFlag.BetweenAreas
+            bool betweenAreasNew = Condition[ConditionFlag.BetweenAreas];
+            if(betweenAreasNew != betweenAreas) {
+                if(betweenAreasNew) {
+                    PluginLog.Debug("Between areas!");
+                } else {
+                    PluginLog.Debug("Not between areas!");
+                }
+                betweenAreas = betweenAreasNew;
+            }
+
+            if(!Condition[ConditionFlag.BetweenAreas] && playerJob != null && currentPartySize != _lastPartySize) {
                 PluginLog.Debug($"Party size has changed: {_lastPartySize} to {currentPartySize}");
                 BuildCurrentPartyList();
                 BuildRecentPartyList();
@@ -458,6 +482,9 @@ namespace MapPartyAssist {
         public string GetCurrentPlayer() {
             //if(!ClientState.IsLoggedIn || ClientState.LocalPlayer == null) {
             //    return "";
+            //}
+
+            //if(ClientState.IsLoggedIn) { 
             //}
 
             string currentPlayerName = ClientState.LocalPlayer?.Name.ToString()!;

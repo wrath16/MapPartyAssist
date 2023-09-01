@@ -13,7 +13,12 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace MapPartyAssist.Services {
+
     internal class MapManager : IDisposable {
+
+        public string LastMapPlayerKey { get; private set; } = "";
+        public string StatusMessage { get; set; } = "";
+        public StatusLevel Status { get; set; } = StatusLevel.OK;
 
         private static int _digThresholdSeconds = 3; //window within which to block subsequent dig while awaiting treasure coffer message
         private static int _digFallbackSeconds = 60 * 10; //if no treasure coffer opened after this time of dig locking in, unlock and allow digging
@@ -23,11 +28,11 @@ namespace MapPartyAssist.Services {
 
         private Plugin Plugin;
         private string _diggerKey = "";
+        private int _extraDigCount = 0;
+        //private Dictionary<string, DateTime> _diggers = new();
         private DateTime _digTime = DateTime.UnixEpoch;
         private bool _isDigLockedIn = false;
         private DateTime _portalBlockUntil = DateTime.UnixEpoch;
-
-        public string LastMapPlayerKey { get; private set; } = "";
 
         public MapManager(Plugin plugin) {
             Plugin = plugin;
@@ -49,8 +54,7 @@ namespace MapPartyAssist.Services {
             var duty = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
 
             //set the duty name
-            //should do this in a more robust way...
-            if(Plugin.IsEnglishClient() && Regex.IsMatch(duty.Name.ToString(), @"uznair|aquapolis|lyhe ghiah|gymnasion agonon|excitatron 6000$", RegexOptions.IgnoreCase)) {
+            if(Plugin.IsEnglishClient() && Plugin.DutyManager.Duties.ContainsKey(dutyId)) {
                 var lastMap = Plugin.StorageManager.GetMaps().Query().OrderBy(dr => dr.Time).ToList().Last();
                 //fallback for cases where we miss the map
                 if(Plugin.CurrentPartyList.Count > 0 && !LastMapPlayerKey.IsNullOrEmpty() && (DateTime.Now - lastMap.Time).TotalSeconds < _digFallbackSeconds) {
@@ -101,13 +105,19 @@ namespace MapPartyAssist.Services {
                 } else if(Regex.IsMatch(message.ToString(), @"discover a treasure coffer!$")) {
                     if(!_diggerKey.IsNullOrEmpty()) {
                         PluginLog.Debug($"Time since dig: {(DateTime.Now - _digTime).TotalMilliseconds} ms");
+                        //lock in dig only if we have a recent digger
+                        _isDigLockedIn = (DateTime.Now - _digTime).TotalSeconds < _digThresholdSeconds;
+                    } else {
+                        PluginLog.Warning($"No eligible map owner detected!");
+                        SetStatus("Unable to determine map owner, verify and add manually.", StatusLevel.ERROR);
                     }
-                    //lock in dig only if we have a recent digger
-                    _isDigLockedIn = !_diggerKey.IsNullOrEmpty() && ((DateTime.Now - _digTime).TotalSeconds < _digThresholdSeconds);
                 } else if(Regex.IsMatch(message.ToString(), @"releasing a powerful musk into the air!$")) {
                     Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
                         if(!_diggerKey.IsNullOrEmpty()) {
                             AddMap(Plugin.CurrentPartyList[_diggerKey], Plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(Plugin.ClientState.TerritoryType)?.PlaceName.Value?.Name!);
+                            if(_extraDigCount > 0) {
+                                SetStatus("Multiple map owner candidates found, verify last map ownership.", StatusLevel.CAUTION);
+                            }
                         }
                         //have to reset here in case you fail to defeat the treasure chest enemies -_ -
                         ResetDigStatus();
@@ -121,12 +131,20 @@ namespace MapPartyAssist.Services {
                 //party member uses dig
                 if(Regex.IsMatch(message.ToString(), @"uses Dig.$")) {
                     var playerPayload = (PlayerPayload)message.Payloads.First(p => p.Type == PayloadType.Player);
+                    var diggerKey = $"{playerPayload.PlayerName} {playerPayload.World.Name}";
                     var newDigTime = DateTime.Now;
+                    //_diggers.Add(key, newDigTime);
+                    //_diggers.Add(playerPayload)
                     //register dig if no dig locked in or fallback time elapsed AND no digger registered or threshold time elapsed
-                    if((!_isDigLockedIn || (newDigTime - _digTime).TotalSeconds > _digFallbackSeconds) && (_diggerKey.IsNullOrEmpty() || (newDigTime - _digTime).TotalSeconds > _digThresholdSeconds)) {
+                    bool unlockedDig = !_isDigLockedIn || (newDigTime - _digTime).TotalSeconds > _digFallbackSeconds;
+                    bool noDigger = _diggerKey.IsNullOrEmpty() || (newDigTime - _digTime).TotalSeconds > _digThresholdSeconds;
+                    if(unlockedDig && noDigger) {
                         ResetDigStatus();
-                        _diggerKey = $"{playerPayload.PlayerName} {playerPayload.World.Name}";
+                        _diggerKey = diggerKey;
                         _digTime = newDigTime;
+                        //other diggers who may be eligible
+                    } else if(unlockedDig && !noDigger) {
+                        _extraDigCount++;
                     }
                 }
             } else if(type == XivChatType.Party || type == XivChatType.Say) {
@@ -170,6 +188,8 @@ namespace MapPartyAssist.Services {
 
             //this can cause race conditions with the config file since we're saving in the other thread
             //Plugin.Save();
+
+            ClearStatus();
         }
 
         public void RemoveLastMap(MPAMember player) {
@@ -206,6 +226,7 @@ namespace MapPartyAssist.Services {
             Plugin.StorageManager.UpdateMaps(maps).ContinueWith(t => {
                 Plugin.BuildRecentPartyList();
             });
+            ClearStatus();
         }
 
         public void ArchiveMaps(IEnumerable<MPAMap> maps) {
@@ -293,10 +314,20 @@ namespace MapPartyAssist.Services {
 
         private void ResetDigStatus() {
             _diggerKey = "";
+            _extraDigCount = 0;
+            //_diggers = new();
             _isDigLockedIn = false;
             _portalBlockUntil = DateTime.UnixEpoch;
             _digTime = DateTime.UnixEpoch;
         }
-    }
 
+        private void SetStatus(string message, StatusLevel level) {
+            StatusMessage = message;
+            Status = level;
+        }
+
+        private void ClearStatus() {
+            SetStatus("", StatusLevel.OK);
+        }
+    }
 }

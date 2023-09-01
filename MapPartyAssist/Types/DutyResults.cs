@@ -46,7 +46,6 @@ namespace MapPartyAssist.Types {
         //}
 
         public DutyResults() {
-
         }
 
         public DutyResults(int dutyId, string dutyName, Dictionary<string, MPAMember> players, string owner) {
@@ -55,6 +54,7 @@ namespace MapPartyAssist.Types {
             Time = DateTime.Now;
             DutyId = dutyId;
             DutyName = dutyName.ToLower();
+            Id = ObjectId.NewObjectId();
         }
     }
 }

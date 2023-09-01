@@ -16,6 +16,7 @@ namespace MapPartyAssist.Windows;
 public class MainWindow : Window, IDisposable {
     private Plugin Plugin;
     private ZoneCountWindow ZoneCountWindow;
+    private StatusMessageWindow StatusMessageWindow;
 
     private static int _maxMaps = 11;
 
@@ -45,6 +46,9 @@ public class MainWindow : Window, IDisposable {
         //create new zoneCountWindow
         ZoneCountWindow = new ZoneCountWindow(Plugin, this);
         Plugin.WindowSystem.AddWindow(ZoneCountWindow);
+
+        StatusMessageWindow = new StatusMessageWindow(Plugin, this);
+        Plugin.WindowSystem.AddWindow(StatusMessageWindow);
 
         _updateMapsLock = new SemaphoreSlim(1, 1);
     }
@@ -124,12 +128,14 @@ public class MainWindow : Window, IDisposable {
 
     public override void OnClose() {
         ZoneCountWindow.IsOpen = false;
+        StatusMessageWindow.IsOpen = false;
         base.OnClose();
     }
 
     public override void PreDraw() {
         base.PreDraw();
         ZoneCountWindow.IsOpen = false;
+        StatusMessageWindow.IsOpen = false;
 
         //bool mainWindowOpen = MainWindow.IsOpen && (MainWindow.Collapsed == null || (bool)!MainWindow.Collapsed);
     }
@@ -145,9 +151,18 @@ public class MainWindow : Window, IDisposable {
             ZoneCountWindow.IsOpen = true;
         }
 
+        //set status message window visibility
+        StatusMessageWindow.IsOpen = Plugin.MapManager.Status != StatusLevel.OK;
+
         if(!Plugin.IsEnglishClient()) {
             ImGui.TextColored(ImGuiColors.DalamudRed, $"Non-English client, automatic tracking unavailable.");
         }
+
+        //if(Plugin.MapManager.Status != StatusLevel.OK) {
+        //    var color = Plugin.MapManager.Status == StatusLevel.CAUTION ? ImGuiColors.DalamudOrange : ImGuiColors.DalamudRed;
+        //    ImGui.TextColored(color, Plugin.MapManager.StatusMessage);
+        //}
+
 
         if(ImGui.Button("Clear All")) {
             if(!Plugin.Configuration.RequireDoubleClickOnClearAll) {

@@ -119,6 +119,11 @@ namespace MapPartyAssist.Windows {
                 Plugin.StorageManager.UpdateDutyResults(dr);
             }
 
+            if(ImGui.Button("Set Map Status")) {
+                Plugin.MapManager.Status = StatusLevel.CAUTION;
+                Plugin.MapManager.StatusMessage = "Multiple map candidates detected, verify map ownership.";
+            }
+
             //if(ImGui.Button("altars lesser string")) {
             //    PluginLog.Debug(Plugin.DutyManager.Duties[586].GetSummonPatternString(Summon.Lesser));
             //}
