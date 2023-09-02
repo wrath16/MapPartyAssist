@@ -1,6 +1,5 @@
 ﻿using Dalamud.Interface;
 using Dalamud.Interface.Windowing;
-using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using MapPartyAssist.Settings;
 using MapPartyAssist.Types;

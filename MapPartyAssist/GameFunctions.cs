@@ -1,7 +1,6 @@
 using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using System;
 
 namespace MapPartyAssist;
 
@@ -43,6 +42,6 @@ internal unsafe class GameFunctions {
     }
 
     internal void SetWaymark() {
-        
+
     }
 }

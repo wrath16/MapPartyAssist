@@ -1,5 +1,4 @@
-﻿using Dalamud.Game.ClientState;
-using Dalamud.Game.Text;
+﻿using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Logging;
@@ -308,7 +307,7 @@ namespace MapPartyAssist.Services {
                     closestLinkPlayer = player;
                     closestDistance = distance;
                     continue;
-                }else if(distance < closestDistance) {
+                } else if(distance < closestDistance) {
                     closestLinkPlayer = player;
                     closestDistance = distance;
                 }
