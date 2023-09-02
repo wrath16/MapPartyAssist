@@ -1,6 +1,7 @@
 using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using System;
 
 namespace MapPartyAssist;
 
@@ -14,6 +15,10 @@ internal unsafe class GameFunctions {
 
     [Signature("E8 ?? ?? ?? ?? 48 8B 5C 24 ?? B0 ?? 48 8B B4 24")]
     private readonly delegate* unmanaged<uint> _openMapByMapId;
+    //(uint mapId)
+
+    [Signature("E8 ?? ?? ?? ?? 84 C0 0F 94 C0 EB 19")]
+    private readonly delegate* unmanaged<nint, nint> _setWaymark;
     //(uint mapId)
 
     //private static AtkUnitBase* AddonToDoList => GetUnitBase<AtkUnitBase>("_ToDoList");
@@ -35,5 +40,9 @@ internal unsafe class GameFunctions {
 
     internal int GetCurrentDutyId() {
         return GameMain.Instance()->CurrentContentFinderConditionId;
+    }
+
+    internal void SetWaymark() {
+        
     }
 }

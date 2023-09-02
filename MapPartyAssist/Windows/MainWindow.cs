@@ -259,7 +259,17 @@ public class MainWindow : Window, IDisposable {
                     ImGui.SameLine(ImGui.GetColumnWidth() - (158 - 151) * ImGuiHelpers.GlobalScale * ImGuiHelpers.GlobalScale);
 
                     ImGui.PushFont(UiBuilder.IconFont);
-                    var linkColor = playerMaps.Key.MapLink.GetMapLinkPayload().TerritoryType.RowId == Plugin.GetCurrentTerritoryId() ? ImGuiColors.DalamudYellow : ImGuiColors.DalamudGrey;
+
+                    var linkColor = ImGuiColors.DalamudGrey;
+                    if(Plugin.Configuration.HighlightLinksInCurrentZone) {
+                        linkColor = playerMaps.Key.MapLink.GetMapLinkPayload().TerritoryType.RowId == Plugin.GetCurrentTerritoryId() ? ImGuiColors.DalamudYellow : linkColor;
+                    }
+                    if(Plugin.Configuration.HighlightClosestLink) {
+                        MPAMember? closestLink = Plugin.MapManager.GetPlayerWithClosestMapLink(Plugin.CurrentPartyList.Values.ToList());
+                        linkColor = closestLink != null && closestLink.Key == playerMaps.Key.Key ? ImGuiColors.DalamudOrange : linkColor;
+                    }
+
+                    //var linkColor = playerMaps.Key.MapLink.GetMapLinkPayload().TerritoryType.RowId == Plugin.GetCurrentTerritoryId() ? ImGuiColors.DalamudYellow : ImGuiColors.DalamudGrey;
                     ImGui.TextColored(linkColor, FontAwesomeIcon.Search.ToIconString());
                     ImGui.PopFont();
                     if(ImGui.IsItemHovered()) {

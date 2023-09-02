@@ -474,6 +474,9 @@ namespace MapPartyAssist {
             GameGui.OpenMapWithMapLink(mapLink);
         }
 
+        public void SetWayMark() {
+        }
+
         public int GetCurrentTerritoryId() {
             return ClientState.TerritoryType;
             //return DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name;
@@ -496,6 +499,10 @@ namespace MapPartyAssist {
 
             return $"{currentPlayerName} {currentPlayerWorld}";
         }
+
+        //public void GetCurrentPosition() {
+        //    PluginLog.Debug($"X: {ClientState.LocalPlayer.Position.X} Y: {ClientState.LocalPlayer.Position.Y}");
+        //}
 
         public bool IsEnglishClient() {
             return ClientState.ClientLanguage == Dalamud.ClientLanguage.English;

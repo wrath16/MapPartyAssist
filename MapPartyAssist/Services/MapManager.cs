@@ -1,4 +1,5 @@
-﻿using Dalamud.Game.Text;
+﻿using Dalamud.Game.ClientState;
+using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Logging;
@@ -9,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Numerics;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -29,6 +31,7 @@ namespace MapPartyAssist.Services {
         private Plugin Plugin;
         private string _diggerKey = "";
         private int _extraDigCount = 0;
+        private bool _selfDig = false;
         //private Dictionary<string, DateTime> _diggers = new();
         private DateTime _digTime = DateTime.UnixEpoch;
         private bool _isDigLockedIn = false;
@@ -107,7 +110,7 @@ namespace MapPartyAssist.Services {
                         PluginLog.Debug($"Time since dig: {(DateTime.Now - _digTime).TotalMilliseconds} ms");
                         //lock in dig only if we have a recent digger
                         _isDigLockedIn = (DateTime.Now - _digTime).TotalSeconds < _digThresholdSeconds;
-                    } else {
+                    } else if(!_selfDig) {
                         PluginLog.Warning($"No eligible map owner detected!");
                         SetStatus("Unable to determine map owner, verify and add manually.", StatusLevel.ERROR);
                     }
@@ -147,7 +150,12 @@ namespace MapPartyAssist.Services {
                         _extraDigCount++;
                     }
                 }
-            } else if(type == XivChatType.Party || type == XivChatType.Say) {
+            } else if((int)type == 2091) {
+                //need this to prevent warning on own maps
+                if(Regex.IsMatch(message.ToString(), @"^You use Dig\.$", RegexOptions.IgnoreCase)) {
+                    _selfDig = true;
+                }
+            } else if(type == XivChatType.Party || type == XivChatType.Say || type == XivChatType.Alliance) {
                 //getting map link
                 var mapPayload = (MapLinkPayload)message.Payloads.FirstOrDefault(p => p.Type == PayloadType.MapLink);
                 var senderPayload = (PlayerPayload)sender.Payloads.FirstOrDefault(p => p.Type == PayloadType.Player);
@@ -158,7 +166,7 @@ namespace MapPartyAssist.Services {
                 } else {
                     key = $"{senderPayload.PlayerName} {senderPayload.World.Name}";
                 }
-                if(mapPayload != null && Plugin.CurrentPartyList.ContainsKey(key)) {
+                if(mapPayload != null && Plugin.CurrentPartyList.ContainsKey(key) && (Plugin.CurrentPartyList[key].MapLink == null || !Plugin.Configuration.NoOverwriteMapLink)) {
                     //CurrentPartyList[key].MapLink = SeString.CreateMapLink(mapPayload.TerritoryType.RowId, mapPayload.Map.RowId, mapPayload.XCoord, mapPayload.YCoord);
                     Plugin.CurrentPartyList[key].MapLink = new MPAMapLink(mapPayload);
                     Plugin.StorageManager.UpdatePlayer(Plugin.CurrentPartyList[key]);
@@ -267,6 +275,47 @@ namespace MapPartyAssist.Services {
             Plugin.Save();
         }
 
+        public double? GetDistanceToMapLink(MPAMapLink mapLink) {
+            if(Plugin.ClientState.LocalPlayer == null || Plugin.GetCurrentTerritoryId() != mapLink.TerritoryTypeId) {
+                return null;
+            }
+
+            Vector2 playerPosition = WorldPosToMapCoords(Plugin.ClientState.LocalPlayer.Position);
+            float xDistance = playerPosition.X - mapLink.RawX;
+            float yDistance = playerPosition.Y - mapLink.RawY;
+
+            double totalDistance = Math.Sqrt(Math.Pow(xDistance, 2) + Math.Pow(yDistance, 2));
+            return totalDistance;
+        }
+
+        //credit to Pohky
+        private static Vector2 WorldPosToMapCoords(Vector3 pos) {
+            var xInt = (int)(MathF.Round(pos.X, 3, MidpointRounding.AwayFromZero) * 1000);
+            var yInt = (int)(MathF.Round(pos.Z, 3, MidpointRounding.AwayFromZero) * 1000);
+            return new Vector2((int)(xInt * 0.001f * 1000f), (int)(yInt * 0.001f * 1000f));
+        }
+
+
+        public MPAMember? GetPlayerWithClosestMapLink(List<MPAMember> players) {
+            MPAMember? closestLinkPlayer = null;
+            double? closestDistance = Double.MaxValue;
+
+            foreach(var player in players) {
+                if(player.MapLink == null) continue;
+                double? distance = GetDistanceToMapLink(player.MapLink);
+                if(distance == null) continue;
+                if(closestLinkPlayer == null) {
+                    closestLinkPlayer = player;
+                    closestDistance = distance;
+                    continue;
+                }else if(distance < closestDistance) {
+                    closestLinkPlayer = player;
+                    closestDistance = distance;
+                }
+            }
+            return closestLinkPlayer;
+        }
+
         public MPAMap? FindMapForDutyResults(DutyResults results) {
             MPAMap? topCandidateMap = null;
             //foreach(var player in Plugin.Configuration.RecentPartyList) {
@@ -315,6 +364,7 @@ namespace MapPartyAssist.Services {
         private void ResetDigStatus() {
             _diggerKey = "";
             _extraDigCount = 0;
+            _selfDig = false;
             //_diggers = new();
             _isDigLockedIn = false;
             _portalBlockUntil = DateTime.UnixEpoch;

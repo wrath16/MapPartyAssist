@@ -10,7 +10,7 @@ namespace MapPartyAssist.Types {
         public List<MPAMap> Maps { get; set; }
         public bool IsSelf { get; set; }
         public DateTime LastJoined { get; set; }
-        public MPAMapLink MapLink { get; set; }
+        public MPAMapLink? MapLink { get; set; }
         [BsonId]
         public string Key {
             get {
@@ -27,11 +27,35 @@ namespace MapPartyAssist.Types {
         }
 
         public bool Equals(MPAMember? other) {
-            return other != null && Key.Equals(other.Key);
+            if(other == null) {
+                return false;
+            } else {
+                return Key.Equals(other.Key);
+            }
         }
 
         public bool Equals(string? other) {
-            return other != null && Key.Equals(other);
+            if(other == null) {
+                return false;
+            } else {
+                return Key.Equals(other);
+            }
         }
+
+        //public static bool operator ==(MPAMember? a, MPAMember? b) {
+        //    if(a == null && b == null) {
+        //        return true;
+        //    } else {
+        //        return a!.Equals(b);
+        //    }
+        //}
+
+        //public static bool operator !=(MPAMember? a, MPAMember? b) {
+        //    if(a == null && b == null) {
+        //        return false;
+        //    } else {
+        //        return !a!.Equals(b);
+        //    }
+        //}
     }
 }

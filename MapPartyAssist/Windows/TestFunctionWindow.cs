@@ -1,4 +1,5 @@
-﻿using Dalamud.Interface.Windowing;
+﻿using Dalamud.Game.ClientState;
+using Dalamud.Interface.Windowing;
 using Dalamud.Logging;
 using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
@@ -124,6 +125,31 @@ namespace MapPartyAssist.Windows {
                 Plugin.MapManager.StatusMessage = "Multiple map candidates detected, verify map ownership.";
             }
 
+            if(ImGui.Button("Get Player Current Position")) {
+                Vector2 coords = WorldPosToMapCoords(Plugin.ClientState.LocalPlayer.Position);
+                PluginLog.Debug($"X: {Plugin.ClientState.LocalPlayer.Position.X} Y: {Plugin.ClientState.LocalPlayer.Position.Y}");
+                PluginLog.Debug($"coordsX: {coords.X} coordsY: {coords.Y}");
+                //Plugin.ClientState.LocalPlayer.Position.
+            }
+
+            if(ImGui.Button("Get Map Position")) {
+                var map = Plugin.CurrentPartyList.ElementAt(0).Value.MapLink;
+                PluginLog.Debug($"XCoord: {map.GetMapLinkPayload().XCoord}");
+                PluginLog.Debug($"YCoord: {map.GetMapLinkPayload().YCoord}");
+                PluginLog.Debug($"RawX: {map.RawX}");
+                PluginLog.Debug($"RawY: {map.RawY}");
+                //PluginLog.Debug($"X: {Plugin.ClientState.LocalPlayer.Position.X} Y: {Plugin.ClientState.LocalPlayer.Position.Y}");
+            }
+
+            if(ImGui.Button("Distance to Map Link")) {
+                var distance = Plugin.MapManager.GetDistanceToMapLink(Plugin.CurrentPartyList.ElementAt(0).Value.MapLink);
+                PluginLog.Debug($"Distance: {distance}");
+            }
+
+            if(ImGui.Button("Check closest link player")) {
+                PluginLog.Debug($"{Plugin.MapManager.GetPlayerWithClosestMapLink(Plugin.CurrentPartyList.Values.ToList()).Key} has the closest map link");
+            }
+
             //if(ImGui.Button("altars lesser string")) {
             //    PluginLog.Debug(Plugin.DutyManager.Duties[586].GetSummonPatternString(Summon.Lesser));
             //}
@@ -136,6 +162,11 @@ namespace MapPartyAssist.Windows {
             //    PluginLog.Debug(Plugin.DutyManager.Duties[586].GetSummonPatternString(Summon.Elder));
             //}
 
+        }
+        private static Vector2 WorldPosToMapCoords(Vector3 pos) {
+            var xInt = (int)(MathF.Round(pos.X, 3, MidpointRounding.AwayFromZero) * 1000);
+            var yInt = (int)(MathF.Round(pos.Z, 3, MidpointRounding.AwayFromZero) * 1000);
+            return new Vector2((int)(xInt * 0.001f * 1000f), (int)(yInt * 0.001f * 1000f));
         }
 
         private void ShowMapsTable() {

@@ -6,6 +6,17 @@ using System.Collections.Generic;
 using System.Threading;
 
 namespace MapPartyAssist.Settings {
+
+    public enum ProgressTableRate {
+        Total,
+        Previous
+    }
+
+    public enum ProgressTableCount {
+        All,
+        Last
+    }
+
     [Serializable]
     public class Configuration : IPluginConfiguration {
         public int Version { get; set; } = 2;
@@ -13,6 +24,14 @@ namespace MapPartyAssist.Settings {
         public uint ArchiveThresholdHours { get; set; } = 24;
         public bool HideZoneTableWhenEmpty { get; set; } = false;
         public bool RequireDoubleClickOnClearAll { get; set; } = false;
+        public bool NoOverwriteMapLink { get; set; } = false;
+        public bool HighlightLinksInCurrentZone { get; set; } = true;
+        public bool HighlightClosestLink { get; set; } = true;
+        public bool ShowStatsWindowTooltips { get; set; } = true;
+        //public bool KicksProgressTable { get; set; } = false;
+        public ProgressTableCount ProgressTableCount { get; set; } = ProgressTableCount.All;
+        public ProgressTableRate ProgressTableRate { get; set; } = ProgressTableRate.Previous;
+        public bool TotalMapsClearSequence { get; set; } = false;
         public bool EnableWhileSolo { get; set; } = true;
         //public bool ShowDeaths { get; set; } = false;
         public bool CurrentCharacterStatsOnly { get; set; } = false;
