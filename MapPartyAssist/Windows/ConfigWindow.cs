@@ -90,19 +90,27 @@ namespace MapPartyAssist.Windows {
             //ImGuiComponents.HelpMarker("If unchecked, will include all ");
 
             int progressCountToInt = (int)Plugin.Configuration.ProgressTableCount;
-            string[] includes2 = { "By all occurences", "By last checkpoint only" };
+            string[] progressCountOptions = { "By all occurences", "By last checkpoint only" };
             ImGui.SetNextItemWidth(200f * ImGuiHelpers.GlobalScale);
-            if(ImGui.Combo($"Tally checkpoint totals##CountCombo", ref progressCountToInt, includes2, 2)) {
+            if(ImGui.Combo($"Tally checkpoint totals##CountCombo", ref progressCountToInt, progressCountOptions, 2)) {
                 Plugin.Configuration.ProgressTableCount = (ProgressTableCount)progressCountToInt;
                 Plugin.Save();
             }
 
 
             int progressRateToInt = (int)Plugin.Configuration.ProgressTableRate;
-            string[] includes = { "By total runs", "By previous stage" };
+            string[] progressRateOptions = { "By total runs", "By previous stage" };
             ImGui.SetNextItemWidth(200f * ImGuiHelpers.GlobalScale);
-            if(ImGui.Combo($"Divide progress rates##RateCombo", ref progressRateToInt, includes, 2)) {
+            if(ImGui.Combo($"Divide progress rates##RateCombo", ref progressRateToInt, progressRateOptions, 2)) {
                 Plugin.Configuration.ProgressTableRate = (ProgressTableRate)progressRateToInt;
+                Plugin.Save();
+            }
+
+            int clearSequenceToInt = (int)Plugin.Configuration.ClearSequenceCount;
+            string[] clearSequenceOptions = { "By total runs", "Since last clear" };
+            ImGui.SetNextItemWidth(200f * ImGuiHelpers.GlobalScale);
+            if(ImGui.Combo($"Tally clear sequence##ClearSequenceCombo", ref clearSequenceToInt, clearSequenceOptions, 2)) {
+                Plugin.Configuration.ClearSequenceCount = (ClearSequenceCount)clearSequenceToInt;
                 Plugin.Save();
             }
 

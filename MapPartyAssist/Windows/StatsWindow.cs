@@ -368,8 +368,8 @@ namespace MapPartyAssist.Windows {
                                 ImGui.Text($"{passiveSuccessVerb} final {stageNoun}:");
                             } else {
                                 var ordinalIndex = isRoulette ? i + 2 : i + 1;
-                                ImGui.Text($"Failed to pass {AddOrdinal(ordinalIndex)} {gateNoun}:");
-                                Tooltip("Includes wipes, abandons, timeouts and \nfailed doors/invocations.");
+                                ImGui.Text($"Ejected at {AddOrdinal(ordinalIndex)} {gateNoun}:");
+                                Tooltip("Also includes preceding wipes, abandons \nand timeouts.");
                             }
                             ImGui.TableNextColumn();
                             ImGui.Text($"{endChambers[i]}");
@@ -413,9 +413,28 @@ namespace MapPartyAssist.Windows {
                     //todo make this a configuration variable
                     if(Plugin.Configuration.DutyConfigurations[_dutyId].DisplayClearSequence) {
                         for(int i = 0; i < clearSequence.Count; i++) {
-                            ImGui.Text($"{AddOrdinal(i + 1)} clear:");
-                            ImGui.TableNextColumn();
-                            ImGui.Text($"{clearSequence[i].ToString().PadRight(3)}");
+                            //ImGui.Text($"{AddOrdinal(i + 1)} clear:");
+                            //if(Plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
+                            //    Tooltip(i == 0 ? "Runs since start." : "Runs since preceding clear.");
+                            //}
+
+                            
+                            //ImGui.TableNextColumn();
+
+                            if(Plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
+                                ImGui.Text($"{AddOrdinal(i + 1)} clear:");
+                                Tooltip(i == 0 ? "Runs since start." : "Runs since preceding clear.");
+                                ImGui.TableNextColumn();
+                                ImGui.Text($"{clearSequence[i].ToString().PadRight(3)}");
+                            } else {
+                                ImGui.Text($"{AddOrdinal(i + 1)} clear (total):");
+                                Tooltip("Total runs at time.");
+                                ImGui.TableNextColumn();
+                                int clearTotal = clearSequence[i];
+                                clearSequence.GetRange(0, i).ForEach(x => clearTotal += x);
+                                ImGui.Text($"{clearTotal.ToString().PadRight(3)}");
+                            }
+                            
                             if(_statRange != StatRange.AllLegacy) {
                                 if(ImGui.IsItemHovered()) {
                                     ImGui.BeginTooltip();
@@ -429,12 +448,14 @@ namespace MapPartyAssist.Windows {
                         }
                     }
 
-                    if(totalClears > 0) {
-                        ImGui.Text("Runs since last clear: ");
-                        ImGui.TableNextColumn();
-                        ImGui.Text($"{runsSinceLastClear}");
-                        ImGui.TableNextColumn();
-                        ImGui.TableNextColumn();
+                    if(totalClears > 0 && Plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
+                        if(Plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
+                            ImGui.Text("Runs since last clear: ");
+                            ImGui.TableNextColumn();
+                            ImGui.Text($"{runsSinceLastClear}");
+                            ImGui.TableNextColumn();
+                            ImGui.TableNextColumn();
+                        }
                     }
                 }
                 ImGui.EndTable();

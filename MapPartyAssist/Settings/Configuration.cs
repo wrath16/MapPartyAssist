@@ -17,6 +17,11 @@ namespace MapPartyAssist.Settings {
         Last
     }
 
+    public enum ClearSequenceCount {
+        All,
+        Last
+    }
+
     [Serializable]
     public class Configuration : IPluginConfiguration {
         public int Version { get; set; } = 2;
@@ -31,6 +36,7 @@ namespace MapPartyAssist.Settings {
         //public bool KicksProgressTable { get; set; } = false;
         public ProgressTableCount ProgressTableCount { get; set; } = ProgressTableCount.All;
         public ProgressTableRate ProgressTableRate { get; set; } = ProgressTableRate.Previous;
+        public ClearSequenceCount ClearSequenceCount { get; set; } = ClearSequenceCount.Last;
         public bool TotalMapsClearSequence { get; set; } = false;
         public bool EnableWhileSolo { get; set; } = true;
         //public bool ShowDeaths { get; set; } = false;
