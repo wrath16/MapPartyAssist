@@ -121,7 +121,7 @@ namespace MapPartyAssist.Windows {
 
             if(ImGui.Button("Set Map Status")) {
                 Plugin.MapManager.Status = StatusLevel.CAUTION;
-                Plugin.MapManager.StatusMessage = "Multiple map candidates detected, verify map ownership.";
+                Plugin.MapManager.StatusMessage = "Multiple map owner candidates found, verify last map ownership.";
             }
 
             if(ImGui.Button("Get Player Current Position")) {

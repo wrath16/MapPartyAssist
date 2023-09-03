@@ -1,4 +1,5 @@
-﻿using Dalamud.Interface.Colors;
+﻿using Dalamud.Interface;
+using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
 using System;
@@ -34,7 +35,7 @@ namespace MapPartyAssist.Windows {
 
         public override void PreDraw() {
             base.PreDraw();
-            this.Position = new Vector2(MainWindow.CurrentPosition.X, MainWindow.CurrentPosition.Y - 30);
+            this.Position = new Vector2(MainWindow.CurrentPosition.X, MainWindow.CurrentPosition.Y - 15f - 17f * ImGuiHelpers.GlobalScale);
         }
 
         public override void Draw() {

@@ -33,6 +33,7 @@ namespace MapPartyAssist.Settings {
         public bool HighlightLinksInCurrentZone { get; set; } = true;
         public bool HighlightClosestLink { get; set; } = true;
         public bool ShowStatsWindowTooltips { get; set; } = true;
+        //public bool PreserveRunsSinceLastClear { get; set; } = true;
         //public bool KicksProgressTable { get; set; } = false;
         public ProgressTableCount ProgressTableCount { get; set; } = ProgressTableCount.All;
         public ProgressTableRate ProgressTableRate { get; set; } = ProgressTableRate.Previous;

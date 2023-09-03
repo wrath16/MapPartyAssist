@@ -52,20 +52,20 @@ namespace MapPartyAssist.Services {
         }
 
         private void OnDutyStart(object? sender, ushort territoryId) {
-            var dutyId = Plugin.Functions.GetCurrentDutyId();
-            var duty = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
+            //var dutyId = Plugin.Functions.GetCurrentDutyId();
+            //var duty = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
 
-            //set the duty name
-            if(Plugin.IsEnglishClient() && Plugin.DutyManager.Duties.ContainsKey(dutyId)) {
-                var lastMap = Plugin.StorageManager.GetMaps().Query().OrderBy(dr => dr.Time).ToList().Last();
-                //fallback for cases where we miss the map
-                if(Plugin.CurrentPartyList.Count > 0 && !LastMapPlayerKey.IsNullOrEmpty() && (DateTime.Now - lastMap.Time).TotalSeconds < _digFallbackSeconds) {
-                    //var lastMap = Plugin.CurrentPartyList[LastMapPlayerKey].Maps.Last();
-                    lastMap.IsPortal = true;
-                    lastMap.DutyName = duty.Name;
-                    Plugin.StorageManager.UpdateMap(lastMap);
-                }
-            }
+            ////set the duty name
+            //if(Plugin.IsEnglishClient() && Plugin.DutyManager.Duties.ContainsKey(dutyId)) {
+            //    var lastMap = Plugin.StorageManager.GetMaps().Query().OrderBy(dr => dr.Time).ToList().Last();
+            //    //fallback for cases where we miss the map
+            //    if(Plugin.CurrentPartyList.Count > 0 && !LastMapPlayerKey.IsNullOrEmpty() && (DateTime.Now - lastMap.Time).TotalSeconds < _digFallbackSeconds) {
+            //        //var lastMap = Plugin.CurrentPartyList[LastMapPlayerKey].Maps.Last();
+            //        lastMap.IsPortal = true;
+            //        lastMap.DutyName = duty.Name;
+            //        Plugin.StorageManager.UpdateMap(lastMap);
+            //    }
+            //}
         }
 
         private void OnTerritoryChanged(object? sender, ushort territoryId) {

@@ -199,6 +199,9 @@ namespace MapPartyAssist.Services {
                 if((DateTime.Now - lastMap.Time).TotalMinutes < 10) {
                     _currentDutyResults.Map = lastMap;
                     _currentDutyResults.Owner = lastMap.Owner;
+                    lastMap.IsPortal = true;
+                    lastMap.DutyName = Duties[dutyId].Name;
+                    Plugin.StorageManager.UpdateMap(lastMap);
                 } else {
                     _currentDutyResults.Map = null;
                     _currentDutyResults.Owner = "";

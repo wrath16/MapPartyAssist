@@ -23,6 +23,7 @@ public class MainWindow : Window, IDisposable {
 
     private Dictionary<MPAMember, List<MPAMap>> _currentPlayerMaps;
     private Dictionary<MPAMember, List<MPAMap>> _recentPlayerMaps;
+    private string? _lastMapPlayer;
 
     private int _currentPortalCount;
     private int _recentPortalCount;
@@ -121,6 +122,7 @@ public class MainWindow : Window, IDisposable {
                 }
             }
         }
+        _lastMapPlayer = maps.LastOrDefault()?.Owner;
 
         //PluginLog.Debug($"total maps: {_currentMapCount}");
         //_updateMapsLock.Release();
@@ -233,7 +235,7 @@ public class MainWindow : Window, IDisposable {
             })) {
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
-                if(playerMaps.Key.Equals(Plugin.MapManager.LastMapPlayerKey)) {
+                if(playerMaps.Key.Equals(_lastMapPlayer)) {
                     ImGui.TextColored(ImGuiColors.DalamudYellow, $"{playerMaps.Key.Name.PadRight(20)}");
                     if(ImGui.IsItemHovered()) {
                         ImGui.BeginTooltip();

@@ -54,7 +54,7 @@ namespace MapPartyAssist {
         private GameGui GameGui { get; init; }
         private Framework Framework { get; init; }
 
-        //internal services
+        //Custom services
         internal DutyManager DutyManager { get; init; }
         internal MapManager MapManager { get; init; }
         internal StorageManager StorageManager { get; init; }
@@ -73,6 +73,8 @@ namespace MapPartyAssist {
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
         public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
         private int _lastPartySize;
+        //to delete
+        private bool _betweenAreas = false;
 
         private SemaphoreSlim _saveLock = new SemaphoreSlim(1, 1);
 
@@ -243,22 +245,21 @@ namespace MapPartyAssist {
             ConfigWindow.IsOpen = true;
         }
 
-        //to delete
-        private bool betweenAreas = false;
         private void OnFrameworkUpdate(Framework framework) {
             var playerJob = ClientState.LocalPlayer?.ClassJob.GameData?.Abbreviation;
             var currentTerritory = ClientState.TerritoryType;
             var currentPartySize = PartyList.Length;
 
-            //ConditionFlag.BetweenAreas
+#if DEBUG
             bool betweenAreasNew = Condition[ConditionFlag.BetweenAreas];
-            if(betweenAreasNew != betweenAreas) {
+            if(betweenAreasNew != _betweenAreas) {
                 if(betweenAreasNew) {
                     PluginLog.Debug("Between areas!");
                 } else {
                     PluginLog.Debug("Not between areas!");
                 }
-                betweenAreas = betweenAreasNew;
+                _betweenAreas = betweenAreasNew;
+#endif
             }
 
             if(!Condition[ConditionFlag.BetweenAreas] && playerJob != null && currentPartySize != _lastPartySize) {
@@ -322,6 +323,7 @@ namespace MapPartyAssist {
                 case 8752:
                 case 8753: //other recover from effect
                 case 9001: //other combat
+                case 9002:
                 case 9007: //other combat
                 case 10283:
                 case 10409: //you dmged by enemy
@@ -379,6 +381,7 @@ namespace MapPartyAssist {
                 case 23082: //other
                 case 23085: //other
                 case 23086: //other
+                case 23337:
                     break;
                 default:
                     PluginLog.Debug($"Message received: {type} {message} from {sender}");
