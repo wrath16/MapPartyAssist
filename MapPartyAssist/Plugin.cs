@@ -259,8 +259,8 @@ namespace MapPartyAssist {
                     PluginLog.Debug("Not between areas!");
                 }
                 _betweenAreas = betweenAreasNew;
-#endif
             }
+#endif
 
             if(!Condition[ConditionFlag.BetweenAreas] && playerJob != null && currentPartySize != _lastPartySize) {
                 PluginLog.Debug($"Party size has changed: {_lastPartySize} to {currentPartySize}");
