@@ -38,3 +38,5 @@ Tool for automatically keeping track of treasure maps opened by players in your 
 * If two or more party members use Dig at the same time, the tracker will assume the first player to use Dig is the owner of the coffer that spawns, but this is not always the case and should be verified.
 * Discarding an opened map generates the same message as using it, and can disrupt any ongoing maps.
 * If a party member goes offline just as you are entering a portal, this will cancel the portal and can lead to double-counting.
+* Consuming a Thief's Map immediately after a regular map may result in it not being counted.
+* Waiting too long to enter a (non-Thief's Map) portal can result in double counting.
