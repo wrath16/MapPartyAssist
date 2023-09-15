@@ -2,15 +2,16 @@
 using System.Linq;
 
 namespace MapPartyAssist.Services {
+    //internal class for handling duty results imports
     internal class ImportManager {
-        private Plugin Plugin;
+        private Plugin _plugin;
 
         public ImportManager(Plugin plugin) {
-            Plugin = plugin;
+            _plugin = plugin;
         }
 
-        public void SetupCheckpointTotals(DutyResultsImport import) {
-            var duty = Plugin.DutyManager.Duties[import.DutyId];
+        internal void SetupCheckpointTotals(DutyResultsImport import) {
+            var duty = _plugin.DutyManager.Duties[import.DutyId];
 
             //check for valid duty
             if(duty == null || duty.Checkpoints == null) {
@@ -24,7 +25,7 @@ namespace MapPartyAssist.Services {
             }
         }
 
-        public void SetupSummonsTotals(DutyResultsImport import) {
+        internal void SetupSummonsTotals(DutyResultsImport import) {
             import.SummonTotals = new() {
                 { Summon.Lesser, 0 },
                 { Summon.Greater, 0 },
@@ -34,33 +35,27 @@ namespace MapPartyAssist.Services {
             };
         }
 
-        //public void AddImport(int dutyId, DateTime time, int totalClears, int totalRuns, int? totalGil = null, Dictionary<Checkpoint, int>? checkpointTotals = null, List<int>? clearSequence = null, int? runsSinceLastClear = null) {
-        //    var newImport = new DutyResultsImport(dutyId, time, totalClears, totalRuns, totalGil, checkpointTotals, clearSequence, runsSinceLastClear);
-
-        //    //save
-        //    Plugin.StorageManager.AddDutyResultsImport(newImport);
-        //}
-
-        public void AddorEditImport(DutyResultsImport import, bool validate = true) {
+        internal void AddorEditImport(DutyResultsImport import, bool validate = true) {
             //validate
             if(validate && !ValidateImport(import)) {
                 return;
             }
 
             //check to see if already exists
-            if(Plugin.StorageManager.GetDutyResultsImports().Query().Where(i => i.Id == import.Id).FirstOrDefault() != null) {
+            if(_plugin.StorageManager.GetDutyResultsImports().Query().Where(i => i.Id == import.Id).FirstOrDefault() != null) {
                 //update
-                Plugin.StorageManager.UpdateDutyResultsImport(import);
+                _plugin.StorageManager.UpdateDutyResultsImport(import);
             } else {
-                Plugin.StorageManager.AddDutyResultsImport(import);
+                //new
+                _plugin.StorageManager.AddDutyResultsImport(import);
             }
         }
 
         //returns whether this is a valid import
-        public bool ValidateImport(DutyResultsImport import) {
+        internal bool ValidateImport(DutyResultsImport import) {
 
             //check for valid duty
-            if(!Plugin.DutyManager.Duties.ContainsKey(import.DutyId)) {
+            if(!_plugin.DutyManager.Duties.ContainsKey(import.DutyId)) {
                 return false;
             }
 
@@ -119,7 +114,7 @@ namespace MapPartyAssist.Services {
                 if(import.RunsSinceLastClear < 0) {
                     return false;
                 }
-                clearSum += (uint)import.RunsSinceLastClear;
+                clearSum += (uint)import.RunsSinceLastClear!;
 
                 //check total
                 if(clearSum != import.TotalRuns) {

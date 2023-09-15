@@ -10,13 +10,19 @@ using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace MapPartyAssist.Services {
+    //internal service for managing duties and duty results
     internal class DutyManager : IDisposable {
 
-        private Plugin Plugin;
-        private DutyResults? _currentDutyResults;
+        private Plugin _plugin;
         private bool _firstTerritoryChange;
+        private DutyResults? _currentDutyResults;
+        private Duty? _currentDuty {
+            get {
+                return IsDutyInProgress() ? Duties[_currentDutyResults!.DutyId] : null;
+            }
+        }
 
-        public readonly Dictionary<int, Duty> Duties = new Dictionary<int, Duty>() {
+        internal readonly Dictionary<int, Duty> Duties = new Dictionary<int, Duty>() {
             { 179 , new Duty(179, "the aquapolis", DutyStructure.Doors, 7, new() {
                 new Checkpoint("Clear 1st chamber", "The cages are empty"),
                 new Checkpoint("Open 2nd chamber", "The gate to the 2nd chamber opens"),
@@ -31,7 +37,7 @@ namespace MapPartyAssist.Services {
                 new Checkpoint("Clear 6th chamber", "The cages are empty"),
                 new Checkpoint("Open final chamber", "The gate to the final chamber opens"),
                 new Checkpoint("Clear final chamber", "The cages are empty")
-            }, new Checkpoint("Failure", "The Aquapolis has ended.")) },
+            }, new Checkpoint("Failure", "The Aquapolis has ended")) },
             { 268, new Duty(268, "the lost canals of uznair", DutyStructure.Doors, 7, new() {
                 new Checkpoint("Clear 1st chamber", "The cages are empty"),
                 new Checkpoint("Open 2nd chamber", "The gate to the 2nd chamber opens"),
@@ -46,7 +52,7 @@ namespace MapPartyAssist.Services {
                 new Checkpoint("Clear 6th chamber", "The cages are empty"),
                 new Checkpoint("Open final chamber", "The gate to the final chamber opens"),
                 new Checkpoint("Clear final chamber", "The cages are empty")
-            }, new Checkpoint("Failure", "The Lost Canals of Uznair has ended.")) },
+            }, new Checkpoint("Failure", "The Lost Canals of Uznair has ended")) },
             { 276 , new Duty(276, "the hidden canals of uznair", DutyStructure.Doors, 7, new() {
                 new Checkpoint("Clear 1st chamber", "The cages are empty"),
                 new Checkpoint("Open 2nd chamber", "The gate to the 2nd chamber opens"),
@@ -61,7 +67,7 @@ namespace MapPartyAssist.Services {
                 new Checkpoint("Clear 6th chamber", "The cages are empty"),
                 new Checkpoint("Open final chamber", "The gate to the final chamber opens"),
                 new Checkpoint("Clear final chamber", "The cages are empty")
-            }, new Checkpoint("Failure", "The Hidden Canals of Uznair has ended.")) },
+            }, new Checkpoint("Failure", "The Hidden Canals of Uznair has ended")) },
             { 586, new Duty(586, "the shifting altars of uznair", DutyStructure.Roulette, 5, new() {
                 new Checkpoint("Complete 1st Summon"),
                 new Checkpoint("Defeat 1st Summon"),
@@ -73,7 +79,7 @@ namespace MapPartyAssist.Services {
                 new Checkpoint("Defeat 4th Summon"),
                 new Checkpoint("Complete final Summon"),
                 new Checkpoint("Defeat final Summon")
-            }, new Checkpoint("Failure", "The Shifting Altars of Uznair has ended."),
+            }, new Checkpoint("Failure", "The Shifting Altars of Uznair has ended"),
                 new string[] {"altar beast", "altar chimera", "altar dullahan", "altar skatene", "altar totem", "hati" },
                 new string[] {"altar arachne", "altar kelpie", "the older one", "the winged" },
                 new string[] {"altar airavata", "altar mandragora", "the great gold whisker" },
@@ -88,7 +94,7 @@ namespace MapPartyAssist.Services {
                 new Checkpoint("Clear 4th chamber", "The cages are empty"),
                 new Checkpoint("Open final chamber", @"(The gate to Condemnation( is)? open(s)?|The gate to the final chamber opens)"),
                 new Checkpoint("Clear final chamber", "The cages are empty")
-            }, new Checkpoint("Failure", "The Dungeons of Lyhe Ghiah has ended.")) },
+            }, new Checkpoint("Failure", "The Dungeons of Lyhe Ghiah has ended")) },
             { 745 , new Duty(745, "the shifting oubliettes of lyhe ghiah", DutyStructure.Roulette, 5, new() {
                 new Checkpoint("Complete 1st Summon"),
                 new Checkpoint("Defeat 1st Summon"),
@@ -115,7 +121,7 @@ namespace MapPartyAssist.Services {
                 new Checkpoint("Clear 4th chamber", "The cages are empty"),
                 new Checkpoint("Open final chamber", @"(The gate to Condemnation( is)? open(s)?|The gate to the final chamber opens)"),
                 new Checkpoint("Clear final chamber", "The cages are empty")
-            }, new Checkpoint("Failure", "The Excitatron 6000 has ended.")) },
+            }, new Checkpoint("Failure", "The Excitatron 6000 has ended")) },
             { 909 , new Duty(909, "the shifting gymnasion agonon", DutyStructure.Roulette, 5, new() {
                 new Checkpoint("Complete 1st Summon"),
                 new Checkpoint("Defeat 1st Summon"),
@@ -127,58 +133,39 @@ namespace MapPartyAssist.Services {
                 new Checkpoint("Defeat 4th Summon"),
                 new Checkpoint("Complete final Summon"),
                 new Checkpoint("Defeat final Summon")
-            }, new Checkpoint("Failure", "The Shifting Gymnasion Agonon has ended."),
+            }, new Checkpoint("Failure", "The Shifting Gymnasion Agonon has ended"),
                 new string[] {"gymnasiou megakantha", "gymnasiou triton", "gymnasiou satyros", "gymnasiou leon", "gymnasiou pithekos", "gymnasiou tigris" },
                 new string[] {"gymnasiou styphnolobion", "gymnasiou meganereis", "gymnasiou sphinx", "gymnasiou acheloios" },
                 new string[] {"lyssa chrysine", "lampas chrysine", "gymnasiou mandragoras" },
                 new string[] {"hippomenes", "phaethon", "narkissos" }) }
         };
 
-        private Duty? _currentDuty {
-            get {
-                return IsDutyInProgress() ? Duties[_currentDutyResults!.DutyId] : null;
-            }
-        }
-
         public DutyManager(Plugin plugin) {
-            Plugin = plugin;
-            Plugin.DutyState.DutyStarted += OnDutyStart;
-            Plugin.DutyState.DutyCompleted += OnDutyCompleted;
-            Plugin.DutyState.DutyWiped += OnDutyWiped;
-            Plugin.DutyState.DutyCompleted += OnDutyRecommenced;
-            Plugin.ClientState.TerritoryChanged += OnTerritoryChanged;
-            Plugin.ChatGui.ChatMessage += OnChatMessage;
+            _plugin = plugin;
+            _plugin.DutyState.DutyStarted += OnDutyStart;
+            _plugin.DutyState.DutyCompleted += OnDutyCompleted;
+            _plugin.DutyState.DutyWiped += OnDutyWiped;
+            _plugin.DutyState.DutyCompleted += OnDutyRecommenced;
+            _plugin.ClientState.TerritoryChanged += OnTerritoryChanged;
+            _plugin.ChatGui.ChatMessage += OnChatMessage;
 
             //attempt to pickup
-            if(Plugin.ClientState.IsLoggedIn && Plugin.IsEnglishClient() && !IsDutyInProgress()) {
+            if(_plugin.ClientState.IsLoggedIn && _plugin.IsEnglishClient() && !IsDutyInProgress()) {
                 //don't save since configuration isn't initialized yet!
                 PickupLastDuty(false);
-                //var lastDutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderBy(dr => dr.Time).ToList().LastOrDefault();
-                //var dutyId = Plugin.Functions.GetCurrentDutyId();
-                //var duty = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
-                //if(lastDutyResults != null && duty != null) {
-                //    TimeSpan lastTimeDiff = DateTime.Now - lastDutyResults.Time;
-                //    //pickup if duty is valid, and matches the last duty which was not completed and not more than an hour has elapsed (fallback)
-                //    if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null && lastDutyResults.DutyId == dutyId && !lastDutyResults.IsComplete && !_firstTerritoryChange && lastTimeDiff.TotalHours < 1) {
-                //        PluginLog.Debug("re-picking up duty results...");
-                //        _currentDutyResults = lastDutyResults;
-                //        _currentDutyResults.IsPickup = true;
-                //        //can't save since this is called from Plugin constructor!
-                //        //Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
-                //        //Plugin.Save();
-                //    }
-                //}
             }
         }
 
         public void Dispose() {
+#if DEBUG
             PluginLog.Debug("disposing duty manager");
-            Plugin.DutyState.DutyStarted -= OnDutyStart;
-            Plugin.DutyState.DutyCompleted -= OnDutyCompleted;
-            Plugin.DutyState.DutyWiped -= OnDutyWiped;
-            Plugin.DutyState.DutyCompleted -= OnDutyRecommenced;
-            Plugin.ClientState.TerritoryChanged -= OnTerritoryChanged;
-            Plugin.ChatGui.ChatMessage -= OnChatMessage;
+#endif
+            _plugin.DutyState.DutyStarted -= OnDutyStart;
+            _plugin.DutyState.DutyCompleted -= OnDutyCompleted;
+            _plugin.DutyState.DutyWiped -= OnDutyWiped;
+            _plugin.DutyState.DutyCompleted -= OnDutyRecommenced;
+            _plugin.ClientState.TerritoryChanged -= OnTerritoryChanged;
+            _plugin.ChatGui.ChatMessage -= OnChatMessage;
         }
 
         //attempt to start new duty results
@@ -186,48 +173,48 @@ namespace MapPartyAssist.Services {
         private bool StartNewDuty(int dutyId) {
 
             //abort if not in English-language client
-            if(!Plugin.IsEnglishClient()) {
+            if(!_plugin.IsEnglishClient()) {
                 return false;
             }
 
             if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null) {
-                //assume last map is the one...10 min fallback for missed maps
-                var lastMap = Plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().Last();
-                PluginLog.Information($"Starting new duty results for id {dutyId}");
-                _currentDutyResults = new DutyResults(dutyId, Duties[dutyId].Name, Plugin.CurrentPartyList, "");
-                //10 min fallback for linking to most recent map
+                var lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().Last();
+                PluginLog.Information($"Starting new duty results for duty id: {dutyId}");
+                _currentDutyResults = new DutyResults(dutyId, Duties[dutyId].Name, _plugin.CurrentPartyList, "");
+                //check last map, 10 min fallback for linking to most recent map
                 if((DateTime.Now - lastMap.Time).TotalMinutes < 10) {
                     _currentDutyResults.Map = lastMap;
                     _currentDutyResults.Owner = lastMap.Owner;
                     lastMap.IsPortal = true;
                     lastMap.DutyName = Duties[dutyId].Name;
-                    Plugin.StorageManager.UpdateMap(lastMap);
+                    _plugin.StorageManager.UpdateMap(lastMap);
                 } else {
                     _currentDutyResults.Map = null;
                     _currentDutyResults.Owner = "";
                 }
 
-                Plugin.StorageManager.AddDutyResults(_currentDutyResults);
-                Plugin.Save();
+                _plugin.StorageManager.AddDutyResults(_currentDutyResults);
+                _plugin.Save();
                 return true;
             }
             return false;
         }
 
         //returns true if duty was succesfully picked up
+        //always save...for now
         private bool PickupLastDuty(bool toSave = false) {
-            var dutyId = Plugin.Functions.GetCurrentDutyId();
-            var duty = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
-            var lastDutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderBy(dr => dr.Time).ToList().LastOrDefault();
+            var dutyId = _plugin.Functions.GetCurrentDutyId();
+            var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
+            var lastDutyResults = _plugin.StorageManager.GetDutyResults().Query().OrderBy(dr => dr.Time).ToList().LastOrDefault();
             if(lastDutyResults != null) {
                 TimeSpan lastTimeDiff = DateTime.Now - lastDutyResults.Time;
                 //pickup if duty is valid, and matches the last duty which was not completed and not more than an hour has elapsed (fallback)
                 if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null && lastDutyResults.DutyId == dutyId && !lastDutyResults.IsComplete && !_firstTerritoryChange && lastTimeDiff.TotalHours < 1) {
-                    PluginLog.Debug("re-picking up duty results...");
+                    PluginLog.Information($"re-picking up last duty results... {lastDutyResults.Id.ToString()}");
                     _currentDutyResults = lastDutyResults;
                     _currentDutyResults.IsPickup = true;
 
-                    Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
+                    _plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
                     //if(toSave) {
                     //    Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
                     //    Plugin.Save();
@@ -241,11 +228,11 @@ namespace MapPartyAssist.Services {
             return false;
         }
 
-        public List<DutyResults> GetRecentDutyResultsList(int? dutyId = null) {
-            return Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted && dr.IsComplete && (dutyId == null || dr.DutyId == dutyId)).ToList();
+        internal List<DutyResults> GetRecentDutyResultsList(int? dutyId = null) {
+            return _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted && dr.IsComplete && (dutyId == null || dr.DutyId == dutyId)).ToList();
         }
 
-        public Duty? GetDutyByName(string name) {
+        internal Duty? GetDutyByName(string name) {
             foreach(var duty in Duties) {
                 if(duty.Value.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) {
                     return duty.Value;
@@ -254,26 +241,27 @@ namespace MapPartyAssist.Services {
             return null;
         }
 
+        //validate duty results and fill in missing data if possible
         private bool ValidateUpdateDutyResults(DutyResults dutyResults) {
             //check for no players
             if(dutyResults.Players == null || dutyResults.Players.Length <= 0) {
-                PluginLog.Warning("No players on duty results");
+                PluginLog.Warning($"No players on duty results {dutyResults.Id.ToString()}");
                 if(dutyResults.Owner.IsNullOrEmpty()) {
-                    PluginLog.Warning("No owner on duty results");
+                    PluginLog.Warning($"No owner on duty results {dutyResults.Id.ToString()}");
                 } else {
                     //dutyResults.Players = new[] { dutyResults.Owner };
                 }
-                dutyResults.Players = Plugin.CurrentPartyList.Keys.ToArray();
+                dutyResults.Players = _plugin.CurrentPartyList.Keys.ToArray();
                 return false;
             }
             return true;
         }
 
         private void OnDutyStart(object? sender, ushort territoryId) {
-            PluginLog.Debug($"Duty has started with territory id: {territoryId} name: {Plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId)?.PlaceName.Value?.Name} ");
-            var dutyId = Plugin.Functions.GetCurrentDutyId();
+            PluginLog.Debug($"Duty has started with territory id: {territoryId} name: {_plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId)?.PlaceName.Value?.Name} ");
+            var dutyId = _plugin.Functions.GetCurrentDutyId();
             PluginLog.Debug($"Current duty ID: {dutyId}");
-            var duty = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
+            var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
             PluginLog.Debug($"Duty Name: {duty?.Name}");
 
             //check if duty is ongoing to attempt to pickup...
@@ -296,9 +284,9 @@ namespace MapPartyAssist.Services {
         }
 
         private void OnTerritoryChanged(object? sender, ushort territoryId) {
-            var dutyId = Plugin.Functions.GetCurrentDutyId();
-            var duty = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
-            PluginLog.Debug($"Territory changed: {territoryId}, Current duty: {Plugin.Functions.GetCurrentDutyId()}");
+            var dutyId = _plugin.Functions.GetCurrentDutyId();
+            var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
+            PluginLog.Debug($"Territory changed: {territoryId}, Current duty: {_plugin.Functions.GetCurrentDutyId()}");
 
             if(IsDutyInProgress()) {
                 //clear current duty if it was completed successfully or clear as a fallback. attempt to pickup otherwise on disconnect
@@ -310,24 +298,6 @@ namespace MapPartyAssist.Services {
                 if(!PickupLastDuty(true)) {
                     StartNewDuty(dutyId);
                 }
-
-                //var lastDutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderBy(dr => dr.Time).ToList().LastOrDefault();
-                //if(lastDutyResults != null) {
-                //    TimeSpan lastTimeDiff = DateTime.Now - lastDutyResults.Time;
-                //    //pickup if duty is valid, and matches the last duty which was not completed and not more than an hour has elapsed (fallback)
-                //    if(Plugin.IsEnglishClient() && Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null && lastDutyResults.DutyId == dutyId && !lastDutyResults.IsComplete && !_firstTerritoryChange && lastTimeDiff.TotalHours < 1) {
-                //        PluginLog.Debug("re-picking up duty results...");
-                //        _currentDutyResults = lastDutyResults;
-                //        _currentDutyResults.IsPickup = true;
-                //        Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
-                //        Plugin.Save();
-                //    } else {
-                //        //otherwise attempt to start new duty!
-                //        StartNewDuty(dutyId);
-                //    }
-                //} else {
-                //    StartNewDuty(dutyId);
-                //}
             }
             _firstTerritoryChange = true;
         }
@@ -340,8 +310,8 @@ namespace MapPartyAssist.Services {
                     if(m.Success) {
                         string parsedGilString = m.Value.Replace(",", "").Replace(".", "");
                         _currentDutyResults!.TotalGil += int.Parse(parsedGilString);
-                        Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
-                        Plugin.Save();
+                        _plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
+                        _plugin.Save();
                         return;
                     }
                 }
@@ -359,8 +329,8 @@ namespace MapPartyAssist.Services {
                 }
                 //save if changes discovered
                 if(isChange) {
-                    Plugin.StorageManager.UpdateDutyResults(_currentDutyResults!);
-                    Plugin.Save();
+                    _plugin.StorageManager.UpdateDutyResults(_currentDutyResults!);
+                    _plugin.Save();
                 }
             }
         }
@@ -380,7 +350,7 @@ namespace MapPartyAssist.Services {
             }
 
             //check for failure
-            if(((int)type == 2233 || (int)type == 2105) && currentDuty.FailureCheckpoint!.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
+            if(((int)type == 2233 || (int)type == 2105) && Regex.IsMatch(message.ToString(), _currentDuty!.FailureCheckpoint!.Message, RegexOptions.IgnoreCase)) {
                 //CheckpointResults.Add(new CheckpointResults(nextCheckpoint, false));
                 _currentDutyResults.IsComplete = true;
                 _currentDutyResults.CompletionTime = DateTime.Now;
@@ -395,7 +365,7 @@ namespace MapPartyAssist.Services {
                 //check for save
                 bool isSave = Regex.IsMatch(message.ToString(), @"^An unknown force", RegexOptions.IgnoreCase);
                 //check for circles shift
-                Match shiftMatch = Regex.Match(message.ToString(), @"(?<=The circles shift and (a |an )?)" + _currentDuty.GetSummonPatternString(Summon.Elder) + @"(?=,? appears?)", RegexOptions.IgnoreCase);
+                Match shiftMatch = Regex.Match(message.ToString(), @"(?<=The circles shift and (a |an )?)" + _currentDuty!.GetSummonPatternString(Summon.Elder) + @"(?=,? appears?)", RegexOptions.IgnoreCase);
                 if(shiftMatch.Success) {
                     AddRouletteCheckpointResults(Summon.Gold, shiftMatch.Value, isSave);
                     return true;
@@ -406,7 +376,7 @@ namespace MapPartyAssist.Services {
                     AddRouletteCheckpointResults(Summon.Silver, null, isSave);
                     //add next checkpoint as well
                     AddRouletteCheckpointResults(null);
-                    if(_currentDutyResults.CheckpointResults.Where(cr => cr.IsReached).Count() == _currentDuty.Checkpoints!.Count) {
+                    if(_currentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == _currentDuty.Checkpoints!.Count) {
                         _currentDutyResults.IsComplete = true;
                         _currentDutyResults.CompletionTime = DateTime.Now;
                     }
@@ -444,8 +414,8 @@ namespace MapPartyAssist.Services {
                 //Match unknownMatch = Regex.Match(message.ToString(), ".*(?=,? appears?)", RegexOptions.IgnoreCase);
             }
             //failure
-            if(((int)type == 2233 || (int)type == 2105) && _currentDuty!.FailureCheckpoint!.Message.Equals(message.ToString(), StringComparison.OrdinalIgnoreCase)) {
-                _currentDutyResults.IsComplete = true;
+            if(((int)type == 2233 || (int)type == 2105) && Regex.IsMatch(message.ToString(), _currentDuty!.FailureCheckpoint!.Message, RegexOptions.IgnoreCase)) {
+                _currentDutyResults!.IsComplete = true;
                 _currentDutyResults.CompletionTime = DateTime.Now;
                 return true;
             }
@@ -453,14 +423,15 @@ namespace MapPartyAssist.Services {
         }
 
         private void AddRouletteCheckpointResults(Summon? summon, string? monsterName = null, bool isSaved = false) {
-            var size = _currentDutyResults.CheckpointResults.Count;
-            _currentDutyResults.CheckpointResults.Add(new RouletteCheckpointResults(_currentDuty.Checkpoints[size], summon, monsterName, isSaved, true));
+            var size = _currentDutyResults!.CheckpointResults.Count;
+            _currentDutyResults.CheckpointResults.Add(new RouletteCheckpointResults(_currentDuty!.Checkpoints![size], summon, monsterName, isSaved, true));
             //(CheckpointResults[size].Checkpoint as RouletteCheckpoint).SummonType = summon;
             //(CheckpointResults[size].Checkpoint as RouletteCheckpoint).Enemy = enemy;
         }
 
         private void EndCurrentDuty() {
             if(IsDutyInProgress()) {
+                PluginLog.Information($"Ending duty results id: {_currentDutyResults!.Id}");
                 _currentDutyResults!.IsComplete = true;
                 if(_currentDutyResults.CompletionTime.Ticks == 0) {
                     _currentDutyResults.CompletionTime = DateTime.Now;
@@ -468,7 +439,7 @@ namespace MapPartyAssist.Services {
                 //check for malformed data
                 ValidateUpdateDutyResults(_currentDutyResults);
                 _currentDutyResults = null;
-                Plugin.Save();
+                _plugin.Save();
             }
         }
 

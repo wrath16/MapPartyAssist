@@ -418,7 +418,7 @@ namespace MapPartyAssist.Windows {
                             //    Tooltip(i == 0 ? "Runs since start." : "Runs since preceding clear.");
                             //}
 
-                            
+
                             //ImGui.TableNextColumn();
 
                             if(Plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
@@ -434,7 +434,7 @@ namespace MapPartyAssist.Windows {
                                 clearSequence.GetRange(0, i).ForEach(x => clearTotal += x);
                                 ImGui.Text($"{clearTotal.ToString().PadRight(3)}");
                             }
-                            
+
                             if(_statRange != StatRange.AllLegacy) {
                                 if(ImGui.IsItemHovered()) {
                                     ImGui.BeginTooltip();

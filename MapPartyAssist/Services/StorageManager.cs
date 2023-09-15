@@ -185,6 +185,7 @@ namespace MapPartyAssist.Services {
             }
         }
 
+        //all writes are asynchronous for performance reasons
         private Task AsyncWriteToDatabase(Func<object> action, bool toSave = true) {
             Task task = new Task(() => {
                 try {
@@ -193,11 +194,13 @@ namespace MapPartyAssist.Services {
                     if(toSave) {
                         Plugin.Save();
                     }
+                //    _dbLock.Release();
+                //} catch(Exception e) {
+                //    _dbLock.Release();
+                //    PluginLog.Error($"Task Error: {e.Message}");
+                //    PluginLog.Error(e.StackTrace);
+                } finally {
                     _dbLock.Release();
-                } catch(Exception e) {
-                    _dbLock.Release();
-                    PluginLog.Error($"Task Error: {e.Message}");
-                    PluginLog.Error(e.StackTrace);
                 }
             });
             task.Start();

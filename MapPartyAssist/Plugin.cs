@@ -59,6 +59,7 @@ namespace MapPartyAssist {
         internal MapManager MapManager { get; init; }
         internal StorageManager StorageManager { get; init; }
         internal ImportManager ImportManager { get; init; }
+
         public Configuration Configuration { get; init; }
         internal GameFunctions Functions { get; init; }
 
@@ -72,7 +73,7 @@ namespace MapPartyAssist {
 
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
         public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
-        private int _lastPartySize;
+        private int _lastPartySize = 0;
         //to delete
         private bool _betweenAreas = false;
 
@@ -89,92 +90,99 @@ namespace MapPartyAssist {
             [RequiredVersion("1.0")] ChatGui chatGui,
             [RequiredVersion("1.0")] GameGui gameGui,
             [RequiredVersion("1.0")] Framework framework) {
-            PluginInterface = pluginInterface;
-            CommandManager = commandManager;
-            DataManager = dataManager;
-            ClientState = clientState;
-            Condition = condition;
-            DutyState = dutyState;
-            PartyList = partyList;
-            ChatGui = chatGui;
-            GameGui = gameGui;
-            Framework = framework;
+            try {
+                PluginInterface = pluginInterface;
+                CommandManager = commandManager;
+                DataManager = dataManager;
+                ClientState = clientState;
+                Condition = condition;
+                DutyState = dutyState;
+                PartyList = partyList;
+                ChatGui = chatGui;
+                GameGui = gameGui;
+                Framework = framework;
 
 #if DEBUG
-            PluginLog.Debug("Begin Config loading");
+                PluginLog.Debug("Begin Config loading");
 #endif
-            Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+                Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 #if DEBUG
-            PluginLog.Debug("Done Config loading");
+                PluginLog.Debug("Done Config loading");
 #endif
 
-            PluginLog.Debug($"Client language: {ClientState.ClientLanguage}");
-            PluginLog.Debug($"Current culture: {CultureInfo.CurrentCulture.Name}");
-            if(!IsEnglishClient()) {
-                PluginLog.Warning("Client is not in English, most functions will be unavailable.");
-            }
+                PluginLog.Information($"Client language: {ClientState.ClientLanguage}");
+                PluginLog.Verbose($"Current culture: {CultureInfo.CurrentCulture.Name}");
+                if(!IsEnglishClient()) {
+                    PluginLog.Warning("Client is not in English, most functions will be unavailable.");
+                }
 
-            StorageManager = new StorageManager(this, $"{PluginInterface.GetPluginConfigDirectory()}\\data.db");
-            Functions = new GameFunctions();
-            DutyManager = new DutyManager(this);
-            MapManager = new MapManager(this);
-            ImportManager = new ImportManager(this);
+                StorageManager = new StorageManager(this, $"{PluginInterface.GetPluginConfigDirectory()}\\data.db");
+                Functions = new GameFunctions();
+                DutyManager = new DutyManager(this);
+                MapManager = new MapManager(this);
+                ImportManager = new ImportManager(this);
 
-            //needs DutyManager to be initialized first
-            Configuration.Initialize(this);
+                //needs DutyManager to be initialized first
+                Configuration.Initialize(this);
 
-            MainWindow = new MainWindow(this);
-            WindowSystem.AddWindow(MainWindow);
-            CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand) {
-                HelpMessage = "Opens map party assist."
-            });
+                MainWindow = new MainWindow(this);
+                WindowSystem.AddWindow(MainWindow);
+                CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand) {
+                    HelpMessage = "Opens map party assist."
+                });
 
-            StatsWindow = new StatsWindow(this);
-            WindowSystem.AddWindow(StatsWindow);
-            CommandManager.AddHandler(StatsCommandName, new CommandInfo(OnStatsCommand) {
-                HelpMessage = "Opens stats window."
-            });
+                StatsWindow = new StatsWindow(this);
+                WindowSystem.AddWindow(StatsWindow);
+                CommandManager.AddHandler(StatsCommandName, new CommandInfo(OnStatsCommand) {
+                    HelpMessage = "Opens stats window."
+                });
 
-            ConfigWindow = new ConfigWindow(this);
-            WindowSystem.AddWindow(ConfigWindow);
-            CommandManager.AddHandler(ConfigCommandName, new CommandInfo(OnConfigCommand) {
-                HelpMessage = "Open settings window."
-            });
+                ConfigWindow = new ConfigWindow(this);
+                WindowSystem.AddWindow(ConfigWindow);
+                CommandManager.AddHandler(ConfigCommandName, new CommandInfo(OnConfigCommand) {
+                    HelpMessage = "Open settings window."
+                });
 
-            DutyResultsWindow = new DutyResultsWindow(this);
-            WindowSystem.AddWindow(DutyResultsWindow);
-            CommandManager.AddHandler(DutyResultsCommandName, new CommandInfo(OnDutyResultsCommand) {
-                HelpMessage = "Edit duty results (Advanced)."
-            });
+                DutyResultsWindow = new DutyResultsWindow(this);
+                WindowSystem.AddWindow(DutyResultsWindow);
+                CommandManager.AddHandler(DutyResultsCommandName, new CommandInfo(OnDutyResultsCommand) {
+                    HelpMessage = "Edit duty results (Advanced)."
+                });
 
 #if DEBUG
-            TestFunctionWindow = new TestFunctionWindow(this);
-            WindowSystem.AddWindow(TestFunctionWindow);
-            CommandManager.AddHandler(TestCommandName, new CommandInfo(OnTestCommand) {
-                HelpMessage = "Opens test functions window. (Debug)"
-            });
+                TestFunctionWindow = new TestFunctionWindow(this);
+                WindowSystem.AddWindow(TestFunctionWindow);
+                CommandManager.AddHandler(TestCommandName, new CommandInfo(OnTestCommand) {
+                    HelpMessage = "Opens test functions window. (Debug)"
+                });
 #endif
 
-            PluginInterface.UiBuilder.Draw += DrawUI;
-            PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
+                PluginInterface.UiBuilder.Draw += DrawUI;
+                PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
 
-            Framework.Update += OnFrameworkUpdate;
-            ChatGui.ChatMessage += OnChatMessage;
-            ClientState.Login += OnLogin;
-            ClientState.Logout += OnLogout;
+                Framework.Update += OnFrameworkUpdate;
+                ChatGui.ChatMessage += OnChatMessage;
+                ClientState.Login += OnLogin;
+                ClientState.Logout += OnLogout;
 
-            //import data from old configuration to database
-            if(Configuration.Version < 2) {
-                StorageManager.Import();
-            }
+                //import data from old configuration to database
+                if(Configuration.Version < 2) {
+                    StorageManager.Import();
+                }
 
-            //build current and recent party lists
-            if(ClientState.IsLoggedIn) {
-                BuildCurrentPartyList();
-                BuildRecentPartyList();
-            } else {
-                CurrentPartyList = new();
-                RecentPartyList = new();
+                //build current and recent party lists
+                if(ClientState.IsLoggedIn) {
+                    BuildCurrentPartyList();
+                    BuildRecentPartyList();
+                } else {
+                    CurrentPartyList = new();
+                    RecentPartyList = new();
+                }
+            } catch(Exception e) {
+                PluginLog.Error($"Failed to initialize plugin constructor: {e.Message}");
+                PluginLog.Error($"{e.StackTrace}");
+                //remove handlers and release database if we fail to start
+                Dispose();
             }
         }
 
@@ -213,8 +221,6 @@ namespace MapPartyAssist {
             MapManager.Dispose();
             DutyManager.Dispose();
             StorageManager.Dispose();
-
-            //Configuration.PruneRecentPartyList();
         }
 
         private void OnCommand(string command, string args) {
@@ -386,16 +392,14 @@ namespace MapPartyAssist {
                 default:
                     PluginLog.Debug($"Message received: {type} {message} from {sender}");
                     //foreach(Payload payload in message.Payloads) {
-                    //    PluginLog.Debug($"payload: {payload}");
+                    //    PluginLog.Verbose($"payload: {payload}");
                     //}
                     break;
             }
         }
 
         private void OnLogin(object? sender, EventArgs e) {
-#if DEBUG
             PluginLog.Debug("logging in");
-#endif
             BuildCurrentPartyList();
             BuildRecentPartyList();
             MapManager.CheckAndArchiveMaps(Configuration.RecentPartyList);
@@ -410,6 +414,7 @@ namespace MapPartyAssist {
         //builds current party list from scratch
         public void BuildCurrentPartyList() {
             _saveLock.Wait();
+            PluginLog.Debug("Rebuilding current party list.");
             string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
             string currentPlayerWorld = ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
             string currentPlayerKey = $"{currentPlayerName} {currentPlayerWorld}";
@@ -456,6 +461,7 @@ namespace MapPartyAssist {
 
         public void BuildRecentPartyList() {
             _saveLock.Wait();
+            PluginLog.Debug("Rebuilding recent party list.");
             RecentPartyList = new();
             var allPlayers = StorageManager.GetPlayers();
             var currentMaps = StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted).ToList();
@@ -503,10 +509,6 @@ namespace MapPartyAssist {
             return $"{currentPlayerName} {currentPlayerWorld}";
         }
 
-        //public void GetCurrentPosition() {
-        //    PluginLog.Debug($"X: {ClientState.LocalPlayer.Position.X} Y: {ClientState.LocalPlayer.Position.Y}");
-        //}
-
         public bool IsEnglishClient() {
             return ClientState.ClientLanguage == Dalamud.ClientLanguage.English;
         }
@@ -518,13 +520,14 @@ namespace MapPartyAssist {
                 StatsWindow.Refresh();
                 MainWindow.Refresh();
                 DutyResultsWindow.Refresh();
+                //_saveLock.Release();
+            //} catch(Exception e) {
+            //    _saveLock.Release();
+            //    PluginLog.Error($"Save error: {e.Message}");
+            //    PluginLog.Error($"{e.StackTrace}");
+            } finally {
                 _saveLock.Release();
-            } catch(Exception e) {
-                _saveLock.Release();
-                PluginLog.Error($"Save error: {e.Message}");
-                PluginLog.Error($"{e.StackTrace}");
             }
-
         }
     }
 }
