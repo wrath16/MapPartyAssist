@@ -25,7 +25,7 @@ namespace MapPartyAssist.Types {
         public DateTime Time { get; init; }
         public DateTime CompletionTime { get; set; }
         public string[] Players { get; set; }
-        public string Owner { get; set; } = "";
+        public string Owner { get; set; }
         [BsonRef("map")]
         [JsonIgnore]
         public MPAMap? Map { get; set; }
@@ -45,7 +45,12 @@ namespace MapPartyAssist.Types {
         //    DutyId = dutyId;
         //}
 
+        [BsonCtor]
         public DutyResults() {
+            Id = ObjectId.NewObjectId();
+            DutyName = "";
+            Owner = "";
+            Players = new string[0];
         }
 
         public DutyResults(int dutyId, string dutyName, Dictionary<string, MPAMember> players, string owner) {

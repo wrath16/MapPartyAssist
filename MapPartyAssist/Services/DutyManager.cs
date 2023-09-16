@@ -184,7 +184,7 @@ namespace MapPartyAssist.Services {
                 //check last map, 10 min fallback for linking to most recent map
                 if((DateTime.Now - lastMap.Time).TotalMinutes < 10) {
                     _currentDutyResults.Map = lastMap;
-                    _currentDutyResults.Owner = lastMap.Owner;
+                    _currentDutyResults.Owner = lastMap.Owner!;
                     lastMap.IsPortal = true;
                     lastMap.DutyName = Duties[dutyId].Name;
                     _plugin.StorageManager.UpdateMap(lastMap);

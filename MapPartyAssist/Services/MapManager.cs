@@ -171,9 +171,7 @@ namespace MapPartyAssist.Services {
             //zone ??= DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name!;
             //zone = _textInfo.ToTitleCase(zone);
             type = _textInfo.ToTitleCase(type);
-            var newMap = new MPAMap(type, DateTime.Now, zone, isManual, isPortal);
-            newMap.Owner = player.Key;
-            //player.Maps.Add(newMap);
+            var newMap = new MPAMap(type, DateTime.Now, player.Key, zone, isManual, isPortal);
             player.MapLink = null;
             LastMapPlayerKey = player.Key;
 
@@ -181,7 +179,6 @@ namespace MapPartyAssist.Services {
             _plugin.StorageManager.AddMap(newMap);
             _plugin.StorageManager.UpdatePlayer(player);
 
-            //this can cause race conditions with the config file since we're saving in the other thread
             //Plugin.Save();
 
             ClearStatus();

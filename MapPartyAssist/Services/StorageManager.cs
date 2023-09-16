@@ -9,26 +9,30 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace MapPartyAssist.Services {
+    //internal service for managing connections to LiteDB database
     internal class StorageManager : IDisposable {
 
-        public const string MapTable = "map";
-        public const string DutyResultsTable = "dutyresults";
-        public const string StatsImportTable = "dutyresultsimport";
-        public const string PlayerTable = "player";
+        internal const string MapTable = "map";
+        internal const string DutyResultsTable = "dutyresults";
+        internal const string StatsImportTable = "dutyresultsimport";
+        internal const string PlayerTable = "player";
 
         private Plugin Plugin;
         private SemaphoreSlim _dbLock;
         private LiteDatabase Database { get; init; }
 
-        public ILiteCollection<MPAMap> Maps {
+        internal ILiteCollection<MPAMap> Maps {
             get {
                 return Database.GetCollection<MPAMap>(MapTable);
             }
         }
 
-        public StorageManager(Plugin plugin, string path) {
+        internal StorageManager(Plugin plugin, string path) {
             Plugin = plugin;
             Database = new LiteDatabase(path);
+
+            //set mapper properties
+            BsonMapper.Global.EmptyStringToNull = false;
 
             //create indices
             var mapCollection = Database.GetCollection<MPAMap>(MapTable);
@@ -59,8 +63,7 @@ namespace MapPartyAssist.Services {
             Database.Dispose();
         }
 
-        //wip
-        public void Import() {
+        internal void Import() {
             PluginLog.Information("Importing data from config file into database...");
 
             List<MPAMap> maps = new();
@@ -102,79 +105,79 @@ namespace MapPartyAssist.Services {
 
         }
 
-        public Task AddMap(MPAMap map) {
+        internal Task AddMap(MPAMap map) {
             var mapCollection = Database.GetCollection<MPAMap>(MapTable);
             return AsyncWriteToDatabase(() => mapCollection.Insert(map));
         }
 
-        public Task AddMaps(IEnumerable<MPAMap> maps) {
+        internal Task AddMaps(IEnumerable<MPAMap> maps) {
             var mapCollection = Database.GetCollection<MPAMap>(MapTable);
             return AsyncWriteToDatabase(() => mapCollection.Insert(maps));
         }
 
-        public Task UpdateMap(MPAMap map) {
+        internal Task UpdateMap(MPAMap map) {
             var mapCollection = Database.GetCollection<MPAMap>(MapTable);
             return AsyncWriteToDatabase(() => mapCollection.Update(map));
         }
 
-        public Task UpdateMaps(IEnumerable<MPAMap> maps) {
+        internal Task UpdateMaps(IEnumerable<MPAMap> maps) {
             var mapCollection = Database.GetCollection<MPAMap>(MapTable);
             return AsyncWriteToDatabase(() => mapCollection.Update(maps.Where(m => m.Id != null)));
         }
 
-        public ILiteCollection<MPAMap> GetMaps() {
+        internal ILiteCollection<MPAMap> GetMaps() {
             return Database.GetCollection<MPAMap>(MapTable);
         }
 
-        public Task AddPlayer(MPAMember player) {
+        internal Task AddPlayer(MPAMember player) {
             var playerCollection = Database.GetCollection<MPAMember>(PlayerTable);
             return AsyncWriteToDatabase(() => playerCollection.Insert(player), false);
         }
 
-        public Task UpdatePlayer(MPAMember player) {
+        internal Task UpdatePlayer(MPAMember player) {
             var playerCollection = Database.GetCollection<MPAMember>(PlayerTable);
             return AsyncWriteToDatabase(() => playerCollection.Update(player), false);
         }
 
-        public ILiteCollection<MPAMember> GetPlayers() {
+        internal ILiteCollection<MPAMember> GetPlayers() {
             return Database.GetCollection<MPAMember>(PlayerTable);
         }
 
-        public Task AddDutyResults(DutyResults results) {
+        internal Task AddDutyResults(DutyResults results) {
             var drCollection = Database.GetCollection<DutyResults>(DutyResultsTable);
             return AsyncWriteToDatabase(() => drCollection.Insert(results));
         }
 
-        public Task AddDutyResults(IEnumerable<DutyResults> results) {
+        internal Task AddDutyResults(IEnumerable<DutyResults> results) {
             var drCollection = Database.GetCollection<DutyResults>(DutyResultsTable);
             return AsyncWriteToDatabase(() => drCollection.Insert(results));
         }
 
-        public Task UpdateDutyResults(DutyResults results) {
+        internal Task UpdateDutyResults(DutyResults results) {
             var drCollection = Database.GetCollection<DutyResults>(DutyResultsTable);
             return AsyncWriteToDatabase(() => drCollection.Update(results));
         }
 
-        public Task UpdateDutyResults(IEnumerable<DutyResults> results) {
+        internal Task UpdateDutyResults(IEnumerable<DutyResults> results) {
             var drCollection = Database.GetCollection<DutyResults>(DutyResultsTable);
             return AsyncWriteToDatabase(() => drCollection.Update(results));
         }
 
-        public ILiteCollection<DutyResults> GetDutyResults() {
+        internal ILiteCollection<DutyResults> GetDutyResults() {
             return Database.GetCollection<DutyResults>(DutyResultsTable);
         }
 
-        public Task AddDutyResultsImport(DutyResultsImport import) {
+        internal Task AddDutyResultsImport(DutyResultsImport import) {
             var importCollection = Database.GetCollection<DutyResultsImport>(StatsImportTable);
             return AsyncWriteToDatabase(() => importCollection.Insert(import));
         }
 
-        public Task UpdateDutyResultsImport(DutyResultsImport import) {
+        internal Task UpdateDutyResultsImport(DutyResultsImport import) {
             var importCollection = Database.GetCollection<DutyResultsImport>(StatsImportTable);
             return AsyncWriteToDatabase(() => importCollection.Update(import));
         }
 
-        public ILiteCollection<DutyResultsImport> GetDutyResultsImports() {
+        internal ILiteCollection<DutyResultsImport> GetDutyResultsImports() {
             return Database.GetCollection<DutyResultsImport>(StatsImportTable);
         }
 
@@ -194,11 +197,6 @@ namespace MapPartyAssist.Services {
                     if(toSave) {
                         Plugin.Save();
                     }
-                //    _dbLock.Release();
-                //} catch(Exception e) {
-                //    _dbLock.Release();
-                //    PluginLog.Error($"Task Error: {e.Message}");
-                //    PluginLog.Error(e.StackTrace);
                 } finally {
                     _dbLock.Release();
                 }

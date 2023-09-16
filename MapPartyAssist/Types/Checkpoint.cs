@@ -1,7 +1,10 @@
-﻿namespace MapPartyAssist.Types {
-    public class Checkpoint {
+﻿using System;
+
+namespace MapPartyAssist.Types {
+    public class Checkpoint : IEquatable<Checkpoint> {
         public string Name { get; init; }
         public string Message { get; init; }
+        //not used currently
         public int MessageChannel { get; init; }
 
         public Checkpoint(string name, string message = "", int messageChannel = 2105) {
@@ -10,11 +13,7 @@
             MessageChannel = messageChannel;
         }
 
-        public override bool Equals(object obj) {
-            return Equals(obj as Checkpoint);
-        }
-
-        public bool Equals(Checkpoint obj) {
+        public bool Equals(Checkpoint? obj) {
             return obj != null && obj.Name == Name;
         }
 

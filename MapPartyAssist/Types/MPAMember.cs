@@ -43,19 +43,24 @@ namespace MapPartyAssist.Types {
         }
 
         //public static bool operator ==(MPAMember? a, MPAMember? b) {
-        //    if(a == null && b == null) {
+        //    if((object?)a == null && (object?)b == null) {
         //        return true;
+        //    } else if((object?)a == null || (object?)b == null) {
+        //        return false;
         //    } else {
-        //        return a!.Equals(b);
+        //        return a.Equals(b);
         //    }
         //}
 
         //public static bool operator !=(MPAMember? a, MPAMember? b) {
-        //    if(a == null && b == null) {
-        //        return false;
-        //    } else {
-        //        return !a!.Equals(b);
-        //    }
+        //    return !(a == b);
+        //    //if(a == null && b == null) {
+        //    //    return false;
+        //    //} else if(a == null || b == null) {
+        //    //    return true;
+        //    //} else {
+        //    //    return !a!.Equals(b);
+        //    //}
         //}
     }
 }

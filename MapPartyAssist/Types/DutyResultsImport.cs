@@ -21,7 +21,9 @@ namespace MapPartyAssist.Types {
         public List<uint>? ClearSequence { get; set; }
         public uint? RunsSinceLastClear { get; set; }
 
+        [BsonCtor]
         public DutyResultsImport() {
+            Id = ObjectId.NewObjectId();
         }
 
         public DutyResultsImport(int dutyId, DateTime time, uint totalClears, uint totalRuns, uint? totalGil = null, List<uint>? checkpointTotals = null, List<uint>? clearSequence = null, uint? runsSinceLastClear = null) {

@@ -5,16 +5,15 @@ using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace MapPartyAssist.Types {
-    internal class Duty {
-
+    public class Duty {
         public int DutyId { get; init; }
         public string Name { get; init; }
         public DutyStructure Structure { get; init; }
         public int ChamberCount { get; init; }
+        //not used
         public Type? ResultsType { get; init; }
         public List<Checkpoint>? Checkpoints { get; init; }
         public Checkpoint? FailureCheckpoint { get; init; }
-
         public string[]? LesserSummons { get; init; }
         public string[]? GreaterSummons { get; init; }
         public string[]? ElderSummons { get; init; }
@@ -37,14 +36,25 @@ namespace MapPartyAssist.Types {
             List<string> summonList;
             switch(summonType) {
                 case Summon.Lesser:
+                    if(LesserSummons == null) {
+                        throw new InvalidOperationException("Duty missing lesser summons");
+                    }
                     summonList = LesserSummons.ToList();
                     break;
                 case Summon.Greater:
+                    if(GreaterSummons == null) {
+                        throw new InvalidOperationException("Duty missing greater summons");
+                    }
                     summonList = GreaterSummons.ToList();
                     break;
                 case Summon.Elder:
+                    if(ElderSummons == null) {
+                        throw new InvalidOperationException("Duty missing elder summons");
+                    }
                     summonList = ElderSummons.ToList();
-                    summonList = summonList.Concat(FinalSummons).ToList();
+                    if(FinalSummons != null) {
+                        summonList = summonList.Concat(FinalSummons).ToList();
+                    }
                     break;
                 default:
                     return "";

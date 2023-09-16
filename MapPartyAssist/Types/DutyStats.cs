@@ -2,7 +2,8 @@
 
 
 namespace MapPartyAssist.Types {
-    internal class DutyStats {
+    //unimplemented
+    public class DutyStats {
 
         //private DutyManager DutyManager;
         public Duty Duty { get; init; }

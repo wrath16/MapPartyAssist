@@ -9,8 +9,9 @@ namespace MapPartyAssist.Types {
         public uint MapId { get; set; }
 
         [BsonIgnore]
-        private MapLinkPayload _mapLinkPayload;
+        private MapLinkPayload? _mapLinkPayload;
 
+        [BsonCtor]
         public MPAMapLink() {
         }
 

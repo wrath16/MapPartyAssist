@@ -9,30 +9,37 @@ namespace MapPartyAssist.Types {
         [BsonId]
         [JsonIgnore]
         public ObjectId Id { get; set; }
-        public string Owner { get; set; }
+        //set to nullable since it is referenced in plugin constructor
+        public string? Owner { get; set; }
         public string Name { get; set; }
         public string Zone { get; set; }
         public DateTime Time { get; init; }
         public bool IsPortal { get; set; }
-        public string DutyName { get; set; }
+        public string? DutyName { get; set; }
         [JsonIgnore]
         public bool IsPending { get; set; }
         public bool IsManual { get; set; }
         public bool IsDeleted { get; set; }
         public bool IsArchived { get; set; }
         public SeString? MapLink { get; set; }
-        //[BsonRef("dutyresults")] //this will cause stack overflow due to infinite recursion with ref on DutyResults -_-
+        //this will cause stack overflow due to infinite recursion with ref on DutyResults -_-
+        //[BsonRef("dutyresults")]
         [JsonIgnore]
         [BsonIgnore]
         public DutyResults? DutyResults { get; set; }
 
+        [BsonCtor]
         public MPAMap() {
-
+            Id = ObjectId.NewObjectId();
+            Name = "";
+            Owner = "";
+            Zone = "";
         }
 
-        public MPAMap(string name, DateTime datetime, string zone = "", bool isManual = false, bool isPortal = false) {
+        public MPAMap(string name, DateTime datetime, string owner, string zone = "", bool isManual = false, bool isPortal = false) {
             Name = name;
             Time = datetime;
+            Owner = owner;
             IsPortal = isPortal;
             IsManual = isManual;
             IsDeleted = false;

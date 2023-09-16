@@ -1,5 +1,4 @@
 using Dalamud.Configuration;
-using Dalamud.Logging;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
@@ -74,11 +73,11 @@ namespace MapPartyAssist.Settings {
             try {
                 _fileLock.Wait();
                 _plugin!.PluginInterface.SavePluginConfig(this);
-            //    _fileLock.Release();
-            //} catch(Exception e) {
-            //    _fileLock.Release();
-            //    PluginLog.Error($"Save config error: {e.Message}");
-            //    PluginLog.Error($"{e.StackTrace}");
+                //    _fileLock.Release();
+                //} catch(Exception e) {
+                //    _fileLock.Release();
+                //    PluginLog.Error($"Save config error: {e.Message}");
+                //    PluginLog.Error($"{e.StackTrace}");
             } finally {
                 _fileLock.Release();
             }

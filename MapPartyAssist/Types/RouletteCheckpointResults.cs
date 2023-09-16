@@ -1,4 +1,6 @@
-﻿namespace MapPartyAssist.Types {
+﻿using LiteDB;
+
+namespace MapPartyAssist.Types {
 
     public enum Summon {
         Lesser,
@@ -8,8 +10,9 @@
         Gold
     }
 
-    internal class RouletteCheckpointResults : CheckpointResults {
+    public class RouletteCheckpointResults : CheckpointResults {
 
+        [BsonCtor]
         public RouletteCheckpointResults() {
 
         }
