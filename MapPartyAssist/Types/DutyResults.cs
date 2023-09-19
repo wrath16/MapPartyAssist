@@ -1,4 +1,5 @@
 ﻿using LiteDB;
+using MapPartyAssist.Types.Attributes;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -7,14 +8,8 @@ using System.Linq;
 namespace MapPartyAssist.Types {
 
     //class can't be abstract since we are serializing it
+    [ValidatedDataType]
     public class DutyResults {
-
-        //[JsonIgnore]
-        //public virtual List<Checkpoint> Checkpoints { get; init; }
-        //[JsonIgnore]
-        //public virtual Checkpoint FailureCheckpoint { get; init; }
-        //public static string DutyName = "";
-
         [BsonId]
         [JsonIgnore]
         public ObjectId Id { get; set; }
@@ -35,15 +30,6 @@ namespace MapPartyAssist.Types {
         public bool IsEdited { get; set; }
 
         public List<CheckpointResults> CheckpointResults { get; set; } = new();
-
-
-        //[JsonConstructor]
-        //public DutyResults(int dutyId, string[] players, string owner) {
-        //    Players = players;
-        //    Owner = owner;
-        //    Time = DateTime.Now;
-        //    DutyId = dutyId;
-        //}
 
         [BsonCtor]
         public DutyResults() {

@@ -1,7 +1,9 @@
 ﻿using LiteDB;
+using MapPartyAssist.Types.Attributes;
 using System;
 
 namespace MapPartyAssist.Types {
+    [ValidatedDataType]
     public class CheckpointResults {
         public Checkpoint Checkpoint { get; set; }
         public DateTime Time { get; set; }
@@ -14,7 +16,7 @@ namespace MapPartyAssist.Types {
 
         [BsonCtor]
         public CheckpointResults() {
-            Checkpoint = new Checkpoint("invalid checkpoint");
+            Checkpoint = new Checkpoint("");
         }
 
         public CheckpointResults(Checkpoint checkpoint, bool isReached = false) {

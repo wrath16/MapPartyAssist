@@ -277,7 +277,8 @@ namespace MapPartyAssist.Windows {
                     if(!hasSummons) {
                         _model.SummonTotals = null;
                     } else {
-                        Plugin.ImportManager.SetupSummonsTotals(_model);
+                        _model.InitializeSummonsTotals();
+                        //Plugin.ImportManager.SetupSummonsTotals(_model);
                     }
                 }
                 ImGui.TableNextColumn();
@@ -340,6 +341,7 @@ namespace MapPartyAssist.Windows {
                 }
             }
 
+            ImGui.SameLine();
             if(ImGui.Button("Cancel")) {
                 ClearModel();
                 IsOpen = false;

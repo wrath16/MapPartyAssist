@@ -1,9 +1,11 @@
 ﻿using Dalamud.Game.Text.SeStringHandling;
 using LiteDB;
+using MapPartyAssist.Types.Attributes;
 using Newtonsoft.Json;
 using System;
 
 namespace MapPartyAssist.Types {
+    [ValidatedDataType]
     public class MPAMap : IEquatable<MPAMap> {
 
         [BsonId]
@@ -16,11 +18,12 @@ namespace MapPartyAssist.Types {
         public DateTime Time { get; init; }
         public bool IsPortal { get; set; }
         public string? DutyName { get; set; }
-        [JsonIgnore]
+        [BsonIgnore]
         public bool IsPending { get; set; }
         public bool IsManual { get; set; }
         public bool IsDeleted { get; set; }
         public bool IsArchived { get; set; }
+        [BsonIgnore]
         public SeString? MapLink { get; set; }
         //this will cause stack overflow due to infinite recursion with ref on DutyResults -_-
         //[BsonRef("dutyresults")]

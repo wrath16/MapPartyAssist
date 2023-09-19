@@ -83,41 +83,41 @@ namespace MapPartyAssist.Windows {
                 Plugin.StorageManager.GetDutyResultsImports().DeleteAll();
             }
 
-            if(ImGui.Button("fix record")) {
-                //var dr = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.DutyId == 745).OrderBy(dr => dr.Time).ToList().Last();
-                //dr.CheckpointResults = new();
-                //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[0], Summon.Lesser, "secret serpent", false, true));
-                //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[1], null, null, false, true));
-                //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[2], Summon.Greater, "secret porxie", true, true));
-                //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[3], null, null, false, true));
-                //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[4], Summon.Elder, "secret keeper", true, true));
-                //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[5], null, null, false, true));
-                //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[6], Summon.Greater, "greedy pixie", true, true));
-                //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[7], null, null, false, true));
-                //Plugin.StorageManager.UpdateDutyResults(dr);
+            //if(ImGui.Button("fix record")) {
+            //    //var dr = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.DutyId == 745).OrderBy(dr => dr.Time).ToList().Last();
+            //    //dr.CheckpointResults = new();
+            //    //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[0], Summon.Lesser, "secret serpent", false, true));
+            //    //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[1], null, null, false, true));
+            //    //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[2], Summon.Greater, "secret porxie", true, true));
+            //    //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[3], null, null, false, true));
+            //    //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[4], Summon.Elder, "secret keeper", true, true));
+            //    //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[5], null, null, false, true));
+            //    //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[6], Summon.Greater, "greedy pixie", true, true));
+            //    //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[7], null, null, false, true));
+            //    //Plugin.StorageManager.UpdateDutyResults(dr);
 
-                var dr = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.DutyId == 909).OrderBy(dr => dr.Time).ToList();
+            //    var dr = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.DutyId == 909).OrderBy(dr => dr.Time).ToList();
 
-                for(int i = 0; i < dr.Count; i++) {
-                    var res = dr[i];
-                    for(int j = 0; j < dr[i].CheckpointResults.Count; j += 2) {
-                        dr[i].CheckpointResults.Insert(j + 1, new RouletteCheckpointResults(Plugin.DutyManager.Duties[909].Checkpoints[j + 1], null, null, false, true));
-                        if(j != 0) {
-                            dr[i].CheckpointResults[j].Checkpoint = Plugin.DutyManager.Duties[909].Checkpoints[j];
-                        }
-                    }
-                }
+            //    for(int i = 0; i < dr.Count; i++) {
+            //        var res = dr[i];
+            //        for(int j = 0; j < dr[i].CheckpointResults.Count; j += 2) {
+            //            dr[i].CheckpointResults.Insert(j + 1, new RouletteCheckpointResults(Plugin.DutyManager.Duties[909].Checkpoints[j + 1], null, null, false, true));
+            //            if(j != 0) {
+            //                dr[i].CheckpointResults[j].Checkpoint = Plugin.DutyManager.Duties[909].Checkpoints[j];
+            //            }
+            //        }
+            //    }
 
-                //dr.CheckpointResults = new();
-                //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[0], true));
-                //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[1], true));
-                //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[2], true));
-                //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[3], true));
-                //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[4], true));
-                //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[5], true));
-                //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[6], true));
-                Plugin.StorageManager.UpdateDutyResults(dr);
-            }
+            //    //dr.CheckpointResults = new();
+            //    //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[0], true));
+            //    //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[1], true));
+            //    //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[2], true));
+            //    //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[3], true));
+            //    //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[4], true));
+            //    //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[5], true));
+            //    //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[6], true));
+            //    Plugin.StorageManager.UpdateDutyResults(dr);
+            //}
 
             if(ImGui.Button("Set Map Status")) {
                 Plugin.MapManager.Status = StatusLevel.CAUTION;
@@ -147,6 +147,30 @@ namespace MapPartyAssist.Windows {
 
             if(ImGui.Button("Check closest link player")) {
                 PluginLog.Debug($"{Plugin.MapManager.GetPlayerWithClosestMapLink(Plugin.CurrentPartyList.Values.ToList()).Key} has the closest map link");
+            }
+
+
+            if(ImGui.Button("Check map and member nullability")) {
+                //var map = Plugin.StorageManager.GetMaps().Query().First();
+                //PluginLog.Debug($"Checking validity of {map.Id}");
+                //PluginLog.Debug($"Is valid? {map.IsValid()}");
+
+                //var dr = Plugin.StorageManager.GetDutyResults().Query().ToList().Last();
+
+                var dr = Plugin.StorageManager.GetDutyResults().Query().ToList();
+                foreach(var x in dr) {
+                    PluginLog.Debug($"Checking validity of {x.Id}....valid? {Plugin.StorageManager.ValidateDataType(x)}");
+                    //PluginLog.Debug($"Is valid? {Plugin.StorageManager.ValidateDataType(dr)}");
+                }
+            }
+
+            if(ImGui.Button("VALIDATE ALL DUTYRESULTS")) {
+
+                var dr = Plugin.StorageManager.GetDutyResults().Query().ToList();
+                foreach(var x in dr) {
+                    Plugin.StorageManager.ValidateDataType(x, true);
+                }
+                Plugin.StorageManager.UpdateDutyResults(dr);
             }
 
             //if(ImGui.Button("altars lesser string")) {

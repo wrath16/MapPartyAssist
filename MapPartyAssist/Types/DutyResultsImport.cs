@@ -1,8 +1,10 @@
 ﻿using LiteDB;
+using MapPartyAssist.Types.Attributes;
 using System;
 using System.Collections.Generic;
 
 namespace MapPartyAssist.Types {
+    [ValidatedDataType]
     public class DutyResultsImport {
 
         [BsonId]
@@ -37,6 +39,16 @@ namespace MapPartyAssist.Types {
             RunsSinceLastClear = runsSinceLastClear;
             CreationTime = DateTime.Now;
             Id = ObjectId.NewObjectId();
+        }
+
+        public void InitializeSummonsTotals() {
+            SummonTotals = new() {
+                { Summon.Lesser, 0 },
+                { Summon.Greater, 0 },
+                { Summon.Elder, 0 },
+                { Summon.Silver, 0 },
+                { Summon.Gold, 0 }
+            };
         }
     }
 }

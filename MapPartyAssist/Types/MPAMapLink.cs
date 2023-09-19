@@ -1,7 +1,9 @@
 ﻿using Dalamud.Game.Text.SeStringHandling.Payloads;
 using LiteDB;
+using MapPartyAssist.Types.Attributes;
 
 namespace MapPartyAssist.Types {
+    [ValidatedDataType]
     public class MPAMapLink {
         public int RawX { get; set; }
         public int RawY { get; set; }

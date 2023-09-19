@@ -180,8 +180,7 @@ namespace MapPartyAssist {
                     RecentPartyList = new();
                 }
             } catch(Exception e) {
-                PluginLog.Error($"Failed to initialize plugin constructor: {e.Message}")
-                    ;
+                PluginLog.Error($"Failed to initialize plugin constructor: {e.Message}");
                 //remove handlers and release database if we fail to start
                 Dispose();
                 //re-throw to prevent constructor from initializing
@@ -427,7 +426,7 @@ namespace MapPartyAssist {
                 PluginLog.Debug("Rebuilding current party list.");
                 string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
                 string currentPlayerWorld = ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
-                string currentPlayerKey = $"{currentPlayerName} {currentPlayerWorld}";
+                string currentPlayerKey = GetCurrentPlayer();
                 CurrentPartyList = new();
                 var allPlayers = StorageManager.GetPlayers();
                 var currentPlayer = allPlayers.Query().Where(p => p.Key == currentPlayerKey).FirstOrDefault();
@@ -507,18 +506,12 @@ namespace MapPartyAssist {
         }
 
         public string GetCurrentPlayer() {
-            //if(!ClientState.IsLoggedIn || ClientState.LocalPlayer == null) {
-            //    return "";
-            //}
-
-            //if(ClientState.IsLoggedIn) { 
-            //}
-
             string currentPlayerName = ClientState.LocalPlayer?.Name.ToString()!;
             string currentPlayerWorld = ClientState.LocalPlayer?.HomeWorld.GameData?.Name!;
             if(currentPlayerName == null || currentPlayerWorld == null) {
                 //throw exception?
-                throw new InvalidOperationException("Cannot retrieve current player");
+                //throw new InvalidOperationException("Cannot retrieve current player");
+                return "";
             }
 
             return $"{currentPlayerName} {currentPlayerWorld}";

@@ -2,9 +2,11 @@
 using Dalamud.Utility;
 using LiteDB;
 using MapPartyAssist.Types;
+using MapPartyAssist.Types.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -97,32 +99,20 @@ namespace MapPartyAssist.Services {
             Plugin.Save();
         }
 
-        private void ImportMaps() {
-
-        }
-
-        private void ImportDutyResults() {
-
-        }
-
         internal Task AddMap(MPAMap map) {
-            var mapCollection = Database.GetCollection<MPAMap>(MapTable);
-            return AsyncWriteToDatabase(() => mapCollection.Insert(map));
+            return AsyncWriteToDatabase(() => GetMaps().Insert(map));
         }
 
         internal Task AddMaps(IEnumerable<MPAMap> maps) {
-            var mapCollection = Database.GetCollection<MPAMap>(MapTable);
-            return AsyncWriteToDatabase(() => mapCollection.Insert(maps));
+            return AsyncWriteToDatabase(() => GetMaps().Insert(maps));
         }
 
         internal Task UpdateMap(MPAMap map) {
-            var mapCollection = Database.GetCollection<MPAMap>(MapTable);
-            return AsyncWriteToDatabase(() => mapCollection.Update(map));
+            return AsyncWriteToDatabase(() => GetMaps().Update(map));
         }
 
         internal Task UpdateMaps(IEnumerable<MPAMap> maps) {
-            var mapCollection = Database.GetCollection<MPAMap>(MapTable);
-            return AsyncWriteToDatabase(() => mapCollection.Update(maps.Where(m => m.Id != null)));
+            return AsyncWriteToDatabase(() => GetMaps().Update(maps.Where(m => m.Id != null)));
         }
 
         internal ILiteCollection<MPAMap> GetMaps() {
@@ -130,13 +120,11 @@ namespace MapPartyAssist.Services {
         }
 
         internal Task AddPlayer(MPAMember player) {
-            var playerCollection = Database.GetCollection<MPAMember>(PlayerTable);
-            return AsyncWriteToDatabase(() => playerCollection.Insert(player), false);
+            return AsyncWriteToDatabase(() => GetPlayers().Insert(player), false);
         }
 
         internal Task UpdatePlayer(MPAMember player) {
-            var playerCollection = Database.GetCollection<MPAMember>(PlayerTable);
-            return AsyncWriteToDatabase(() => playerCollection.Update(player), false);
+            return AsyncWriteToDatabase(() => GetPlayers().Update(player), false);
         }
 
         internal ILiteCollection<MPAMember> GetPlayers() {
@@ -144,23 +132,19 @@ namespace MapPartyAssist.Services {
         }
 
         internal Task AddDutyResults(DutyResults results) {
-            var drCollection = Database.GetCollection<DutyResults>(DutyResultsTable);
-            return AsyncWriteToDatabase(() => drCollection.Insert(results));
+            return AsyncWriteToDatabase(() => GetDutyResults().Insert(results));
         }
 
         internal Task AddDutyResults(IEnumerable<DutyResults> results) {
-            var drCollection = Database.GetCollection<DutyResults>(DutyResultsTable);
-            return AsyncWriteToDatabase(() => drCollection.Insert(results));
+            return AsyncWriteToDatabase(() => GetDutyResults().Insert(results));
         }
 
         internal Task UpdateDutyResults(DutyResults results) {
-            var drCollection = Database.GetCollection<DutyResults>(DutyResultsTable);
-            return AsyncWriteToDatabase(() => drCollection.Update(results));
+            return AsyncWriteToDatabase(() => GetDutyResults().Update(results));
         }
 
         internal Task UpdateDutyResults(IEnumerable<DutyResults> results) {
-            var drCollection = Database.GetCollection<DutyResults>(DutyResultsTable);
-            return AsyncWriteToDatabase(() => drCollection.Update(results));
+            return AsyncWriteToDatabase(() => GetDutyResults().Update(results));
         }
 
         internal ILiteCollection<DutyResults> GetDutyResults() {
@@ -204,6 +188,80 @@ namespace MapPartyAssist.Services {
             task.Start();
             //task.ContinueWith(HandleTaskExceptions, TaskContinuationOptions.OnlyOnFaulted);
             return task;
+        }
+
+        //checks a data type for null values on non-nullable properties
+        public bool ValidateDataType(object toValidate, bool correctErrors = false) {
+            //if(toValidate.GetType().GetCustomAttribute(typeof(ValidatedDataTypeAttribute), true) == null) {
+            //    throw new ArgumentException("Attempting to validate a non-data type");
+            //}
+
+            bool isValid = true;
+            var nullabilityContext = new NullabilityInfoContext();
+            //PluginLog.Debug($"Type: {toValidate.GetType().Name}");
+            foreach(var prop in toValidate.GetType().GetProperties()) {
+                var nullabilityInfo = nullabilityContext.Create(prop);
+                bool nullable = nullabilityInfo.WriteState is NullabilityState.Nullable;
+                var curValue = prop.GetValue(toValidate);
+                bool isNull = curValue is null;
+                //bool isEnumerable = typeof(IEnumerable<MPADataType>).IsAssignableFrom(prop.PropertyType);
+                bool isEnumerable = typeof(System.Collections.IEnumerable).IsAssignableFrom(prop.PropertyType);
+                bool hasEnumerableData = false;
+                if(isEnumerable) {
+                    foreach(var type in prop.PropertyType.GetGenericArguments()) {
+                        if(type.GetCustomAttribute(typeof(ValidatedDataTypeAttribute), true) != null) {
+                            hasEnumerableData = true;
+                        }
+                    }
+                }
+                bool isReference = prop.GetCustomAttribute(typeof(BsonRefAttribute), true) != null;
+                //bool isDataType = typeof(MPADataType).IsAssignableFrom(prop.PropertyType);
+                bool isDataType = prop.PropertyType.GetCustomAttribute(typeof(ValidatedDataTypeAttribute), true) != null;
+                //PluginLog.Debug(string.Format("Name:  {0, -20} Type: {1, -15} IsEnumerable: {7,-6} HasEnumerableData: {4, -6} IsDataType: {5, -6} IsReference: {6, -6} Nullable: {2, -6} IsNull: {3,-6}", prop.Name, prop.PropertyType.Name, nullable, isNull, hasEnumerableData, isDataType, isReference, isEnumerable));
+
+                //check recursive data type
+                if(isDataType && !isReference && !isNull && !ValidateDataType(curValue!, correctErrors)) {
+                    isValid = false;
+                }
+
+                //check enumerable
+                if(hasEnumerableData && !isNull && prop.PropertyType != typeof(string)) {
+                    var enumerable = (System.Collections.IEnumerable)curValue!;
+
+                    foreach(var element in (System.Collections.IEnumerable)curValue!) {
+                        isValid = ValidateDataType(element, correctErrors) && isValid;
+                    }
+                }
+
+                if(!nullable && isNull) {
+                    isValid = false;
+                    if(correctErrors) {
+
+                        //toValidate.
+                        //prop.SetValue(toValidate, new());
+
+
+                        //var newObj = prop.PropertyType.GetConstructor(Type.EmptyTypes);
+
+                        //curValue = ()
+
+                        //invoke default constructor if it has fixes
+                        var defaultCtor = prop.PropertyType.GetConstructor(Type.EmptyTypes);
+                        if(defaultCtor != null) {
+                            prop.SetValue(toValidate, defaultCtor.Invoke(null));
+                            //curValue = defaultCtor.Invoke(null);
+                        } else {
+                            //PluginLog.Warning($"No default constructor for type: {prop.PropertyType.Name}");
+                            //initialize empty strings
+                            if(prop.PropertyType == typeof(string)) {
+                                prop.SetValue(toValidate, "");
+                            }
+                        }
+                    }
+                }
+            }
+            //PluginLog.Debug($"");
+            return isValid;
         }
     }
 }

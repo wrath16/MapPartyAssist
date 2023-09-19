@@ -1,8 +1,10 @@
 ﻿using LiteDB;
+using MapPartyAssist.Types.Attributes;
 using System;
 using System.Collections.Generic;
 
 namespace MapPartyAssist.Types {
+    [ValidatedDataType]
     public class MPAMember : IEquatable<MPAMember>, IEquatable<string> {
         public string Name { get; set; }
         public string HomeWorld { get; set; }
@@ -12,11 +14,7 @@ namespace MapPartyAssist.Types {
         public DateTime LastJoined { get; set; }
         public MPAMapLink? MapLink { get; set; }
         [BsonId]
-        public string Key {
-            get {
-                return $"{Name} {HomeWorld}";
-            }
-        }
+        public string Key => $"{Name} {HomeWorld}";
 
         public MPAMember(string name, string homeWorld, bool isSelf = false) {
             Name = name;

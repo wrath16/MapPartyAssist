@@ -25,15 +25,15 @@ namespace MapPartyAssist.Services {
             }
         }
 
-        internal void SetupSummonsTotals(DutyResultsImport import) {
-            import.SummonTotals = new() {
-                { Summon.Lesser, 0 },
-                { Summon.Greater, 0 },
-                { Summon.Elder, 0 },
-                { Summon.Silver, 0 },
-                { Summon.Gold, 0 }
-            };
-        }
+        //internal void SetupSummonsTotals(DutyResultsImport import) {
+        //    import.SummonTotals = new() {
+        //        { Summon.Lesser, 0 },
+        //        { Summon.Greater, 0 },
+        //        { Summon.Elder, 0 },
+        //        { Summon.Silver, 0 },
+        //        { Summon.Gold, 0 }
+        //    };
+        //}
 
         internal void AddorEditImport(DutyResultsImport import, bool validate = true) {
             //validate
