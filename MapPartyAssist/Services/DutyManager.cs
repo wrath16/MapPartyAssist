@@ -337,12 +337,11 @@ namespace MapPartyAssist.Services {
 
         //return true if updates made
         private bool ProcessCheckpointsDoors(XivChatType type, uint senderId, SeString sender, SeString message) {
-            Duty currentDuty = Duties[_currentDutyResults!.DutyId];
-            var nextCheckpoint = currentDuty.Checkpoints![_currentDutyResults.CheckpointResults.Count];
-            if(((int)type == 2233 || (int)type == 2105) && Regex.IsMatch(message.ToString(), nextCheckpoint.Message, RegexOptions.IgnoreCase)) {
+            var nextCheckpoint = _currentDuty!.Checkpoints![_currentDutyResults!.CheckpointResults.Count];
+            if(((int)type == 2233 || (int)type == 2105) && Regex.IsMatch(message.ToString(), nextCheckpoint.Message!, RegexOptions.IgnoreCase)) {
                 _currentDutyResults.CheckpointResults.Add(new CheckpointResults(nextCheckpoint, true));
                 //if all checkpoints reached, set to duty complete
-                if(_currentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == currentDuty.Checkpoints!.Count) {
+                if(_currentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == _currentDuty.Checkpoints!.Count) {
                     _currentDutyResults.IsComplete = true;
                     _currentDutyResults.CompletionTime = DateTime.Now;
                 }
@@ -350,7 +349,7 @@ namespace MapPartyAssist.Services {
             }
 
             //check for failure
-            if(((int)type == 2233 || (int)type == 2105) && Regex.IsMatch(message.ToString(), _currentDuty!.FailureCheckpoint!.Message, RegexOptions.IgnoreCase)) {
+            if(((int)type == 2233 || (int)type == 2105) && Regex.IsMatch(message.ToString(), _currentDuty!.FailureCheckpoint!.Message!, RegexOptions.IgnoreCase)) {
                 //CheckpointResults.Add(new CheckpointResults(nextCheckpoint, false));
                 _currentDutyResults.IsComplete = true;
                 _currentDutyResults.CompletionTime = DateTime.Now;
@@ -414,7 +413,7 @@ namespace MapPartyAssist.Services {
                 //Match unknownMatch = Regex.Match(message.ToString(), ".*(?=,? appears?)", RegexOptions.IgnoreCase);
             }
             //failure
-            if(((int)type == 2233 || (int)type == 2105) && Regex.IsMatch(message.ToString(), _currentDuty!.FailureCheckpoint!.Message, RegexOptions.IgnoreCase)) {
+            if(((int)type == 2233 || (int)type == 2105) && Regex.IsMatch(message.ToString(), _currentDuty!.FailureCheckpoint!.Message!, RegexOptions.IgnoreCase)) {
                 _currentDutyResults!.IsComplete = true;
                 _currentDutyResults.CompletionTime = DateTime.Now;
                 return true;

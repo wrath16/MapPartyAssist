@@ -410,7 +410,7 @@ namespace MapPartyAssist {
             PluginLog.Debug("logging in");
             BuildCurrentPartyList();
             BuildRecentPartyList();
-            MapManager.CheckAndArchiveMaps(Configuration.RecentPartyList);
+            MapManager.CheckAndArchiveMaps();
         }
 
         private void OnLogout(object? sender, EventArgs e) {
@@ -495,9 +495,6 @@ namespace MapPartyAssist {
 
         public void OpenMapLink(MapLinkPayload mapLink) {
             GameGui.OpenMapWithMapLink(mapLink);
-        }
-
-        public void SetWayMark() {
         }
 
         public int GetCurrentTerritoryId() {

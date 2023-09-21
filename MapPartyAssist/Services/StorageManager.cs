@@ -19,8 +19,8 @@ namespace MapPartyAssist.Services {
         internal const string StatsImportTable = "dutyresultsimport";
         internal const string PlayerTable = "player";
 
-        private Plugin Plugin;
-        private SemaphoreSlim _dbLock;
+        private Plugin _plugin;
+        private SemaphoreSlim _dbLock = new SemaphoreSlim(1, 1);
         private LiteDatabase Database { get; init; }
 
         internal ILiteCollection<MPAMap> Maps {
@@ -30,7 +30,7 @@ namespace MapPartyAssist.Services {
         }
 
         internal StorageManager(Plugin plugin, string path) {
-            Plugin = plugin;
+            _plugin = plugin;
             Database = new LiteDatabase(path);
 
             //set mapper properties
@@ -57,21 +57,21 @@ namespace MapPartyAssist.Services {
             playerCollection.EnsureIndex(p => p.Name);
             playerCollection.EnsureIndex(p => p.HomeWorld);
             playerCollection.EnsureIndex(p => p.Key);
-
-            _dbLock = new SemaphoreSlim(1, 1);
         }
 
         public void Dispose() {
             Database.Dispose();
         }
 
+
+#pragma warning disable 612, 618
         internal void Import() {
             PluginLog.Information("Importing data from config file into database...");
 
             List<MPAMap> maps = new();
 
-            foreach(var player in Plugin.Configuration.RecentPartyList) {
-                foreach(var map in player.Value.Maps) {
+            foreach(var player in _plugin.Configuration.RecentPartyList.Where(p => p.Value.Maps != null)) {
+                foreach(var map in player.Value.Maps!) {
                     if(map.Owner.IsNullOrEmpty()) {
                         map.Owner = player.Key;
                     }
@@ -82,22 +82,23 @@ namespace MapPartyAssist.Services {
             }
             AddMaps(maps);
 
-            foreach(var dutyResults in Plugin.Configuration.DutyResults) {
+            foreach(var dutyResults in _plugin.Configuration.DutyResults) {
                 //find map...
-                var map = Plugin.MapManager.FindMapForDutyResults(dutyResults);
+                var map = _plugin.MapManager.FindMapForDutyResults(dutyResults);
                 dutyResults.Map = map;
                 //if(map != null) {
                 //    map.DutyResults = dutyResults;
                 //}
             }
-            AddDutyResults(Plugin.Configuration.DutyResults);
+            AddDutyResults(_plugin.Configuration.DutyResults);
 
-            Plugin.Configuration.DutyResults = new();
-            Plugin.Configuration.RecentPartyList = new();
+            _plugin.Configuration.DutyResults = new();
+            _plugin.Configuration.RecentPartyList = new();
 
-            Plugin.Configuration.Version = 2;
-            Plugin.Save();
+            _plugin.Configuration.Version = 2;
+            _plugin.Save();
         }
+#pragma warning restore 612, 618
 
         internal Task AddMap(MPAMap map) {
             return AsyncWriteToDatabase(() => GetMaps().Insert(map));
@@ -165,12 +166,12 @@ namespace MapPartyAssist.Services {
             return Database.GetCollection<DutyResultsImport>(StatsImportTable);
         }
 
-        private void HandleTaskExceptions(Task task) {
-            var aggException = task.Exception.Flatten();
-            foreach(var exception in aggException.InnerExceptions) {
-                PluginLog.Error($"{exception.Message}");
-            }
-        }
+        //private void HandleTaskExceptions(Task task) {
+        //    var aggException = task.Exception.Flatten();
+        //    foreach(var exception in aggException.InnerExceptions) {
+        //        PluginLog.Error($"{exception.Message}");
+        //    }
+        //}
 
         //all writes are asynchronous for performance reasons
         private Task AsyncWriteToDatabase(Func<object> action, bool toSave = true) {
@@ -179,7 +180,7 @@ namespace MapPartyAssist.Services {
                     _dbLock.Wait();
                     action.Invoke();
                     if(toSave) {
-                        Plugin.Save();
+                        _plugin.Save();
                     }
                 } finally {
                     _dbLock.Release();
@@ -197,7 +198,7 @@ namespace MapPartyAssist.Services {
             //}
 
             bool isValid = true;
-            var nullabilityContext = new NullabilityInfoContext();
+            NullabilityInfoContext nullabilityContext = new();
             //PluginLog.Debug($"Type: {toValidate.GetType().Name}");
             foreach(var prop in toValidate.GetType().GetProperties()) {
                 var nullabilityInfo = nullabilityContext.Create(prop);
@@ -236,20 +237,10 @@ namespace MapPartyAssist.Services {
                 if(!nullable && isNull) {
                     isValid = false;
                     if(correctErrors) {
-
-                        //toValidate.
-                        //prop.SetValue(toValidate, new());
-
-
-                        //var newObj = prop.PropertyType.GetConstructor(Type.EmptyTypes);
-
-                        //curValue = ()
-
                         //invoke default constructor if it has fixes
                         var defaultCtor = prop.PropertyType.GetConstructor(Type.EmptyTypes);
                         if(defaultCtor != null) {
                             prop.SetValue(toValidate, defaultCtor.Invoke(null));
-                            //curValue = defaultCtor.Invoke(null);
                         } else {
                             //PluginLog.Warning($"No default constructor for type: {prop.PropertyType.Name}");
                             //initialize empty strings

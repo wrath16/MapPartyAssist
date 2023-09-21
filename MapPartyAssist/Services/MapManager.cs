@@ -171,44 +171,23 @@ namespace MapPartyAssist.Services {
             //zone ??= DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name!;
             //zone = _textInfo.ToTitleCase(zone);
             type = _textInfo.ToTitleCase(type);
-            var newMap = new MPAMap(type, DateTime.Now, player.Key, zone, isManual, isPortal);
+            var newMap = new MPAMap {
+                Name = type,
+                Time = DateTime.Now,
+                Owner = player.Key,
+                Zone = zone,
+                IsManual = isManual,
+                IsPortal = isPortal
+            };
             player.MapLink = null;
             LastMapPlayerKey = player.Key;
 
             //add to DB
             _plugin.StorageManager.AddMap(newMap);
             _plugin.StorageManager.UpdatePlayer(player);
-
             //Plugin.Save();
 
             ClearStatus();
-        }
-
-        public void RemoveLastMap(MPAMember player) {
-            var lastMap = player.Maps.Where(m => !m.IsDeleted && !m.IsArchived).LastOrDefault();
-            if(lastMap != null) {
-                lastMap.IsDeleted = true;
-
-                _plugin.Save();
-
-                var lastMapStorage = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted && !m.IsArchived).ToList().LastOrDefault();
-                if(lastMapStorage != null) {
-                    lastMapStorage.IsDeleted = true;
-                    _plugin.StorageManager.UpdateMap(lastMapStorage);
-                }
-            }
-            //player.Maps.Where(m => !m.IsDeleted && !m.IsArchived).Last().IsDeleted = true;
-            //player.Maps.RemoveAt(player.Maps.Count - 1);
-
-        }
-
-        //archive all of the maps for the given list
-        private void ForceArchiveAllMaps(Dictionary<string, MPAMember> list) {
-            foreach(var player in list.Values) {
-                foreach(var map in player.Maps) {
-                    map.IsArchived = true;
-                }
-            }
         }
 
         public void ClearAllMaps() {
@@ -239,7 +218,7 @@ namespace MapPartyAssist.Services {
             //Plugin.Save();
         }
 
-        public void CheckAndArchiveMaps(Dictionary<string, MPAMember> list) {
+        public void CheckAndArchiveMaps() {
             DateTime currentTime = DateTime.Now;
             var storageMaps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived).ToList();
             foreach(var map in storageMaps) {

@@ -66,7 +66,7 @@ namespace MapPartyAssist.Windows {
             //}
 
             if(ImGui.Button("Check and Archive Maps")) {
-                Plugin.MapManager.CheckAndArchiveMaps(Plugin.CurrentPartyList);
+                Plugin.MapManager.CheckAndArchiveMaps();
             }
 
 

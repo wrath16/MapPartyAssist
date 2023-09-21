@@ -32,17 +32,16 @@ namespace MapPartyAssist.Settings {
         public bool HighlightLinksInCurrentZone { get; set; } = true;
         public bool HighlightClosestLink { get; set; } = true;
         public bool ShowStatsWindowTooltips { get; set; } = true;
-        //public bool PreserveRunsSinceLastClear { get; set; } = true;
-        //public bool KicksProgressTable { get; set; } = false;
         public ProgressTableCount ProgressTableCount { get; set; } = ProgressTableCount.All;
         public ProgressTableRate ProgressTableRate { get; set; } = ProgressTableRate.Previous;
         public ClearSequenceCount ClearSequenceCount { get; set; } = ClearSequenceCount.Last;
         public bool TotalMapsClearSequence { get; set; } = false;
         public bool EnableWhileSolo { get; set; } = true;
-        //public bool ShowDeaths { get; set; } = false;
         public bool CurrentCharacterStatsOnly { get; set; } = false;
         public Dictionary<int, DutyConfiguration> DutyConfigurations { get; set; } = new();
+        [Obsolete]
         public Dictionary<string, MPAMember> RecentPartyList { get; set; } = new();
+        [Obsolete]
         public List<DutyResults> DutyResults { get; set; } = new();
 
         [NonSerialized]
@@ -66,31 +65,15 @@ namespace MapPartyAssist.Settings {
                     }
                 }
             }
-
         }
 
         public void Save() {
             try {
                 _fileLock.Wait();
                 _plugin!.PluginInterface.SavePluginConfig(this);
-                //    _fileLock.Release();
-                //} catch(Exception e) {
-                //    _fileLock.Release();
-                //    PluginLog.Error($"Save config error: {e.Message}");
-                //    PluginLog.Error($"{e.StackTrace}");
             } finally {
                 _fileLock.Release();
             }
-        }
-
-        //removes players who have 0 maps and last joined >24 hours
-        public void PruneRecentPartyList() {
-            foreach(var player in RecentPartyList) {
-                if(player.Value.Maps.Count <= 0 && (DateTime.Now - player.Value.LastJoined).TotalHours >= ArchiveThresholdHours) {
-                    RecentPartyList.Remove(player.Key);
-                }
-            }
-            Save();
         }
     }
 }

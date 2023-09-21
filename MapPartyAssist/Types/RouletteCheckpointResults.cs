@@ -13,7 +13,7 @@ namespace MapPartyAssist.Types {
     public class RouletteCheckpointResults : CheckpointResults {
 
         [BsonCtor]
-        public RouletteCheckpointResults() {
+        public RouletteCheckpointResults() : base() {
 
         }
 

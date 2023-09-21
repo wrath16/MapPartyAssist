@@ -9,16 +9,6 @@ namespace MapPartyAssist.Types {
     //represents a data type that will be stored in the database
     public abstract class MPADataType {
 
-        public void CheckNullability() {
-            var nullabilityContext = new NullabilityInfoContext();
-            //PluginLog.Debug($"Type: {this.GetType().Name}");
-            foreach(var p in this.GetType().GetProperties()) {
-                var nullabilityInfo = nullabilityContext.Create(p);
-                bool nullable = nullabilityInfo.WriteState is NullabilityState.Nullable;
-                //PluginLog.Debug(string.Format("Name:  {0, -20} Type: {1, -15} Nullable: {2, -6}", p.Name, p.PropertyType.Name, nullable));
-            }
-        }
-
         //returns true if data is all valid
         public bool Validate(bool correctErrors = false) {
             bool isValid = true;
@@ -51,30 +41,18 @@ namespace MapPartyAssist.Types {
 
                 if(!nullable && isNull) {
                     isValid = false;
-                    if(correctErrors) {
-                        //invoke default constructor if it has fixes
-                        var defaultCtor = prop.PropertyType.GetConstructor(Type.EmptyTypes);
-                        if(defaultCtor != null) {
-                            curValue = defaultCtor.Invoke(null);
-                        } else {
-                            //PluginLog.Warning($"No default constructor for type: {prop.PropertyType.Name}");
-                        }
-                    }
+                    //if(correctErrors) {
+                    //    //invoke default constructor if it has fixes
+                    //    var defaultCtor = prop.PropertyType.GetConstructor(Type.EmptyTypes);
+                    //    if(defaultCtor != null) {
+                    //        curValue = defaultCtor.Invoke(null);
+                    //    } else {
+                    //        //PluginLog.Warning($"No default constructor for type: {prop.PropertyType.Name}");
+                    //    }
+                    //}
                 }
-                //PluginLog.Debug(string.Format("Name:  {0, -20} Type: {1, -15} Nullable: {2, -6}", p.Name, p.PropertyType.Name, nullable));
             }
-            //PluginLog.Debug($"");
             return isValid;
-        }
-
-        public static void CheckNullability(Type type) {
-            var nullabilityContext = new NullabilityInfoContext();
-            PluginLog.Debug($"Type: {type.Name}");
-            foreach(var p in type.GetProperties()) {
-                var nullabilityInfo = nullabilityContext.Create(p);
-                bool nullable = nullabilityInfo.WriteState is NullabilityState.Nullable;
-                PluginLog.Debug(string.Format("Name:  {0, -20} Type: {1, -15} Nullable: {2, -6}", p.Name, p.PropertyType.Name, nullable));
-            }
         }
     }
 }

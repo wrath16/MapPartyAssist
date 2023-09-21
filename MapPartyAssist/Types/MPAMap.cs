@@ -11,6 +11,8 @@ namespace MapPartyAssist.Types {
         [BsonId]
         [JsonIgnore]
         public ObjectId Id { get; set; }
+        //nullable for backwards compatibility
+        public int? Version { get; set; }
         //set to nullable since it is referenced in plugin constructor
         public string? Owner { get; set; }
         public string Name { get; set; }
@@ -25,7 +27,7 @@ namespace MapPartyAssist.Types {
         public bool IsArchived { get; set; }
         [BsonIgnore]
         public SeString? MapLink { get; set; }
-        //this will cause stack overflow due to infinite recursion with ref on DutyResults -_-
+        //this will cause a circular ref with DutyResults -_-
         //[BsonRef("dutyresults")]
         [JsonIgnore]
         [BsonIgnore]
@@ -49,6 +51,7 @@ namespace MapPartyAssist.Types {
             IsArchived = false;
             Zone = zone;
             Id = ObjectId.NewObjectId();
+            Version = 1;
         }
 
         public bool Equals(MPAMap? other) {

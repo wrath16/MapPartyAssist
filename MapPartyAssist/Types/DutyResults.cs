@@ -7,7 +7,6 @@ using System.Linq;
 
 namespace MapPartyAssist.Types {
 
-    //class can't be abstract since we are serializing it
     [ValidatedDataType]
     public class DutyResults {
         [BsonId]

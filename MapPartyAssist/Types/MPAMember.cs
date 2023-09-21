@@ -9,7 +9,7 @@ namespace MapPartyAssist.Types {
         public string Name { get; set; }
         public string HomeWorld { get; set; }
         [BsonIgnore]
-        public List<MPAMap> Maps { get; set; }
+        public List<MPAMap>? Maps { get; set; }
         public bool IsSelf { get; set; }
         public DateTime LastJoined { get; set; }
         public MPAMapLink? MapLink { get; set; }
@@ -21,7 +21,7 @@ namespace MapPartyAssist.Types {
             HomeWorld = homeWorld;
             IsSelf = isSelf;
             LastJoined = DateTime.Now;
-            Maps = new List<MPAMap>();
+            Maps = new();
         }
 
         public bool Equals(MPAMember? other) {
