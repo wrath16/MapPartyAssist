@@ -20,124 +20,97 @@ namespace MapPartyAssist.Windows {
         AllLegacy
     }
 
-    internal class StatsWindow : Window, IDisposable {
+    internal class StatsWindow : Window {
 
-        private Plugin Plugin;
-        private ViewDutyResultsImportsWindow ViewDutyResultsImportsWindow;
+        private Plugin _plugin;
+        private ViewDutyResultsImportsWindow _viewImportsWindow;
+
         private StatRange _statRange = StatRange.All;
+        private readonly string[] _rangeCombo = { "Current", "Last Day", "Last Week", "Since last clear", "All-Time", "All-Time with imported data" };
         private int _dutyId = 276;
         private int _selectedDuty = 2;
+        private readonly int[] _dutyIdCombo = { 179, 268, 276, 586, 688, 745, 819, 909 };
+        private readonly string[] _dutyNameCombo;
         private List<DutyResults> _dutyResults = new();
         private List<DutyResultsImport> _dutyResultsImports = new();
 
-        public StatsWindow(Plugin plugin) : base("Treasure Dungeon Stats") {
-            this.SizeConstraints = new WindowSizeConstraints {
+        internal StatsWindow(Plugin plugin) : base("Treasure Dungeon Stats") {
+            SizeConstraints = new WindowSizeConstraints {
                 MinimumSize = new Vector2(300, 50),
                 MaximumSize = new Vector2(600, 1000)
             };
-            this.Plugin = plugin;
-            ViewDutyResultsImportsWindow = new ViewDutyResultsImportsWindow(plugin, this);
-            ViewDutyResultsImportsWindow.IsOpen = false;
-            Plugin.WindowSystem.AddWindow(ViewDutyResultsImportsWindow);
-        }
+            _plugin = plugin;
+            _viewImportsWindow = new ViewDutyResultsImportsWindow(plugin, this);
+            _viewImportsWindow.IsOpen = false;
+            _plugin.WindowSystem.AddWindow(_viewImportsWindow);
 
-        public void Dispose() {
+            //setup duty name combo
+            _dutyNameCombo = new string[_dutyIdCombo.Length];
+            for(int i = 0; i < _dutyIdCombo.Length; i++) {
+                _dutyNameCombo[i] = _plugin.DutyManager.Duties[_dutyIdCombo[i]].GetDisplayName();
+            }
         }
 
         public void Refresh() {
             UpdateDutyResults();
-            ViewDutyResultsImportsWindow.Refresh();
+            _viewImportsWindow.Refresh();
         }
 
         public override void OnClose() {
-            ViewDutyResultsImportsWindow.IsOpen = false;
+            _viewImportsWindow.IsOpen = false;
             base.OnClose();
         }
 
         private void UpdateDutyResults() {
-
             if(_statRange == StatRange.Current) {
                 //_dutyResults = Plugin.DutyManager.GetRecentDutyResultsList(_dutyId);
-                _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted && dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+                _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted && dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
             } else if(_statRange == StatRange.PastDay) {
-                _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToEnumerable().Where(dr => (DateTime.Now - dr.Time).TotalHours < 24).ToList();
+                _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToEnumerable().Where(dr => (DateTime.Now - dr.Time).TotalHours < 24).ToList();
             } else if(_statRange == StatRange.PastWeek) {
-                _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToEnumerable().Where(dr => (DateTime.Now - dr.Time).TotalDays < 7).ToList();
+                _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToEnumerable().Where(dr => (DateTime.Now - dr.Time).TotalDays < 7).ToList();
             } else if(_statRange == StatRange.All) {
-                _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+                _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
             } else if(_statRange == StatRange.AllLegacy) {
-                _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
-                _dutyResultsImports = Plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted && i.DutyId == _dutyId).OrderBy(i => i.Time).ToList();
+                _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+                _dutyResultsImports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted && i.DutyId == _dutyId).OrderBy(i => i.Time).ToList();
             } else if(_statRange == StatRange.SinceLastClear) {
-                var lastClear = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList().Where(dr => dr.CheckpointResults.Count == Plugin.DutyManager.Duties[_dutyId].Checkpoints.Count && dr.CheckpointResults.Last().IsReached).LastOrDefault();
+                var lastClear = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList().Where(dr => dr.CheckpointResults.Count == _plugin.DutyManager.Duties[_dutyId].Checkpoints!.Count && dr.CheckpointResults.Last().IsReached).LastOrDefault();
                 if(lastClear != null) {
-                    _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId && dr.Time > lastClear.Time).OrderBy(dr => dr.Time).ToList();
+                    _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId && dr.Time > lastClear.Time).OrderBy(dr => dr.Time).ToList();
                 } else {
-                    _dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+                    _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
                 }
             }
 
-            if(Plugin.Configuration.CurrentCharacterStatsOnly) {
-                _dutyResults = _dutyResults.Where(dr => dr.Players.Contains(Plugin.GetCurrentPlayer())).ToList();
+            if(_plugin.Configuration.CurrentCharacterStatsOnly) {
+                _dutyResults = _dutyResults.Where(dr => dr.Players.Contains(_plugin.GetCurrentPlayer())).ToList();
             }
         }
 
         public override void Draw() {
-
-            //if(ImGui.Button("Test Function")) {
-            //    Plugin.TestFunction5();
-            //}
-
-            string[] duties = { "The Aquapolis", "The Lost Canals of Uznair", "The Hidden Canals of Uznair", "The Shifting Altars of Uznair", "The Dungeons of Lyhe Ghiah", "The Shifting Oubliettes of Lyhe Ghiah", "The Excitatron 6000", "The Shifting Gymnasion Agonon" };
-            if(ImGui.Combo($"Duty##DutyCombo", ref _selectedDuty, duties, 8)) {
-                switch(_selectedDuty) {
-                    case 0:
-                        _dutyId = 179;
-                        break;
-                    case 1:
-                        _dutyId = 268;
-                        break;
-                    case 2:
-                    default:
-                        _dutyId = 276;
-                        break;
-                    case 3:
-                        _dutyId = 586;
-                        break;
-                    case 4:
-                        _dutyId = 688;
-                        break;
-                    case 5:
-                        _dutyId = 745;
-                        break;
-                    case 6:
-                        _dutyId = 819;
-                        break;
-                    case 7:
-                        _dutyId = 909;
-                        break;
-                }
+            if(ImGui.Combo($"Duty##DutyCombo", ref _selectedDuty, _dutyNameCombo, _dutyNameCombo.Length)) {
+                _dutyId = _dutyIdCombo[_selectedDuty];
                 UpdateDutyResults();
             }
-
             int statRangeToInt = (int)_statRange;
-            string[] includes = { "Current", "Last Day", "Last Week", "Since last clear", "All-Time", "All-Time with imported data" };
-            if(ImGui.Combo($"Data Range##includesCombo", ref statRangeToInt, includes, 6)) {
+            if(ImGui.Combo($"Data Range##includesCombo", ref statRangeToInt, _rangeCombo, _rangeCombo.Length)) {
                 _statRange = (StatRange)statRangeToInt;
                 UpdateDutyResults();
             }
 
             if(_statRange == StatRange.AllLegacy) {
                 if(ImGui.Button("Manage Imports")) {
-                    if(!ViewDutyResultsImportsWindow.IsOpen) {
-                        ViewDutyResultsImportsWindow.Position = new Vector2(ImGui.GetWindowPos().X + 50f * ImGuiHelpers.GlobalScale, ImGui.GetWindowPos().Y + 50f * ImGuiHelpers.GlobalScale);
-                        ViewDutyResultsImportsWindow.IsOpen = true;
+                    if(!_viewImportsWindow.IsOpen) {
+                        _viewImportsWindow.Position = new Vector2(ImGui.GetWindowPos().X + 50f * ImGuiHelpers.GlobalScale, ImGui.GetWindowPos().Y + 50f * ImGuiHelpers.GlobalScale);
+                        _viewImportsWindow.IsOpen = true;
                     }
+                    _viewImportsWindow.BringToFront();
                 }
             }
 
             ProgressTable(_dutyResults, _dutyId);
-            if(Plugin.DutyManager.Duties[_dutyId].Structure == DutyStructure.Roulette) {
+            if(_plugin.DutyManager.Duties[_dutyId].Structure == DutyStructure.Roulette) {
                 SummonTable(_dutyResults, _dutyId);
             }
         }
@@ -145,18 +118,9 @@ namespace MapPartyAssist.Windows {
         public override void PreDraw() {
         }
 
-        private void PrepareTable() {
-        }
-
         private void ProgressTable(List<DutyResults> dutyResults, int dutyId) {
-            //var allResults = Plugin.Configuration.DutyResults.Where(dr => {
-            //    MPAMap? map = Plugin.DutyManager.FindMapForDutyResults(dr);
-            //    bool isCurrent = map != null && !map.IsArchived && !map.IsDeleted;
-            //    return dr.IsComplete && dr.DutyId == dutyId && (_statRange != StatRange.Current || isCurrent);
-            //});
-
             //determine number of chambers from duty id and whether this is doors or roulette
-            var duty = Plugin.DutyManager.Duties[dutyId];
+            var duty = _plugin.DutyManager.Duties[dutyId];
             bool isRoulette = duty.Structure == DutyStructure.Roulette;
             int numChambers = duty.ChamberCount;
             string successVerb = isRoulette ? "Complete" : "Open";
@@ -231,7 +195,6 @@ namespace MapPartyAssist.Windows {
             };
 
             foreach(var result in dutyResults) {
-
                 //add import data
                 while(_statRange == StatRange.AllLegacy && currentImportIndex < _dutyResultsImports.Count && _dutyResultsImports[currentImportIndex].Time < result.Time) {
                     processImport(_dutyResultsImports[currentImportIndex]);
@@ -251,7 +214,7 @@ namespace MapPartyAssist.Windows {
 
                 //check for clear
                 //string finalChamberCheckpoint = isRoulette ? "Defeat final summon" : "Clear final chamber";
-                string finalChamberCheckpoint = duty.Checkpoints.Last().Name;
+                string? finalChamberCheckpoint = duty.Checkpoints?.LastOrDefault()?.Name;
                 if(lastCheckpoint.Checkpoint.Name.Equals(finalChamberCheckpoint, StringComparison.OrdinalIgnoreCase) && lastCheckpoint.IsReached) {
                     clearSequence.Add(runsSinceLastClear);
                     clearDuties.Add(result);
@@ -347,7 +310,7 @@ namespace MapPartyAssist.Windows {
                     }
                     ImGui.TableNextColumn();
                 }
-                if(_statRange != StatRange.AllLegacy && Plugin.Configuration.DutyConfigurations[_dutyId].DisplayDeaths) {
+                if(_statRange != StatRange.AllLegacy && _plugin.Configuration.DutyConfigurations[_dutyId].DisplayDeaths) {
                     ImGui.Text("Total wipes:");
                     Tooltip("Inferred from last checkpoint.");
                     ImGui.TableNextColumn();
@@ -362,7 +325,7 @@ namespace MapPartyAssist.Windows {
                 ImGui.TableNextColumn();
 
                 if(_statRange != StatRange.AllLegacy || hasFloors) {
-                    if(Plugin.Configuration.ProgressTableCount == ProgressTableCount.Last) {
+                    if(_plugin.Configuration.ProgressTableCount == ProgressTableCount.Last) {
                         for(int i = 0; i < endChambers.Length; i++) {
                             if(i == numChambers - 1) {
                                 ImGui.Text($"{passiveSuccessVerb} final {stageNoun}:");
@@ -374,16 +337,16 @@ namespace MapPartyAssist.Windows {
                             ImGui.TableNextColumn();
                             ImGui.Text($"{endChambers[i]}");
                             ImGui.TableNextColumn();
-                            if(Plugin.Configuration.ProgressTableRate == ProgressTableRate.Previous && i != endChambers.Length - 1 && ((i == 0 && totalRuns != 0) || (i != 0 && openChambers[i - 1] != 0))) {
+                            if(_plugin.Configuration.ProgressTableRate == ProgressTableRate.Previous && i != endChambers.Length - 1 && ((i == 0 && totalRuns != 0) || (i != 0 && openChambers[i - 1] != 0))) {
                                 ImGui.Text($"{string.Format("{0:P}%", (double)1d - openChambersRates[i])}");
                                 Tooltip("Calculated from previous stage.");
-                            } else if(Plugin.Configuration.ProgressTableRate == ProgressTableRate.Total && totalRuns != 0) {
+                            } else if(_plugin.Configuration.ProgressTableRate == ProgressTableRate.Total && totalRuns != 0) {
                                 ImGui.Text($"{string.Format("{0:P}%", (double)endChambers[i] / totalRuns)}");
                                 Tooltip("Calculated from total runs.");
                             }
                             ImGui.TableNextColumn();
                         }
-                    } else if(Plugin.Configuration.ProgressTableCount == ProgressTableCount.All) {
+                    } else if(_plugin.Configuration.ProgressTableCount == ProgressTableCount.All) {
                         for(int i = 0; i < openChambers.Length; i++) {
                             if(i == numChambers - 2) {
                                 ImGui.Text($"{passiveSuccessVerb} final {stageNoun}:");
@@ -393,10 +356,10 @@ namespace MapPartyAssist.Windows {
                             ImGui.TableNextColumn();
                             ImGui.Text($"{openChambers[i]}");
                             ImGui.TableNextColumn();
-                            if(Plugin.Configuration.ProgressTableRate == ProgressTableRate.Previous && ((i == 0 && totalRuns != 0) || (i != 0 && openChambers[i - 1] != 0))) {
+                            if(_plugin.Configuration.ProgressTableRate == ProgressTableRate.Previous && ((i == 0 && totalRuns != 0) || (i != 0 && openChambers[i - 1] != 0))) {
                                 ImGui.Text($"{string.Format("{0:P}%", openChambersRates[i])}");
                                 Tooltip("Calculated from previous stage.");
-                            } else if(Plugin.Configuration.ProgressTableRate == ProgressTableRate.Total && totalRuns != 0) {
+                            } else if(_plugin.Configuration.ProgressTableRate == ProgressTableRate.Total && totalRuns != 0) {
                                 ImGui.Text($"{string.Format("{0:P}%", (double)openChambers[i] / totalRuns)}");
                                 Tooltip("Calculated from total runs.");
                             }
@@ -411,7 +374,7 @@ namespace MapPartyAssist.Windows {
 
                 if(_statRange != StatRange.AllLegacy || hasSequence) {
                     //todo make this a configuration variable
-                    if(Plugin.Configuration.DutyConfigurations[_dutyId].DisplayClearSequence) {
+                    if(_plugin.Configuration.DutyConfigurations[_dutyId].DisplayClearSequence) {
                         for(int i = 0; i < clearSequence.Count; i++) {
                             //ImGui.Text($"{AddOrdinal(i + 1)} clear:");
                             //if(Plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
@@ -421,7 +384,7 @@ namespace MapPartyAssist.Windows {
 
                             //ImGui.TableNextColumn();
 
-                            if(Plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
+                            if(_plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
                                 ImGui.Text($"{AddOrdinal(i + 1)} clear:");
                                 Tooltip(i == 0 ? "Runs since start." : "Runs since preceding clear.");
                                 ImGui.TableNextColumn();
@@ -448,8 +411,8 @@ namespace MapPartyAssist.Windows {
                         }
                     }
 
-                    if(totalClears > 0 && Plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
-                        if(Plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
+                    if(totalClears > 0 && _plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
+                        if(_plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
                             ImGui.Text("Runs since last clear: ");
                             ImGui.TableNextColumn();
                             ImGui.Text($"{runsSinceLastClear}");
@@ -552,13 +515,14 @@ namespace MapPartyAssist.Windows {
         }
 
         private void Tooltip(string message, bool isTutorial = true) {
-            if(ImGui.IsItemHovered() && (!isTutorial || Plugin.Configuration.ShowStatsWindowTooltips)) {
+            if(ImGui.IsItemHovered() && (!isTutorial || _plugin.Configuration.ShowStatsWindowTooltips)) {
                 ImGui.BeginTooltip();
                 ImGui.Text(message);
                 ImGui.EndTooltip();
             }
         }
 
+        //duplicated code...
         public static string AddOrdinal(int num) {
             if(num <= 0) return num.ToString();
 

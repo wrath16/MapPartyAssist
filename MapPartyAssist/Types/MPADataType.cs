@@ -1,6 +1,5 @@
 ﻿using Dalamud.Logging;
 using LiteDB;
-using System;
 using System.Collections.Generic;
 using System.Reflection;
 

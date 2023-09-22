@@ -33,6 +33,7 @@ namespace MapPartyAssist.Types {
         [BsonCtor]
         public DutyResults() {
             Id = ObjectId.NewObjectId();
+            Time = DateTime.Now;
             DutyName = "";
             Owner = "";
             Players = new string[0];

@@ -9,48 +9,51 @@ using MapPartyAssist.Types;
 using System;
 using System.Numerics;
 
-
 namespace MapPartyAssist.Windows {
-    internal class AddDutyResultsImportWindow : Window, IDisposable {
+    internal class AddDutyResultsImportWindow : Window {
 
-        private Plugin Plugin;
-        private DutyResultsImport _model;
-        private string _statusMessage;
-        //private bool _hasClearSequence;
-        //private bool _hasDoors;
-        //private bool _hasSummons;
-        //private bool _hasGil;
+        private Plugin _plugin;
+        private ViewDutyResultsImportsWindow _viewWindow;
+        private DutyResultsImport _model = new();
+
+        private string _statusMessage = "";
         private int _selectedDuty = 0;
+        private readonly int[] _dutyIdCombo = { 0, 179, 268, 276, 586, 688, 745, 819, 909 };
+        private readonly string[] _dutyNameCombo;
 
-        public AddDutyResultsImportWindow(Plugin plugin) : base("Import Statistics") {
+        private const float _inputWidth = 200f;
+
+    internal AddDutyResultsImportWindow(Plugin plugin, ViewDutyResultsImportsWindow viewWindow) : base("Import Statistics") {
             SizeConstraints = new WindowSizeConstraints {
-                MinimumSize = new Vector2(150, 150),
-                MaximumSize = new Vector2(600, 800)
+                MinimumSize = new Vector2(300, 150),
+                MaximumSize = new Vector2(500, 800)
             };
-            Plugin = plugin;
-            _model = new();
+            _plugin = plugin;
+            _viewWindow = viewWindow;
             PositionCondition = ImGuiCond.Appearing;
             Flags = Flags | ImGuiWindowFlags.NoCollapse;
-        }
 
-        public void Dispose() {
-
+            //setup duty name combo
+            _dutyNameCombo = new string[_dutyIdCombo.Length];
+            _dutyNameCombo[0] = "";
+            for(int i = 1; i < _dutyIdCombo.Length; i++) {
+                _dutyNameCombo[i] = _plugin.DutyManager.Duties[_dutyIdCombo[i]].GetDisplayName();
+            }
         }
 
         public override void OnClose() {
-            base.OnClose();
             ClearModel();
+            //clear edits to existing imports
+            _viewWindow.Refresh();
+            base.OnClose();
         }
 
         public override void Draw() {
-            string[] duties = { "", "The Aquapolis", "The Lost Canals of Uznair", "The Hidden Canals of Uznair", "The Shifting Altars of Uznair", "The Dungeons of Lyhe Ghiah", "The Shifting Oubliettes of Lyhe Ghiah", "The Excitatron 6000", "The Shifting Gymnasion Agonon" };
-
-
             ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true);
-
-            ImGui.BeginTable($"AddTable", 3, ImGuiTableFlags.BordersInner | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip);
+            ImGui.BeginTable($"AddTable", 3, ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip);
             ImGui.TableSetupColumn("enabled", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 25);
             ImGui.TableSetupColumn("field", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 200);
+            //ImGui.TableSetupColumn("field", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableSetupColumn("name", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
@@ -60,9 +63,9 @@ namespace MapPartyAssist.Windows {
             //ImGui.TableNextColumn();
             //ImGui.TableNextColumn();
 
-
             ImGui.TableNextColumn();
             var timeString = _model.Time.ToString();
+            ImGui.SetNextItemWidth(_inputWidth);
             if(ImGui.InputText($"##TimeInput", ref timeString, 30)) {
                 DateTime time;
                 if(DateTime.TryParse(timeString, out time)) {
@@ -73,50 +76,20 @@ namespace MapPartyAssist.Windows {
             ImGui.Text("Time");
             ImGuiComponents.HelpMarker("When to insert data. Auto-formats date\nusing your local timezone.");
             ImGui.TableNextColumn();
-
             ImGui.TableNextColumn();
-            if(ImGui.Combo($"##DutyCombo", ref _selectedDuty, duties, 9)) {
-                switch(_selectedDuty) {
-                    case 0:
-                    default:
-                        _model.DutyId = 0;
-                        break;
-                    case 1:
-                        _model.DutyId = 179;
-                        break;
-                    case 2:
-                        _model.DutyId = 268;
-                        break;
-                    case 3:
-                        _model.DutyId = 276;
-                        break;
-                    case 4:
-                        _model.DutyId = 586;
-                        break;
-                    case 5:
-                        _model.DutyId = 688;
-                        break;
-                    case 6:
-                        _model.DutyId = 745;
-                        break;
-                    case 7:
-                        _model.DutyId = 819;
-                        break;
-                    case 8:
-                        _model.DutyId = 909;
-                        break;
-                }
+            ImGui.SetNextItemWidth(_inputWidth);
+            if(ImGui.Combo($"##DutyCombo", ref _selectedDuty, _dutyNameCombo, _dutyNameCombo.Length)) {
+                _model.DutyId = _dutyIdCombo[_selectedDuty];
                 _model.CheckpointTotals = null;
                 _model.SummonTotals = null;
-                //Plugin.ImportManager.SetupCheckpointTotals(_model);
             }
             ImGui.TableNextColumn();
             ImGui.Text("Duty");
             ImGui.TableNextColumn();
-
-
             ImGui.TableNextColumn();
+
             var totalRuns = _model.TotalRuns.ToString();
+            ImGui.SetNextItemWidth(_inputWidth);
             if(ImGui.InputText($"##RunsInput", ref totalRuns, 9, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CharsDecimal)) {
                 uint runsInt;
                 if(uint.TryParse(totalRuns, out runsInt)) {
@@ -127,7 +100,9 @@ namespace MapPartyAssist.Windows {
             ImGui.Text("Total Runs");
             ImGui.TableNextColumn();
             ImGui.TableNextColumn();
+
             var totalClears = _model.TotalClears.ToString();
+            ImGui.SetNextItemWidth(_inputWidth);
             if(ImGui.InputText($"##ClearsInput", ref totalClears, 9, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CharsDecimal)) {
                 uint clearsInt;
                 if(uint.TryParse(totalClears, out clearsInt)) {
@@ -137,6 +112,7 @@ namespace MapPartyAssist.Windows {
             ImGui.TableNextColumn();
             ImGui.Text("Total Clears");
             ImGui.TableNextColumn();
+
             bool hasGil = _model.TotalGil != null;
             if(ImGui.Checkbox($"##HasGil", ref hasGil)) {
                 if(!hasGil) {
@@ -146,8 +122,8 @@ namespace MapPartyAssist.Windows {
                 }
             }
             ImGui.TableNextColumn();
-
             var gil = _model.TotalGil.ToString();
+            ImGui.SetNextItemWidth(_inputWidth);
             if(ImGui.InputText($"##GilInput", ref gil, 10, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CharsDecimal)) {
                 uint gilInt;
                 if(uint.TryParse(gil, out gilInt)) {
@@ -159,6 +135,7 @@ namespace MapPartyAssist.Windows {
             ImGui.Text("Total Gil");
             ImGuiComponents.HelpMarker("Check box if gil was tracked.");
             ImGui.TableNextColumn();
+
             bool hasFloors = _model.CheckpointTotals != null;
             if(ImGui.Checkbox($"##HasFloors", ref hasFloors)) {
                 if(!hasFloors) {
@@ -166,7 +143,7 @@ namespace MapPartyAssist.Windows {
                 } else if(_model.DutyId == 0) {
                     hasFloors = false;
                 } else {
-                    Plugin.ImportManager.SetupCheckpointTotals(_model);
+                    _plugin.ImportManager.SetupCheckpointTotals(_model);
                 }
             }
             ImGui.TableNextColumn();
@@ -176,35 +153,21 @@ namespace MapPartyAssist.Windows {
             ImGui.TableNextColumn();
 
             if(hasFloors) {
-
-                for(int i = 0; i < _model.CheckpointTotals.Count; i++) {
+                for(int i = 0; i < _model.CheckpointTotals!.Count; i++) {
                     var checkpointTotal = _model.CheckpointTotals[i];
                     ImGui.TableNextColumn();
                     var reachedCount = checkpointTotal.ToString();
-                    if(ImGui.InputText($"##{Plugin.DutyManager.Duties[_model.DutyId].Checkpoints[i].GetHashCode()}-Input", ref reachedCount, 9, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CharsDecimal)) {
+                    ImGui.SetNextItemWidth(_inputWidth);
+                    if(ImGui.InputText($"##{_plugin.DutyManager.Duties[_model.DutyId].Checkpoints![i].GetHashCode()}-Input", ref reachedCount, 9, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CharsDecimal)) {
                         uint reachedCountInt;
                         if(uint.TryParse(reachedCount, out reachedCountInt)) {
                             _model.CheckpointTotals[i] = reachedCountInt;
                         }
                     }
                     ImGui.TableNextColumn();
-                    ImGui.Text($"{Plugin.DutyManager.Duties[_model.DutyId].Checkpoints[i].Name}");
+                    ImGui.Text($"{_plugin.DutyManager.Duties[_model.DutyId].Checkpoints![i].Name}");
                     ImGui.TableNextColumn();
                 }
-
-                //foreach(var checkpointTotal in _model.CheckpointTotals!) {
-                //    ImGui.TableNextColumn();
-                //    var reachedCount = checkpointTotal.ToString();
-                //    if(ImGui.InputText($"##{checkpointTotal.GetHashCode()}-Input", ref reachedCount, 9, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CharsDecimal)) {
-                //        uint reachedCountInt;
-                //        if(uint.TryParse(reachedCount, out reachedCountInt)) {
-                //            //_model.CheckpointTotals[checkpointTotal.Key] = reachedCountInt;
-                //        }
-                //    }
-                //    ImGui.TableNextColumn();
-                //    ImGui.Text($"{checkpointTotal.Key.Name}");
-                //    ImGui.TableNextColumn();
-                //}
             }
 
             bool hasSequence = _model.ClearSequence != null;
@@ -227,30 +190,29 @@ namespace MapPartyAssist.Windows {
             ImGui.Text("Clear Sequence");
             ImGuiComponents.HelpMarker("Runs between each clear.\nCheck box if this was tracked.");
             ImGui.TableNextColumn();
-
             if(hasSequence) {
                 for(int i = 0; i < _model.ClearSequence!.Count; i++) {
                     var clear = _model.ClearSequence[i];
                     var clearString = clear.ToString();
-                    ImGui.TableNextColumn();
-                    if(ImGui.InputText($"##{i}-ClearInput", ref clearString, 9, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CharsDecimal)) {
-                        uint clearInt;
-                        if(uint.TryParse(clearString, out clearInt)) {
-                            _model.ClearSequence[i] = clearInt;
-                        }
-                    }
-                    ImGui.SameLine();
+                    //ImGui.SameLine();
                     ImGui.PushFont(UiBuilder.IconFont);
                     if(i != 0) {
-                        if(ImGui.Button($"{FontAwesomeIcon.TrashAlt.ToIconString()}##{i}--deleteClear")) {
+                        if(ImGui.Button($"{FontAwesomeIcon.TrashAlt.ToIconString()}##{i}--DeleteClear")) {
                             _model.ClearSequence.RemoveAt(i);
                             //if(_model.ClearSequence.Count <= 0) {
                             //    _model.ClearSequence = null;
                             //}
                         }
                     }
-
                     ImGui.PopFont();
+                    ImGui.TableNextColumn();
+                    ImGui.SetNextItemWidth(_inputWidth);
+                    if(ImGui.InputText($"##{i}--ClearInput", ref clearString, 9, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CharsDecimal)) {
+                        uint clearInt;
+                        if(uint.TryParse(clearString, out clearInt)) {
+                            _model.ClearSequence[i] = clearInt;
+                        }
+                    }
                     ImGui.TableNextColumn();
                     ImGui.Text($"{StatsWindow.AddOrdinal(i + 1)} clear");
                     ImGui.TableNextColumn();
@@ -259,6 +221,7 @@ namespace MapPartyAssist.Windows {
                 if(_model.ClearSequence.Count > 0) {
                     ImGui.TableNextColumn();
                     var runsSinceLastClearString = _model.RunsSinceLastClear.ToString();
+                    ImGui.SetNextItemWidth(_inputWidth);
                     if(ImGui.InputText($"##RunsSinceLastClear", ref runsSinceLastClearString, 9, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CharsDecimal)) {
                         uint runsSinceLastClearInt;
                         if(uint.TryParse(runsSinceLastClearString, out runsSinceLastClearInt)) {
@@ -271,14 +234,13 @@ namespace MapPartyAssist.Windows {
                 }
             }
 
-            if(_model.DutyId != 0 && Plugin.DutyManager.Duties[_model.DutyId].Structure == DutyStructure.Roulette) {
+            if(_model.DutyId != 0 && _plugin.DutyManager.Duties[_model.DutyId].Structure == DutyStructure.Roulette) {
                 bool hasSummons = _model.SummonTotals != null;
                 if(ImGui.Checkbox($"##HasSummons", ref hasSummons)) {
                     if(!hasSummons) {
                         _model.SummonTotals = null;
                     } else {
                         _model.InitializeSummonsTotals();
-                        //Plugin.ImportManager.SetupSummonsTotals(_model);
                     }
                 }
                 ImGui.TableNextColumn();
@@ -291,7 +253,8 @@ namespace MapPartyAssist.Windows {
                     foreach(var summon in _model.SummonTotals!) {
                         ImGui.TableNextColumn();
                         var summonString = summon.Value.ToString();
-                        if(ImGui.InputText($"##{summon.Key}-SummonInput", ref summonString, 9, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CharsDecimal)) {
+                        ImGui.SetNextItemWidth(_inputWidth);
+                        if(ImGui.InputText($"##{summon.Key}--SummonInput", ref summonString, 9, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CharsDecimal)) {
                             uint summonInt;
                             if(uint.TryParse(summonString, out summonInt)) {
                                 _model.SummonTotals[summon.Key] = summonInt;
@@ -329,10 +292,10 @@ namespace MapPartyAssist.Windows {
             ImGui.EndChild();
 
             if(ImGui.Button("Save")) {
-                if(Plugin.ImportManager.ValidateImport(_model)) {
+                if(_plugin.ImportManager.ValidateImport(_model)) {
                     //save
                     PluginLog.Debug("Valid Import");
-                    Plugin.ImportManager.AddorEditImport(_model, false);
+                    _plugin.ImportManager.AddorEditImport(_model, false);
                     _statusMessage = "";
                     IsOpen = false;
                 } else {
@@ -353,49 +316,29 @@ namespace MapPartyAssist.Windows {
             }
         }
 
-
-        public void ClearModel() {
+        private void ClearModel() {
             _model = new();
             _selectedDuty = 0;
-            //_hasClearSequence = false;
-            //_hasDoors = false;
-            //_hasSummons = false;
-            //_hasGil = false;
         }
 
-        public void OpenAsEdit(DutyResultsImport import) {
-            _model = import;
-            switch(_model.DutyId) {
-                case 0:
-                default:
-                    _selectedDuty = 0;
-                    break;
-                case 179:
-                    _selectedDuty = 1;
-                    break;
-                case 268:
-                    _selectedDuty = 2;
-                    break;
-                case 276:
-                    _selectedDuty = 3;
-                    break;
-                case 586:
-                    _selectedDuty = 4;
-                    break;
-                case 688:
-                    _selectedDuty = 5;
-                    break;
-                case 745:
-                    _selectedDuty = 6;
-                    break;
-                case 819:
-                    _selectedDuty = 7;
-                    break;
-                case 909:
-                    _selectedDuty = 8;
-                    break;
+        internal void Open(DutyResultsImport? import = null, int? selectedDuty = null) {
+            _model = import ?? new();
+            if(import != null) {
+                _selectedDuty = DutyIdToIndex(_model.DutyId);
+            } else {
+                _selectedDuty = selectedDuty ?? 0;
             }
-            this.IsOpen = true;
+            
+            IsOpen = true;
+        }
+
+        private int DutyIdToIndex(int dutyId) {
+            for(int i = 0; i < _dutyIdCombo.Length; i++) {
+                if(dutyId == _dutyIdCombo[i]) {
+                    return i;
+                }
+            }
+            return 0;
         }
     }
 }

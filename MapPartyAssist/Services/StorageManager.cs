@@ -60,6 +60,9 @@ namespace MapPartyAssist.Services {
         }
 
         public void Dispose() {
+#if DEBUG
+            PluginLog.Debug("disposing storage manager");
+#endif
             Database.Dispose();
         }
 

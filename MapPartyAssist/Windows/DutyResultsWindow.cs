@@ -9,34 +9,27 @@ using System.Linq;
 using System.Numerics;
 
 namespace MapPartyAssist.Windows {
-    internal class DutyResultsWindow : Window, IDisposable {
+    internal class DutyResultsWindow : Window {
 
-        private Plugin Plugin;
+        private Plugin _plugin;
         private List<DutyResults> _dutyResults = new();
-        int currentPage = 0;
+        private int _currentPage = 0;
         private bool _collapseAll = false;
 
-        public DutyResultsWindow(Plugin plugin) : base("Edit Duty Results") {
-            this.SizeConstraints = new WindowSizeConstraints {
+        internal DutyResultsWindow(Plugin plugin) : base("Edit Duty Results") {
+            SizeConstraints = new WindowSizeConstraints {
                 MinimumSize = new Vector2(150, 50),
                 MaximumSize = new Vector2(500, 800)
             };
-            this.Plugin = plugin;
+            _plugin = plugin;
         }
 
-        //null index = stay on same page
-        public void Refresh(int? pageIndex = null) {
-            if(pageIndex == null) {
-                pageIndex = currentPage;
-            } else {
-                _collapseAll = true;
-            }
-
-            _dutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderByDescending(dr => dr.Time).Offset((int)pageIndex * 100).Limit(100).ToList();
-            currentPage = (int)pageIndex;
-        }
-
-        public void Dispose() {
+        internal void Refresh(int? pageIndex = null) {
+            //null index = stay on same page
+            pageIndex ??= _currentPage;
+            _collapseAll = true;
+            _dutyResults = _plugin.StorageManager.GetDutyResults().Query().OrderByDescending(dr => dr.Time).Offset((int)pageIndex * 100).Limit(100).ToList();
+            _currentPage = (int)pageIndex;
         }
 
         public override void OnClose() {
@@ -67,7 +60,9 @@ namespace MapPartyAssist.Windows {
             ImGui.EndChild();
 
             if(ImGui.Button("Save")) {
-                Plugin.StorageManager.UpdateDutyResults(_dutyResults.Where(dr => dr.IsEdited));
+                //should this go in manager?
+                _plugin.StorageManager.UpdateDutyResults(_dutyResults.Where(dr => dr.IsEdited));
+                _plugin.DutyManager.RefreshCurrentDutyResults();
             }
 
             ImGui.SameLine();
@@ -75,47 +70,42 @@ namespace MapPartyAssist.Windows {
                 _collapseAll = true;
             }
 
-            if(currentPage > 0) {
+            if(_currentPage > 0) {
                 ImGui.SameLine();
                 if(ImGui.Button("Previous 100")) {
-                    Refresh(currentPage - 1);
+                    Refresh(_currentPage - 1);
                 }
             }
-
-            //not sure if need to protect boundary
 
             if(_dutyResults.Count >= 100) {
                 ImGui.SameLine();
                 if(ImGui.Button("Next 100")) {
-                    Refresh(currentPage + 1);
+                    Refresh(_currentPage + 1);
                 }
             }
         }
 
-        public void DrawDutyResults(DutyResults dutyResults) {
+        private void DrawDutyResults(DutyResults dutyResults) {
             List<string> lastCheckpoints = new() {
                 "None"
             };
-            var owner = dutyResults.Owner ?? "";
-            var gil = dutyResults.TotalGil.ToString();
-            var isCompleted = dutyResults.IsComplete;
-            foreach(var checkpoint in Plugin.DutyManager.Duties[dutyResults.DutyId].Checkpoints!) {
+            string? owner = dutyResults.Owner ?? "";
+            string? gil = dutyResults.TotalGil.ToString();
+            bool isCompleted = dutyResults.IsComplete;
+            foreach(var checkpoint in _plugin.DutyManager.Duties[dutyResults.DutyId].Checkpoints!) {
                 lastCheckpoints.Add(checkpoint.Name);
             }
 
-            //ImGui.SetNextItemOpen(true, _openCond);
-
             if(ImGui.CollapsingHeader(String.Format("{0:-23}     {1:-40}", dutyResults.Time.ToString(), dutyResults.DutyName))) {
-                //_openCond = ImGuiCond.None;
-                if(ImGui.Checkbox($"Completed##{dutyResults.Id}", ref isCompleted)) {
+                if(ImGui.Checkbox($"Completed##{dutyResults.Id}--Completed", ref isCompleted)) {
                     dutyResults.IsEdited = true;
                     dutyResults.IsComplete = isCompleted;
                 }
-                if(ImGui.InputText($"Owner##{dutyResults.Id}", ref owner, 50, ImGuiInputTextFlags.AutoSelectAll)) {
+                if(ImGui.InputText($"Owner##{dutyResults.Id}--Owner", ref owner, 50, ImGuiInputTextFlags.AutoSelectAll)) {
                     dutyResults.IsEdited = true;
                     dutyResults.Owner = owner;
                 }
-                if(ImGui.InputText($"Total Gil##{dutyResults.Id}", ref gil, 9, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CharsDecimal)) {
+                if(ImGui.InputText($"Total Gil##{dutyResults.Id}--TotalGil", ref gil, 9, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CharsDecimal)) {
                     int gilInt;
                     if(int.TryParse(gil, out gilInt)) {
                         dutyResults.IsEdited = true;
@@ -123,12 +113,11 @@ namespace MapPartyAssist.Windows {
                     }
                 }
                 var currentLastCheckpointIndex = dutyResults.CheckpointResults.Count;
-                //ImGui.Text($"Last checkpoint: {dutyResults.CheckpointResults.Last().Checkpoint.Name}");
-                if(ImGui.Combo($"Last Checkpoint##{dutyResults.Id}", ref currentLastCheckpointIndex, lastCheckpoints.ToArray(), lastCheckpoints.Count)) {
+                if(ImGui.Combo($"Last Checkpoint##{dutyResults.Id}--LastCheckpoint", ref currentLastCheckpointIndex, lastCheckpoints.ToArray(), lastCheckpoints.Count)) {
                     if(currentLastCheckpointIndex > dutyResults.CheckpointResults.Count) {
                         dutyResults.IsEdited = true;
                         for(int i = dutyResults.CheckpointResults.Count; i <= currentLastCheckpointIndex - 1; i++) {
-                            dutyResults.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[dutyResults.DutyId].Checkpoints![i], true));
+                            dutyResults.CheckpointResults.Add(new CheckpointResults(_plugin.DutyManager.Duties[dutyResults.DutyId].Checkpoints![i], true));
                         }
                     } else if(currentLastCheckpointIndex < dutyResults.CheckpointResults.Count) {
                         dutyResults.IsEdited = true;
@@ -136,19 +125,13 @@ namespace MapPartyAssist.Windows {
                             dutyResults.CheckpointResults.RemoveAt(i);
                         }
                     }
-
-                    //dutyResults.CheckpointResults = new();
-                    //for(int i = 0; i <= currentLastCheckpointIndex; i++) {
-                    //    dutyResults.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[dutyResults.DutyId].Checkpoints[i], true));
-                    //}
                 }
-                if(Plugin.DutyManager.Duties[dutyResults.DutyId].Structure == DutyStructure.Roulette) {
+                if(_plugin.DutyManager.Duties[dutyResults.DutyId].Structure == DutyStructure.Roulette) {
                     string[] summons = { "Lesser", "Greater", "Elder", "Abomination", "Circle Shift" };
                     var summonCheckpoints = dutyResults.CheckpointResults.Where(cr => cr.Checkpoint.Name.StartsWith("Complete")).ToList();
                     for(int i = 0; i < summonCheckpoints.Count(); i++) {
-                        var summonIndex = summonCheckpoints[i].SummonType == null ? 3 : (int)summonCheckpoints[i].SummonType;
-                        //ImGui.Text($"{summons[(int)summonCheckpoints[i].SummonType]}");
-                        if(ImGui.Combo($"{StatsWindow.AddOrdinal(i + 1)} Summon##{summonCheckpoints[i].GetHashCode()}", ref summonIndex, summons, summons.Length)) {
+                        int summonIndex = (int?)summonCheckpoints[i].SummonType ?? 3;
+                        if(ImGui.Combo($"{StatsWindow.AddOrdinal(i + 1)} Summon##{summonCheckpoints[i].GetHashCode()}-Summon", ref summonIndex, summons, summons.Length)) {
                             dutyResults.IsEdited = true;
                             summonCheckpoints[i].SummonType = (Summon)summonIndex;
                         }

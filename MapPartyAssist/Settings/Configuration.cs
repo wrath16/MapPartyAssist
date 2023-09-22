@@ -23,7 +23,8 @@ namespace MapPartyAssist.Settings {
 
     [Serializable]
     public class Configuration : IPluginConfiguration {
-        public int Version { get; set; } = 2;
+        public static int CurrentVersion = 2;
+        public int Version { get; set; } = CurrentVersion;
         public bool MasterSwitch { get; set; } = true;
         public uint ArchiveThresholdHours { get; set; } = 24;
         public bool HideZoneTableWhenEmpty { get; set; } = false;

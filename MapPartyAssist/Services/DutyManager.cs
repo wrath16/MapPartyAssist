@@ -151,8 +151,7 @@ namespace MapPartyAssist.Services {
 
             //attempt to pickup
             if(_plugin.ClientState.IsLoggedIn && _plugin.IsEnglishClient() && !IsDutyInProgress()) {
-                //don't save since configuration isn't initialized yet!
-                PickupLastDuty(false);
+                PickupLastDuty();
             }
         }
 
@@ -180,13 +179,19 @@ namespace MapPartyAssist.Services {
             if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null) {
                 var lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().Last();
                 PluginLog.Information($"Starting new duty results for duty id: {dutyId}");
-                _currentDutyResults = new DutyResults(dutyId, Duties[dutyId].Name, _plugin.CurrentPartyList, "");
+                //_currentDutyResults = new DutyResults(dutyId, Duties[dutyId].Name, _plugin.CurrentPartyList, "");
+                _currentDutyResults = new DutyResults {
+                    DutyId = dutyId,
+                    DutyName = Duties[dutyId].Name,
+                    Players = _plugin.CurrentPartyList.Keys.ToArray(),
+                    Owner = ""
+                };
                 //check last map, 10 min fallback for linking to most recent map
                 if((DateTime.Now - lastMap.Time).TotalMinutes < 10) {
                     _currentDutyResults.Map = lastMap;
                     _currentDutyResults.Owner = lastMap.Owner!;
                     lastMap.IsPortal = true;
-                    lastMap.DutyName = Duties[dutyId].Name;
+                    lastMap.DutyName = Duties[dutyId].GetDisplayName();
                     _plugin.StorageManager.UpdateMap(lastMap);
                 } else {
                     _currentDutyResults.Map = null;
@@ -200,10 +205,10 @@ namespace MapPartyAssist.Services {
             return false;
         }
 
-        //returns true if duty was succesfully picked up
-        //always save...for now
-        private bool PickupLastDuty(bool toSave = false) {
-            var dutyId = _plugin.Functions.GetCurrentDutyId();
+        //attempt to pickup duty that did not complete
+        //returns true if duty results was succesfully picked up
+        private bool PickupLastDuty(bool toSave = true) {
+            int dutyId = _plugin.Functions.GetCurrentDutyId();
             var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
             var lastDutyResults = _plugin.StorageManager.GetDutyResults().Query().OrderBy(dr => dr.Time).ToList().LastOrDefault();
             if(lastDutyResults != null) {
@@ -228,8 +233,22 @@ namespace MapPartyAssist.Services {
             return false;
         }
 
+        //refreshes current duty results from DB. Useful if duty results is edited manually while running
+        //returns true if successful
+        internal bool RefreshCurrentDutyResults() {
+            if(!IsDutyInProgress()) {
+                return false;
+            }
+            var storageDutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.Id.Equals(_currentDutyResults!.Id)).FirstOrDefault();
+            if(storageDutyResults == null) {
+                return false;
+            }
+            _currentDutyResults = storageDutyResults;
+            return true;
+        }
+
         internal List<DutyResults> GetRecentDutyResultsList(int? dutyId = null) {
-            return _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted && dr.IsComplete && (dutyId == null || dr.DutyId == dutyId)).ToList();
+            return _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted && dr.IsComplete && (dutyId == null || dr.DutyId == dutyId)).ToList();
         }
 
         internal Duty? GetDutyByName(string name) {
@@ -422,8 +441,17 @@ namespace MapPartyAssist.Services {
         }
 
         private void AddRouletteCheckpointResults(Summon? summon, string? monsterName = null, bool isSaved = false) {
-            var size = _currentDutyResults!.CheckpointResults.Count;
-            _currentDutyResults.CheckpointResults.Add(new RouletteCheckpointResults(_currentDuty!.Checkpoints![size], summon, monsterName, isSaved, true));
+            int size = _currentDutyResults!.CheckpointResults.Count;
+            //_currentDutyResults.CheckpointResults.Add(new RouletteCheckpointResults(_currentDuty!.Checkpoints![size], summon, monsterName, isSaved, true));
+            _currentDutyResults.CheckpointResults.Add(new RouletteCheckpointResults {
+                Checkpoint = _currentDuty!.Checkpoints![size],
+                Time = DateTime.Now,
+                SummonType = summon,
+                MonsterName = monsterName,
+                IsSaved = isSaved,
+                IsReached = true
+            });
+
             //(CheckpointResults[size].Checkpoint as RouletteCheckpoint).SummonType = summon;
             //(CheckpointResults[size].Checkpoint as RouletteCheckpoint).Enemy = enemy;
         }
@@ -435,7 +463,7 @@ namespace MapPartyAssist.Services {
                 if(_currentDutyResults.CompletionTime.Ticks == 0) {
                     _currentDutyResults.CompletionTime = DateTime.Now;
                 }
-                //check for malformed data
+                //check for malformed/missing data
                 ValidateUpdateDutyResults(_currentDutyResults);
                 _currentDutyResults = null;
                 _plugin.Save();

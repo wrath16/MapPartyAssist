@@ -2,45 +2,38 @@
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
-using System;
-using System.Collections.Generic;
 using System.Numerics;
 
 namespace MapPartyAssist.Windows {
-    public class StatusMessageWindow : Window, IDisposable {
+    internal class StatusMessageWindow : Window {
 
-        private MainWindow MainWindow { get; set; }
-        private Plugin Plugin;
-        public Dictionary<string, int> Zones { get; set; } = new();
+        private Plugin _plugin;
+        private MainWindow _mainWindow;
 
-        public StatusMessageWindow(Plugin plugin, MainWindow mainWindow) : base("Status") {
-            this.ShowCloseButton = false;
-            this.CollapsedCondition = ImGuiCond.None;
-            this.Flags = Flags | ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoTitleBar;
-            this.PositionCondition = ImGuiCond.Always;
+        internal StatusMessageWindow(Plugin plugin, MainWindow mainWindow) : base("Status") {
+            ShowCloseButton = false;
+            CollapsedCondition = ImGuiCond.None;
+            Flags = Flags | ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoTitleBar;
+            PositionCondition = ImGuiCond.Always;
             //this.SizeConstraints = new WindowSizeConstraints {
             //    MinimumSize = new Vector2(150, 0),
             //    MaximumSize = new Vector2(500, 500)
             //};
-            this.MainWindow = mainWindow;
-            this.Plugin = plugin;
+            _mainWindow = mainWindow;
+            _plugin = plugin;
         }
 
-        public void Dispose() {
-        }
-
-        public void Refresh() {
-
+        internal void Refresh() {
         }
 
         public override void PreDraw() {
             base.PreDraw();
-            this.Position = new Vector2(MainWindow.CurrentPosition.X, MainWindow.CurrentPosition.Y - 15f - 17f * ImGuiHelpers.GlobalScale);
+            Position = new Vector2(_mainWindow.CurrentPosition.X, _mainWindow.CurrentPosition.Y - 15f - 17f * ImGuiHelpers.GlobalScale);
         }
 
         public override void Draw() {
             Vector4 color;
-            switch(Plugin.MapManager.Status) {
+            switch(_plugin.MapManager.Status) {
                 case StatusLevel.OK:
                 default:
                     color = ImGuiColors.DalamudWhite;
@@ -53,12 +46,9 @@ namespace MapPartyAssist.Windows {
                     break;
             }
 
-
-            if(Plugin.MapManager.Status != StatusLevel.OK) {
-                //var color = Plugin.MapManager.Status == StatusLevel.CAUTION ? ImGuiColors.DalamudOrange : ImGuiColors.DalamudRed;
-                ImGui.TextColored(color, Plugin.MapManager.StatusMessage);
+            if(_plugin.MapManager.Status != StatusLevel.OK) {
+                ImGui.TextColored(color, _plugin.MapManager.StatusMessage);
             }
         }
-
     }
 }

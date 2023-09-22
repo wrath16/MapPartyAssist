@@ -171,7 +171,7 @@ namespace MapPartyAssist.Services {
             //zone ??= DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name!;
             //zone = _textInfo.ToTitleCase(zone);
             type = _textInfo.ToTitleCase(type);
-            var newMap = new MPAMap {
+            MPAMap newMap = new() {
                 Name = type,
                 Time = DateTime.Now,
                 Owner = player.Key,

@@ -7,6 +7,7 @@ using System;
 namespace MapPartyAssist.Types {
     [ValidatedDataType]
     public class MPAMap : IEquatable<MPAMap> {
+        public static int CurrentVersion = 1;
 
         [BsonId]
         [JsonIgnore]
@@ -33,11 +34,20 @@ namespace MapPartyAssist.Types {
         [BsonIgnore]
         public DutyResults? DutyResults { get; set; }
 
-        [BsonCtor]
         public MPAMap() {
             Id = ObjectId.NewObjectId();
             Name = "";
             Owner = "";
+            Zone = "";
+            Version = CurrentVersion;
+        }
+
+        //use this constructor for reading from database to preserve null versions
+        [BsonCtor]
+        [Obsolete("For database usage only!")]
+        public MPAMap(ObjectId id) {
+            Id = id;
+            Name = "";
             Zone = "";
         }
 
@@ -51,7 +61,7 @@ namespace MapPartyAssist.Types {
             IsArchived = false;
             Zone = zone;
             Id = ObjectId.NewObjectId();
-            Version = 1;
+            Version = CurrentVersion;
         }
 
         public bool Equals(MPAMap? other) {

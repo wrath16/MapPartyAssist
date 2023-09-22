@@ -1,4 +1,6 @@
-﻿using Dalamud.Interface.Windowing;
+﻿#pragma warning disable
+#if DEBUG
+using Dalamud.Interface.Windowing;
 using Dalamud.Logging;
 using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
@@ -9,25 +11,24 @@ using System.Linq;
 using System.Numerics;
 
 namespace MapPartyAssist.Windows {
-    public class TestFunctionWindow : Window, IDisposable {
+    //for testing purposes only
 
-        private Plugin Plugin;
+    public class TestFunctionWindow : Window {
+
+        private Plugin _plugin;
 
         public TestFunctionWindow(Plugin plugin) : base("MPA Test Functions") {
             this.SizeConstraints = new WindowSizeConstraints {
                 MinimumSize = new Vector2(150, 50),
                 MaximumSize = new Vector2(500, 500)
             };
-            this.Plugin = plugin;
-        }
-
-        public void Dispose() {
+            this._plugin = plugin;
         }
 
         public override void Draw() {
 
             if(ImGui.Button("Show all Duties")) {
-                foreach(var duty in Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()) {
+                foreach(var duty in _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()) {
                     PluginLog.Debug($"id: {duty.RowId} name: {duty.Name}");
                 }
             }
@@ -50,7 +51,7 @@ namespace MapPartyAssist.Windows {
 
 
             if(ImGui.Button("Last 3 DutyResults")) {
-                var dutyResults = Plugin.StorageManager.GetDutyResults().Query().OrderByDescending(dr => dr.Time).Limit(3).ToList();
+                var dutyResults = _plugin.StorageManager.GetDutyResults().Query().OrderByDescending(dr => dr.Time).Limit(3).ToList();
                 foreach(var results in dutyResults) {
                     PrintDutyResults(results);
                 }
@@ -66,21 +67,21 @@ namespace MapPartyAssist.Windows {
             //}
 
             if(ImGui.Button("Check and Archive Maps")) {
-                Plugin.MapManager.CheckAndArchiveMaps();
+                _plugin.MapManager.CheckAndArchiveMaps();
             }
 
 
             if(ImGui.Button("Save+Refresh")) {
-                Plugin.Save();
+                _plugin.Save();
             }
 
             if(ImGui.Button("Import Config")) {
-                Plugin.StorageManager.Import();
+                _plugin.StorageManager.Import();
             }
 
 
             if(ImGui.Button("Drop Import Table")) {
-                Plugin.StorageManager.GetDutyResultsImports().DeleteAll();
+                _plugin.StorageManager.GetDutyResultsImports().DeleteAll();
             }
 
             //if(ImGui.Button("fix record")) {
@@ -120,19 +121,19 @@ namespace MapPartyAssist.Windows {
             //}
 
             if(ImGui.Button("Set Map Status")) {
-                Plugin.MapManager.Status = StatusLevel.CAUTION;
-                Plugin.MapManager.StatusMessage = "Multiple map owner candidates found, verify last map ownership.";
+                _plugin.MapManager.Status = StatusLevel.CAUTION;
+                _plugin.MapManager.StatusMessage = "Multiple map owner candidates found, verify last map ownership.";
             }
 
             if(ImGui.Button("Get Player Current Position")) {
-                Vector2 coords = WorldPosToMapCoords(Plugin.ClientState.LocalPlayer.Position);
-                PluginLog.Debug($"X: {Plugin.ClientState.LocalPlayer.Position.X} Y: {Plugin.ClientState.LocalPlayer.Position.Y}");
+                Vector2 coords = WorldPosToMapCoords(_plugin.ClientState.LocalPlayer.Position);
+                PluginLog.Debug($"X: {_plugin.ClientState.LocalPlayer.Position.X} Y: {_plugin.ClientState.LocalPlayer.Position.Y}");
                 PluginLog.Debug($"coordsX: {coords.X} coordsY: {coords.Y}");
                 //Plugin.ClientState.LocalPlayer.Position.
             }
 
             if(ImGui.Button("Get Map Position")) {
-                var map = Plugin.CurrentPartyList.ElementAt(0).Value.MapLink;
+                var map = _plugin.CurrentPartyList.ElementAt(0).Value.MapLink;
                 PluginLog.Debug($"XCoord: {map.GetMapLinkPayload().XCoord}");
                 PluginLog.Debug($"YCoord: {map.GetMapLinkPayload().YCoord}");
                 PluginLog.Debug($"RawX: {map.RawX}");
@@ -141,12 +142,12 @@ namespace MapPartyAssist.Windows {
             }
 
             if(ImGui.Button("Distance to Map Link")) {
-                var distance = Plugin.MapManager.GetDistanceToMapLink(Plugin.CurrentPartyList.ElementAt(0).Value.MapLink);
+                var distance = _plugin.MapManager.GetDistanceToMapLink(_plugin.CurrentPartyList.ElementAt(0).Value.MapLink);
                 PluginLog.Debug($"Distance: {distance}");
             }
 
             if(ImGui.Button("Check closest link player")) {
-                PluginLog.Debug($"{Plugin.MapManager.GetPlayerWithClosestMapLink(Plugin.CurrentPartyList.Values.ToList()).Key} has the closest map link");
+                PluginLog.Debug($"{_plugin.MapManager.GetPlayerWithClosestMapLink(_plugin.CurrentPartyList.Values.ToList()).Key} has the closest map link");
             }
 
 
@@ -157,20 +158,28 @@ namespace MapPartyAssist.Windows {
 
                 //var dr = Plugin.StorageManager.GetDutyResults().Query().ToList().Last();
 
-                var dr = Plugin.StorageManager.GetDutyResults().Query().ToList();
+                var dr = _plugin.StorageManager.GetDutyResults().Query().ToList();
                 foreach(var x in dr) {
-                    PluginLog.Debug($"Checking validity of {x.Id}....valid? {Plugin.StorageManager.ValidateDataType(x)}");
+                    PluginLog.Debug($"Checking validity of {x.Id}....valid? {_plugin.StorageManager.ValidateDataType(x)}");
                     //PluginLog.Debug($"Is valid? {Plugin.StorageManager.ValidateDataType(dr)}");
                 }
             }
 
             if(ImGui.Button("VALIDATE ALL DUTYRESULTS")) {
 
-                var dr = Plugin.StorageManager.GetDutyResults().Query().ToList();
+                var dr = _plugin.StorageManager.GetDutyResults().Query().ToList();
                 foreach(var x in dr) {
-                    Plugin.StorageManager.ValidateDataType(x, true);
+                    _plugin.StorageManager.ValidateDataType(x, true);
                 }
-                Plugin.StorageManager.UpdateDutyResults(dr);
+                _plugin.StorageManager.UpdateDutyResults(dr);
+            }
+
+
+            if(ImGui.Button("check map version")) {
+
+                var map = _plugin.StorageManager.GetMaps().Query().Where(m => m.DutyName.Equals("the hidden canals of uznair", StringComparison.OrdinalIgnoreCase)).OrderByDescending(m => m.Time).FirstOrDefault();
+                PluginLog.Debug($"map id: {map.Id.ToString()}");
+                _plugin.StorageManager.UpdateMap(map);
             }
 
             //if(ImGui.Button("altars lesser string")) {
@@ -193,7 +202,7 @@ namespace MapPartyAssist.Windows {
         }
 
         private void ShowMapsTable() {
-            var maps = Plugin.StorageManager.GetMaps().Query().ToList();
+            var maps = _plugin.StorageManager.GetMaps().Query().ToList();
             foreach(var map in maps) {
                 //PluginLog.Debug($"owner:{map.Owner} name: {map.Name} date: {map.Time} archived: {map.IsArchived} deleted: {map.IsDeleted}");
                 PluginLog.Debug(String.Format("Owner: {0,-35} Name: {1,-25} Time: {2,-23} IsPortal: {3,-5} IsArchived: {4,-5} IsDeleted: {5,-5}", map.Owner, map.Name, map.Time, map.IsPortal, map.IsArchived, map.IsDeleted));
@@ -201,21 +210,21 @@ namespace MapPartyAssist.Windows {
         }
 
         private void ShowPlayerTable() {
-            var players = Plugin.StorageManager.GetPlayers().Query().ToList();
+            var players = _plugin.StorageManager.GetPlayers().Query().ToList();
             foreach(var player in players) {
                 PluginLog.Debug(String.Format("{0,-35} isSelf: {1,-8} lastJoined: {2,-10}", player.Key, player.IsSelf, player.LastJoined));
             }
         }
 
         private void ShowDRTable() {
-            var dutyResults = Plugin.StorageManager.GetDutyResults().Query().ToList();
+            var dutyResults = _plugin.StorageManager.GetDutyResults().Query().ToList();
             foreach(var results in dutyResults) {
                 PrintDutyResults(results);
             }
         }
 
         private void ShowImportTable() {
-            var imports = Plugin.StorageManager.GetDutyResultsImports().Query().ToList();
+            var imports = _plugin.StorageManager.GetDutyResultsImports().Query().ToList();
             foreach(var import in imports) {
                 PluginLog.Debug(String.Format("Time: {0,-23} DutyId: {1,-4} Runs: {2,-5} Clears: {3,-5} HasGil: {4, -5} HasCheckpoints: {5, -5} HasSequence: {6, -5} HasSummons: {7, -5}", import.Time, import.DutyId, import.TotalRuns, import.TotalClears, import.TotalGil != null, import.CheckpointTotals != null, import.ClearSequence != null, import.SummonTotals != null));
             }
@@ -229,8 +238,8 @@ namespace MapPartyAssist.Windows {
         }
 
         private void TestMapEquality() {
-            var map = Plugin.CurrentPartyList.Values.FirstOrDefault().Maps.Last();
-            var storageMap = Plugin.StorageManager.GetMaps().Query().ToList().Last();
+            var map = _plugin.CurrentPartyList.Values.FirstOrDefault().Maps.Last();
+            var storageMap = _plugin.StorageManager.GetMaps().Query().ToList().Last();
 
             bool sameMap = map.Equals(storageMap);
 
@@ -239,10 +248,10 @@ namespace MapPartyAssist.Windows {
 
         private void TestMapContains() {
             var maps = new List<MPAMap> {
-                Plugin.CurrentPartyList.Values.FirstOrDefault().Maps.Last()
+                _plugin.CurrentPartyList.Values.FirstOrDefault().Maps.Last()
             };
 
-            var storageMap = Plugin.StorageManager.GetMaps().Query().ToList().Last();
+            var storageMap = _plugin.StorageManager.GetMaps().Query().ToList().Last();
 
             bool sameMap = maps.Contains(storageMap);
 
@@ -250,13 +259,13 @@ namespace MapPartyAssist.Windows {
         }
 
         private void ShowLastDR() {
-            var dutyResults = Plugin.StorageManager.GetDutyResults().Query().ToList().Last();
+            var dutyResults = _plugin.StorageManager.GetDutyResults().Query().ToList().Last();
             PluginLog.Debug($"{dutyResults.Map.IsArchived}");
         }
 
         private void FixRecords() {
             ////fix ned
-            var dutyResults = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.Owner == "Ned Thedestroyer Leviathan" && dr.TotalGil == 45000 && dr.Time.Minute == 22).ToList().First();
+            var dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.Owner == "Ned Thedestroyer Leviathan" && dr.TotalGil == 45000 && dr.Time.Minute == 22).ToList().First();
             foreach(var cp in dutyResults.CheckpointResults) {
                 cp.IsReached = true;
             }
@@ -285,7 +294,7 @@ namespace MapPartyAssist.Windows {
             //dutyResults2.TotalGil = 20000;
 
 
-            Plugin.StorageManager.UpdateDutyResults(dutyResults);
+            _plugin.StorageManager.UpdateDutyResults(dutyResults);
             //Plugin.StorageManager.UpdateDutyResults(dutyResults2);
             //Plugin.StorageManager.AddDutyResults(dutyResults3);
 
@@ -297,3 +306,5 @@ namespace MapPartyAssist.Windows {
         }
     }
 }
+#endif
+#pragma warning restore

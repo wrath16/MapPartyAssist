@@ -70,7 +70,9 @@ namespace MapPartyAssist {
         private StatsWindow StatsWindow;
         private ConfigWindow ConfigWindow;
         private DutyResultsWindow DutyResultsWindow;
+#if DEBUG
         private TestFunctionWindow TestFunctionWindow;
+#endif
 
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
         public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
@@ -103,13 +105,7 @@ namespace MapPartyAssist {
                 GameGui = gameGui;
                 Framework = framework;
 
-#if DEBUG
-                PluginLog.Debug("Begin Config loading");
-#endif
                 Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-#if DEBUG
-                PluginLog.Debug("Done Config loading");
-#endif
 
                 PluginLog.Information($"Client language: {ClientState.ClientLanguage}");
                 PluginLog.Verbose($"Current culture: {CultureInfo.CurrentCulture.Name}");
@@ -247,9 +243,11 @@ namespace MapPartyAssist {
             DutyResultsWindow.IsOpen = true;
         }
 
+#if DEBUG
         private void OnTestCommand(string command, string args) {
             TestFunctionWindow.IsOpen = true;
         }
+#endif
 
         private void DrawUI() {
             WindowSystem.Draw();

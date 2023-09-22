@@ -8,60 +8,51 @@ using System;
 using System.Numerics;
 
 namespace MapPartyAssist.Windows {
-    public class ConfigWindow : Window, IDisposable {
+    internal class ConfigWindow : Window {
 
-        //private MainWindow MainWindow { get; set; }
-        private Plugin Plugin;
+        private Plugin _plugin;
 
-        public ConfigWindow(Plugin plugin) : base("Map Party Assist Settings") {
-            this.SizeConstraints = new WindowSizeConstraints {
+        internal ConfigWindow(Plugin plugin) : base("Map Party Assist Settings") {
+            SizeConstraints = new WindowSizeConstraints {
                 MinimumSize = new Vector2(300, 50),
                 MaximumSize = new Vector2(400, 800)
             };
-            this.Plugin = plugin;
-        }
-
-        public void Dispose() {
+            _plugin = plugin;
         }
 
         public override void Draw() {
-            //bool enableSolo = Plugin.Configuration.EnableWhileSolo;
-            //if(ImGui.Checkbox("Enable While Solo", ref enableSolo)) {
-            //    Plugin.ToggleEnableSolo(enableSolo);
-            //}
-
             ImGui.TextColored(ImGuiColors.DalamudViolet, "Map Window");
             ImGui.Separator();
 
-            bool requireDoubleTap = Plugin.Configuration.RequireDoubleClickOnClearAll;
+            bool requireDoubleTap = _plugin.Configuration.RequireDoubleClickOnClearAll;
             if(ImGui.Checkbox("Require double click on 'Clear All'", ref requireDoubleTap)) {
-                Plugin.Configuration.RequireDoubleClickOnClearAll = requireDoubleTap;
-                Plugin.Save();
+                _plugin.Configuration.RequireDoubleClickOnClearAll = requireDoubleTap;
+                _plugin.Save();
             }
 
-            bool hideZoneTable = Plugin.Configuration.HideZoneTableWhenEmpty;
+            bool hideZoneTable = _plugin.Configuration.HideZoneTableWhenEmpty;
             if(ImGui.Checkbox("Hide 'Map Links by Zone' when empty", ref hideZoneTable)) {
-                Plugin.Configuration.HideZoneTableWhenEmpty = hideZoneTable;
-                Plugin.Save();
+                _plugin.Configuration.HideZoneTableWhenEmpty = hideZoneTable;
+                _plugin.Save();
             }
 
-            bool noOverwriteMapLink = Plugin.Configuration.NoOverwriteMapLink;
+            bool noOverwriteMapLink = _plugin.Configuration.NoOverwriteMapLink;
             if(ImGui.Checkbox("Don't overwrite map links", ref noOverwriteMapLink)) {
-                Plugin.Configuration.NoOverwriteMapLink = noOverwriteMapLink;
-                Plugin.Save();
+                _plugin.Configuration.NoOverwriteMapLink = noOverwriteMapLink;
+                _plugin.Save();
             }
             ImGuiComponents.HelpMarker("Will only clear map link on new treasure map added to player \nor manual removal.");
 
-            bool highlightCurrentZoneLinks = Plugin.Configuration.HighlightLinksInCurrentZone;
+            bool highlightCurrentZoneLinks = _plugin.Configuration.HighlightLinksInCurrentZone;
             if(ImGui.Checkbox("Highlight map links in current zone (yellow)", ref highlightCurrentZoneLinks)) {
-                Plugin.Configuration.HighlightLinksInCurrentZone = highlightCurrentZoneLinks;
-                Plugin.Save();
+                _plugin.Configuration.HighlightLinksInCurrentZone = highlightCurrentZoneLinks;
+                _plugin.Save();
             }
 
-            bool highlightClosestLink = Plugin.Configuration.HighlightClosestLink;
+            bool highlightClosestLink = _plugin.Configuration.HighlightClosestLink;
             if(ImGui.Checkbox("Highlight closest map link (orange)", ref highlightClosestLink)) {
-                Plugin.Configuration.HighlightClosestLink = highlightClosestLink;
-                Plugin.Save();
+                _plugin.Configuration.HighlightClosestLink = highlightClosestLink;
+                _plugin.Save();
             }
 
             ImGui.Spacing();
@@ -70,16 +61,16 @@ namespace MapPartyAssist.Windows {
             ImGui.TextColored(ImGuiColors.DalamudViolet, "Stats Window");
             ImGui.Separator();
 
-            bool showTooltips = Plugin.Configuration.ShowStatsWindowTooltips;
+            bool showTooltips = _plugin.Configuration.ShowStatsWindowTooltips;
             if(ImGui.Checkbox("Show explanatory tooltips", ref showTooltips)) {
-                Plugin.Configuration.ShowStatsWindowTooltips = showTooltips;
-                Plugin.Save();
+                _plugin.Configuration.ShowStatsWindowTooltips = showTooltips;
+                _plugin.Save();
             }
 
-            bool separateStatsByPlayer = Plugin.Configuration.CurrentCharacterStatsOnly;
+            bool separateStatsByPlayer = _plugin.Configuration.CurrentCharacterStatsOnly;
             if(ImGui.Checkbox("Only include stats for current character", ref separateStatsByPlayer)) {
-                Plugin.Configuration.CurrentCharacterStatsOnly = separateStatsByPlayer;
-                Plugin.Save();
+                _plugin.Configuration.CurrentCharacterStatsOnly = separateStatsByPlayer;
+                _plugin.Save();
             }
 
             //bool showKicks = Plugin.Configuration.KicksProgressTable;
@@ -89,36 +80,35 @@ namespace MapPartyAssist.Windows {
             //}
             //ImGuiComponents.HelpMarker("If unchecked, will include all ");
 
-            int progressCountToInt = (int)Plugin.Configuration.ProgressTableCount;
+            int progressCountToInt = (int)_plugin.Configuration.ProgressTableCount;
             string[] progressCountOptions = { "By all occurences", "By last checkpoint only" };
             ImGui.SetNextItemWidth(200f * ImGuiHelpers.GlobalScale);
             if(ImGui.Combo($"Tally checkpoint totals##CountCombo", ref progressCountToInt, progressCountOptions, 2)) {
-                Plugin.Configuration.ProgressTableCount = (ProgressTableCount)progressCountToInt;
-                Plugin.Save();
+                _plugin.Configuration.ProgressTableCount = (ProgressTableCount)progressCountToInt;
+                _plugin.Save();
             }
 
-
-            int progressRateToInt = (int)Plugin.Configuration.ProgressTableRate;
+            int progressRateToInt = (int)_plugin.Configuration.ProgressTableRate;
             string[] progressRateOptions = { "By total runs", "By previous stage" };
             ImGui.SetNextItemWidth(200f * ImGuiHelpers.GlobalScale);
             if(ImGui.Combo($"Divide progress rates##RateCombo", ref progressRateToInt, progressRateOptions, 2)) {
-                Plugin.Configuration.ProgressTableRate = (ProgressTableRate)progressRateToInt;
-                Plugin.Save();
+                _plugin.Configuration.ProgressTableRate = (ProgressTableRate)progressRateToInt;
+                _plugin.Save();
             }
 
-            int clearSequenceToInt = (int)Plugin.Configuration.ClearSequenceCount;
+            int clearSequenceToInt = (int)_plugin.Configuration.ClearSequenceCount;
             string[] clearSequenceOptions = { "By total runs", "Since last clear" };
             ImGui.SetNextItemWidth(200f * ImGuiHelpers.GlobalScale);
             if(ImGui.Combo($"Tally clear sequence##ClearSequenceCombo", ref clearSequenceToInt, clearSequenceOptions, 2)) {
-                Plugin.Configuration.ClearSequenceCount = (ClearSequenceCount)clearSequenceToInt;
-                Plugin.Save();
+                _plugin.Configuration.ClearSequenceCount = (ClearSequenceCount)clearSequenceToInt;
+                _plugin.Save();
             }
 
             ImGui.Text("All duties:");
 
             bool allDeaths = true;
             bool allSequences = true;
-            foreach(var dutyConfig in Plugin.Configuration.DutyConfigurations) {
+            foreach(var dutyConfig in _plugin.Configuration.DutyConfigurations) {
                 allDeaths = allDeaths && dutyConfig.Value.DisplayDeaths;
                 allSequences = allSequences && dutyConfig.Value.DisplayClearSequence;
             }
@@ -127,38 +117,38 @@ namespace MapPartyAssist.Windows {
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
                 if(ImGui.Checkbox("Display clear sequence", ref allSequences)) {
-                    foreach(var dutyConfig in Plugin.Configuration.DutyConfigurations) {
+                    foreach(var dutyConfig in _plugin.Configuration.DutyConfigurations) {
                         dutyConfig.Value.DisplayClearSequence = allSequences;
                     }
-                    Plugin.Save();
+                    _plugin.Save();
                 }
                 ImGui.TableNextColumn();
                 if(ImGui.Checkbox("Display wipes", ref allDeaths)) {
-                    foreach(var dutyConfig in Plugin.Configuration.DutyConfigurations) {
+                    foreach(var dutyConfig in _plugin.Configuration.DutyConfigurations) {
                         dutyConfig.Value.DisplayDeaths = allDeaths;
                     }
-                    Plugin.Save();
+                    _plugin.Save();
                 }
             }
             ImGui.EndTable();
 
-            foreach(var dutyConfig in Plugin.Configuration.DutyConfigurations) {
-                if(ImGui.CollapsingHeader($"{Plugin.DutyManager.Duties[dutyConfig.Key].GetDisplayName()}##Header")) {
-                    if(ImGui.BeginTable($"##{dutyConfig.Key}-ConfigTable", 2, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX)) {
+            foreach(var dutyConfig in _plugin.Configuration.DutyConfigurations) {
+                if(ImGui.CollapsingHeader($"{_plugin.DutyManager.Duties[dutyConfig.Key].GetDisplayName()}##Header")) {
+                    if(ImGui.BeginTable($"##{dutyConfig.Key}--ConfigTable", 2, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX)) {
                         //ImGui.TableSetupColumn("config1", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 200f);
                         //ImGui.TableSetupColumn($"config2", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 200f);
                         ImGui.TableNextRow();
                         ImGui.TableNextColumn();
                         bool displayClearSequence = dutyConfig.Value.DisplayClearSequence;
-                        if(ImGui.Checkbox($"Display clear sequence##{dutyConfig.Key}", ref displayClearSequence)) {
+                        if(ImGui.Checkbox($"Display clear sequence##{dutyConfig.Key}--ClearSequence", ref displayClearSequence)) {
                             dutyConfig.Value.DisplayClearSequence = displayClearSequence;
-                            Plugin.Save();
+                            _plugin.Save();
                         }
                         ImGui.TableNextColumn();
                         bool showDeaths = dutyConfig.Value.DisplayDeaths;
-                        if(ImGui.Checkbox($"Display wipes##{dutyConfig.Key}", ref showDeaths)) {
+                        if(ImGui.Checkbox($"Display wipes##{dutyConfig.Key}--Wipes", ref showDeaths)) {
                             dutyConfig.Value.DisplayDeaths = showDeaths;
-                            Plugin.Save();
+                            _plugin.Save();
                         }
                     }
                     ImGui.EndTable();
