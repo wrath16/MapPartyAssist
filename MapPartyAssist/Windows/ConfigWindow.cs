@@ -107,9 +107,11 @@ namespace MapPartyAssist.Windows {
 
             bool allDeaths = true;
             bool allSequences = true;
+            bool allZeroOmit = true;
             foreach(var dutyConfig in _plugin.Configuration.DutyConfigurations) {
                 allDeaths = allDeaths && dutyConfig.Value.DisplayDeaths;
                 allSequences = allSequences && dutyConfig.Value.DisplayClearSequence;
+                allZeroOmit = allZeroOmit && dutyConfig.Value.OmitZeroCheckpoints;
             }
 
             if(ImGui.BeginTable($"##allDutiesConfigTable", 2, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX)) {
@@ -128,6 +130,14 @@ namespace MapPartyAssist.Windows {
                     }
                     _plugin.Save();
                 }
+                ImGui.TableNextColumn();
+                if(ImGui.Checkbox("Omit no checkpoints", ref allZeroOmit)) {
+                    foreach(var dutyConfig in _plugin.Configuration.DutyConfigurations) {
+                        dutyConfig.Value.OmitZeroCheckpoints = allZeroOmit;
+                    }
+                    _plugin.Save();
+                }
+                ImGuiComponents.HelpMarker("Runs where no checkpoints were reached will be omitted from stats.");
             }
             ImGui.EndTable();
 
@@ -147,6 +157,12 @@ namespace MapPartyAssist.Windows {
                         bool showDeaths = dutyConfig.Value.DisplayDeaths;
                         if(ImGui.Checkbox($"Display wipes##{dutyConfig.Key}--Wipes", ref showDeaths)) {
                             dutyConfig.Value.DisplayDeaths = showDeaths;
+                            _plugin.Save();
+                        }
+                        ImGui.TableNextColumn();
+                        bool omitZeroCheckpoints = dutyConfig.Value.OmitZeroCheckpoints;
+                        if(ImGui.Checkbox($"Omit no checkpoints##{dutyConfig.Key}--NoCheckpoints", ref omitZeroCheckpoints)) {
+                            dutyConfig.Value.OmitZeroCheckpoints = omitZeroCheckpoints;
                             _plugin.Save();
                         }
                     }

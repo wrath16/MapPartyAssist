@@ -59,7 +59,12 @@ namespace MapPartyAssist.Settings {
             // add new duty configurations...
             foreach(var duty in _plugin.DutyManager.Duties) {
                 if(!DutyConfigurations.ContainsKey(duty.Key)) {
-                    DutyConfigurations.Add(duty.Key, new DutyConfiguration(duty.Key, false));
+                    DutyConfigurations.Add(duty.Key, new DutyConfiguration {
+                        DutyId = duty.Key,
+                        DisplayClearSequence = false,
+                        DisplayDeaths = false,
+                        OmitZeroCheckpoints = false,
+                    });
                     //hidden canals
                     if(duty.Key == 276) {
                         DutyConfigurations[duty.Key].DisplayClearSequence = true;

@@ -4,6 +4,10 @@
         public bool DisplayClearSequence { get; set; } = false;
         public bool DisplayRunsSinceLastClear { get; set; } = true;
         public bool DisplayDeaths { get; set; } = false;
+        public bool OmitZeroCheckpoints { get; set; } = false;
+
+        public DutyConfiguration() { 
+        }
 
         public DutyConfiguration(int dutyId, bool displayClearSequence = false, bool displayDeaths = false) {
             DutyId = dutyId;

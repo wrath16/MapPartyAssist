@@ -86,6 +86,10 @@ namespace MapPartyAssist.Windows {
             if(_plugin.Configuration.CurrentCharacterStatsOnly) {
                 _dutyResults = _dutyResults.Where(dr => dr.Players.Contains(_plugin.GetCurrentPlayer())).ToList();
             }
+
+            if(_plugin.Configuration.DutyConfigurations[_dutyId].OmitZeroCheckpoints) {
+                _dutyResults = _dutyResults.Where(dr => dr.CheckpointResults.Count > 0).ToList();
+            }
         }
 
         public override void Draw() {
