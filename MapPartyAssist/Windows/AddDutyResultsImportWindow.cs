@@ -23,7 +23,7 @@ namespace MapPartyAssist.Windows {
 
         private const float _inputWidth = 200f;
 
-    internal AddDutyResultsImportWindow(Plugin plugin, ViewDutyResultsImportsWindow viewWindow) : base("Import Statistics") {
+        internal AddDutyResultsImportWindow(Plugin plugin, ViewDutyResultsImportsWindow viewWindow) : base("Import Statistics") {
             SizeConstraints = new WindowSizeConstraints {
                 MinimumSize = new Vector2(300, 150),
                 MaximumSize = new Vector2(500, 800)
@@ -328,7 +328,7 @@ namespace MapPartyAssist.Windows {
             } else {
                 _selectedDuty = selectedDuty ?? 0;
             }
-            
+
             IsOpen = true;
         }
 

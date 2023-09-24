@@ -4,7 +4,6 @@ using Dalamud.Interface.Components;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
 using MapPartyAssist.Settings;
-using System;
 using System.Numerics;
 
 namespace MapPartyAssist.Windows {

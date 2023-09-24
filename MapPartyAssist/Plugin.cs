@@ -37,6 +37,9 @@ namespace MapPartyAssist {
 
     public sealed class Plugin : IDalamudPlugin {
         public string Name => "Map Party Assist";
+
+        private const string DatabaseName = "data.db";
+
         private const string CommandName = "/mparty";
         private const string ConfigCommandName = "/mpartyconfig";
         private const string StatsCommandName = "/mpartystats";
@@ -110,10 +113,10 @@ namespace MapPartyAssist {
                 PluginLog.Information($"Client language: {ClientState.ClientLanguage}");
                 PluginLog.Verbose($"Current culture: {CultureInfo.CurrentCulture.Name}");
                 if(!IsEnglishClient()) {
-                    PluginLog.Warning("Client is not in English, most functions will be unavailable.");
+                    PluginLog.Warning("Client is not English, most functions will be unavailable.");
                 }
 
-                StorageManager = new StorageManager(this, $"{PluginInterface.GetPluginConfigDirectory()}\\data.db");
+                StorageManager = new StorageManager(this, $"{PluginInterface.GetPluginConfigDirectory()}\\{DatabaseName}");
                 Functions = new GameFunctions();
                 DutyManager = new DutyManager(this);
                 MapManager = new MapManager(this);
@@ -275,7 +278,7 @@ namespace MapPartyAssist {
 #endif
 
             if(!Condition[ConditionFlag.BetweenAreas] && playerJob != null && currentPartySize != _lastPartySize) {
-                PluginLog.Debug($"Party size has changed: {_lastPartySize} to {currentPartySize}");
+                PluginLog.Verbose($"Party size has changed: {_lastPartySize} to {currentPartySize}");
                 BuildCurrentPartyList();
                 BuildRecentPartyList();
                 _lastPartySize = currentPartySize;
@@ -396,7 +399,7 @@ namespace MapPartyAssist {
                 case 23337:
                     break;
                 default:
-                    PluginLog.Debug($"Message received: {type} {message} from {sender}");
+                    PluginLog.Verbose($"Message received: {type} {message} from {sender}");
                     //foreach(Payload payload in message.Payloads) {
                     //    PluginLog.Verbose($"payload: {payload}");
                     //}
@@ -405,7 +408,9 @@ namespace MapPartyAssist {
         }
 
         private void OnLogin(object? sender, EventArgs e) {
+#if DEBUG
             PluginLog.Debug("logging in");
+#endif
             BuildCurrentPartyList();
             BuildRecentPartyList();
             MapManager.CheckAndArchiveMaps();
@@ -421,7 +426,7 @@ namespace MapPartyAssist {
         public void BuildCurrentPartyList() {
             try {
                 _saveLock.Wait();
-                PluginLog.Debug("Rebuilding current party list.");
+                PluginLog.Verbose("Rebuilding current party list.");
                 string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
                 string currentPlayerWorld = ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
                 string currentPlayerKey = GetCurrentPlayer();
@@ -471,7 +476,7 @@ namespace MapPartyAssist {
         public void BuildRecentPartyList() {
             try {
                 _saveLock.Wait();
-                PluginLog.Debug("Rebuilding recent party list.");
+                PluginLog.Verbose("Rebuilding recent party list.");
                 RecentPartyList = new();
                 var allPlayers = StorageManager.GetPlayers();
                 var currentMaps = StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted).ToList();

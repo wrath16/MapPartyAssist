@@ -215,7 +215,7 @@ namespace MapPartyAssist.Services {
                 TimeSpan lastTimeDiff = DateTime.Now - lastDutyResults.Time;
                 //pickup if duty is valid, and matches the last duty which was not completed and not more than an hour has elapsed (fallback)
                 if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null && lastDutyResults.DutyId == dutyId && !lastDutyResults.IsComplete && !_firstTerritoryChange && lastTimeDiff.TotalHours < 1) {
-                    PluginLog.Information($"re-picking up last duty results... {lastDutyResults.Id.ToString()}");
+                    PluginLog.Information($"re-picking up last duty results id:{lastDutyResults.Id.ToString()}");
                     _currentDutyResults = lastDutyResults;
                     _currentDutyResults.IsPickup = true;
 
@@ -277,28 +277,28 @@ namespace MapPartyAssist.Services {
         }
 
         private void OnDutyStart(object? sender, ushort territoryId) {
-            PluginLog.Debug($"Duty has started with territory id: {territoryId} name: {_plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId)?.PlaceName.Value?.Name} ");
+            PluginLog.Verbose($"Duty has started with territory id: {territoryId} name: {_plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId)?.PlaceName.Value?.Name} ");
             var dutyId = _plugin.Functions.GetCurrentDutyId();
-            PluginLog.Debug($"Current duty ID: {dutyId}");
+            PluginLog.Verbose($"Current duty ID: {dutyId}");
             var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
-            PluginLog.Debug($"Duty Name: {duty?.Name}");
+            PluginLog.Verbose($"Duty Name: {duty?.Name}");
 
             //check if duty is ongoing to attempt to pickup...
-            PluginLog.Debug($"Current duty ongoing? {_currentDutyResults != null}");
+            PluginLog.Verbose($"Current duty ongoing? {_currentDutyResults != null}");
         }
 
         private void OnDutyCompleted(object? sender, ushort param1) {
-            PluginLog.Debug("Duty completed!");
+            PluginLog.Verbose("Duty completed!");
             //EndDuty();
         }
 
         private void OnDutyWiped(object? sender, ushort param1) {
-            PluginLog.Debug("Duty wiped!");
+            PluginLog.Verbose("Duty wiped!");
             //EndDuty();
         }
 
         private void OnDutyRecommenced(object? sender, ushort param1) {
-            PluginLog.Debug("Duty recommenced!");
+            PluginLog.Verbose("Duty recommenced!");
             //EndDuty();
         }
 
@@ -430,6 +430,7 @@ namespace MapPartyAssist.Services {
 
                 //check for unknown enemy
                 //Match unknownMatch = Regex.Match(message.ToString(), ".*(?=,? appears?)", RegexOptions.IgnoreCase);
+                //(?<=\ban?\b ).*(?=,? appears\.*\!*$)
             }
             //failure
             if(((int)type == 2233 || (int)type == 2105) && Regex.IsMatch(message.ToString(), _currentDuty!.FailureCheckpoint!.Message!, RegexOptions.IgnoreCase)) {

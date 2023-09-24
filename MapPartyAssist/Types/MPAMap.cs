@@ -71,10 +71,6 @@ namespace MapPartyAssist.Types {
                 return Id.Equals(other.Id);
             }
         }
-
-        //public static MapType NameToType(string name) {
-
-        //}
     }
 
     enum MapType {

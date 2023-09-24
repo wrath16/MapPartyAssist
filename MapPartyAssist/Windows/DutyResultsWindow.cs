@@ -61,8 +61,9 @@ namespace MapPartyAssist.Windows {
 
             if(ImGui.Button("Save")) {
                 //should this go in manager?
-                _plugin.StorageManager.UpdateDutyResults(_dutyResults.Where(dr => dr.IsEdited));
-                _plugin.DutyManager.RefreshCurrentDutyResults();
+                _plugin.StorageManager.UpdateDutyResults(_dutyResults.Where(dr => dr.IsEdited)).ContinueWith(t => {
+                    _plugin.DutyManager.RefreshCurrentDutyResults();
+                });
             }
 
             ImGui.SameLine();

@@ -1,9 +1,8 @@
 ﻿using Dalamud.Interface;
+using Dalamud.Interface.Components;
 using Dalamud.Interface.Windowing;
-using Dalamud.Logging;
 using ImGuiNET;
 using MapPartyAssist.Types;
-using System;
 using System.Collections.Generic;
 using System.Numerics;
 
@@ -47,6 +46,8 @@ namespace MapPartyAssist.Windows {
                     _addImportWindow.Open();
                 }
             }
+
+            ImGuiComponents.HelpMarker("Use imports to include stats that were tracked when the plugin was unavailable.");
 
             if(_imports.Count > 0) {
                 ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true);

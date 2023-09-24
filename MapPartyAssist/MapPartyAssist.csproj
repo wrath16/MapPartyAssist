@@ -19,6 +19,7 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
 	<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	<PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))=./</PathMap>
   </PropertyGroup>
 
   <PropertyGroup>

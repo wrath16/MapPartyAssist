@@ -167,7 +167,7 @@ namespace MapPartyAssist.Services {
         }
 
         public void AddMap(MPAMember player, string zone = "", string type = "", bool isManual = false, bool isPortal = false) {
-            PluginLog.Information($"Adding new map to {player.Key}");
+            PluginLog.Information($"Adding new map for {player.Key}");
             //zone ??= DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name!;
             //zone = _textInfo.ToTitleCase(zone);
             type = _textInfo.ToTitleCase(type);
@@ -219,6 +219,7 @@ namespace MapPartyAssist.Services {
         }
 
         public void CheckAndArchiveMaps() {
+            PluginLog.Information("Checking and archiving old maps...");
             DateTime currentTime = DateTime.Now;
             var storageMaps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived).ToList();
             foreach(var map in storageMaps) {
