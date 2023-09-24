@@ -1,4 +1,3 @@
-using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 
@@ -23,7 +22,6 @@ internal unsafe class GameFunctions {
     //private static AtkUnitBase* AddonToDoList => GetUnitBase<AtkUnitBase>("_ToDoList");
 
     internal GameFunctions() {
-        Dalamud.Utility.Signatures.SignatureHelper.Initialise(this);
     }
 
     internal void OpenMap(uint mapId) {

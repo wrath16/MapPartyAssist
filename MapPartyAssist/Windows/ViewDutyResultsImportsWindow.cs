@@ -1,5 +1,5 @@
-﻿using Dalamud.Interface;
-using Dalamud.Interface.Components;
+﻿using Dalamud.Interface.Components;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
 using MapPartyAssist.Types;

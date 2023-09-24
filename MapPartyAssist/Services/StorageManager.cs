@@ -1,5 +1,4 @@
-﻿using Dalamud.Logging;
-using Dalamud.Utility;
+﻿using Dalamud.Utility;
 using LiteDB;
 using MapPartyAssist.Types;
 using MapPartyAssist.Types.Attributes;
@@ -61,7 +60,7 @@ namespace MapPartyAssist.Services {
 
         public void Dispose() {
 #if DEBUG
-            PluginLog.Debug("disposing storage manager");
+            _plugin.Log.Debug("disposing storage manager");
 #endif
             Database.Dispose();
         }
@@ -69,7 +68,7 @@ namespace MapPartyAssist.Services {
 
 #pragma warning disable 612, 618
         internal void Import() {
-            PluginLog.Information("Importing data from config file into database...");
+            _plugin.Log.Information("Importing data from config file into database...");
 
             List<MPAMap> maps = new();
 
@@ -172,7 +171,7 @@ namespace MapPartyAssist.Services {
         //private void HandleTaskExceptions(Task task) {
         //    var aggException = task.Exception.Flatten();
         //    foreach(var exception in aggException.InnerExceptions) {
-        //        PluginLog.Error($"{exception.Message}");
+        //        _plugin.Log.Error($"{exception.Message}");
         //    }
         //}
 
@@ -202,7 +201,7 @@ namespace MapPartyAssist.Services {
 
             bool isValid = true;
             NullabilityInfoContext nullabilityContext = new();
-            //PluginLog.Debug($"Type: {toValidate.GetType().Name}");
+            //_plugin.Log.Debug($"Type: {toValidate.GetType().Name}");
             foreach(var prop in toValidate.GetType().GetProperties()) {
                 var nullabilityInfo = nullabilityContext.Create(prop);
                 bool nullable = nullabilityInfo.WriteState is NullabilityState.Nullable;
@@ -221,7 +220,7 @@ namespace MapPartyAssist.Services {
                 bool isReference = prop.GetCustomAttribute(typeof(BsonRefAttribute), true) != null;
                 //bool isDataType = typeof(MPADataType).IsAssignableFrom(prop.PropertyType);
                 bool isDataType = prop.PropertyType.GetCustomAttribute(typeof(ValidatedDataTypeAttribute), true) != null;
-                //PluginLog.Debug(string.Format("Name:  {0, -20} Type: {1, -15} IsEnumerable: {7,-6} HasEnumerableData: {4, -6} IsDataType: {5, -6} IsReference: {6, -6} Nullable: {2, -6} IsNull: {3,-6}", prop.Name, prop.PropertyType.Name, nullable, isNull, hasEnumerableData, isDataType, isReference, isEnumerable));
+                //_plugin.Log.Debug(string.Format("Name:  {0, -20} Type: {1, -15} IsEnumerable: {7,-6} HasEnumerableData: {4, -6} IsDataType: {5, -6} IsReference: {6, -6} Nullable: {2, -6} IsNull: {3,-6}", prop.Name, prop.PropertyType.Name, nullable, isNull, hasEnumerableData, isDataType, isReference, isEnumerable));
 
                 //check recursive data type
                 if(isDataType && !isReference && !isNull && !ValidateDataType(curValue!, correctErrors)) {
@@ -245,7 +244,7 @@ namespace MapPartyAssist.Services {
                         if(defaultCtor != null) {
                             prop.SetValue(toValidate, defaultCtor.Invoke(null));
                         } else {
-                            //PluginLog.Warning($"No default constructor for type: {prop.PropertyType.Name}");
+                            //_plugin.Log.Warning($"No default constructor for type: {prop.PropertyType.Name}");
                             //initialize empty strings
                             if(prop.PropertyType == typeof(string)) {
                                 prop.SetValue(toValidate, "");
@@ -254,7 +253,7 @@ namespace MapPartyAssist.Services {
                     }
                 }
             }
-            //PluginLog.Debug($"");
+            //_plugin.Log.Debug($"");
             return isValid;
         }
     }

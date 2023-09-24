@@ -1,7 +1,7 @@
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
-using Dalamud.Logging;
 using Dalamud.Utility;
 using ImGuiNET;
 using MapPartyAssist.Types;
@@ -126,7 +126,7 @@ internal class MainWindow : Window {
             //check for double clicks
             if(ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)) {
 #if DEBUG
-                PluginLog.Debug($"'Clear All' has been double-clicked!");
+                _plugin.Log.Debug($"'Clear All' has been double-clicked!");
 #endif
                 if(_plugin.Configuration.RequireDoubleClickOnClearAll) {
                     _plugin.MapManager.ClearAllMaps();

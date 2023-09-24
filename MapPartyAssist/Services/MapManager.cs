@@ -1,7 +1,6 @@
 ﻿using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
-using Dalamud.Logging;
 using Dalamud.Utility;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Types;
@@ -49,13 +48,13 @@ namespace MapPartyAssist.Services {
 
         public void Dispose() {
 #if DEBUG
-            PluginLog.Debug("disposing map manager");
+            _plugin.Log.Debug("disposing map manager");
 #endif
             _plugin.ChatGui.ChatMessage -= OnChatMessage;
             _plugin.ClientState.TerritoryChanged -= OnTerritoryChanged;
         }
 
-        private void OnTerritoryChanged(object? sender, ushort territoryId) {
+        private void OnTerritoryChanged(ushort territoryId) {
             ResetDigStatus();
         }
 
@@ -91,11 +90,11 @@ namespace MapPartyAssist.Services {
                     ResetDigStatus();
                 } else if(Regex.IsMatch(message.ToString(), @"discover a treasure coffer!$", RegexOptions.IgnoreCase)) {
                     if(!_diggerKey.IsNullOrEmpty()) {
-                        PluginLog.Debug($"Time since dig: {(DateTime.Now - _digTime).TotalMilliseconds} ms");
+                        _plugin.Log.Debug($"Time since dig: {(DateTime.Now - _digTime).TotalMilliseconds} ms");
                         //lock in dig only if we have a recent digger
                         _isDigLockedIn = (DateTime.Now - _digTime).TotalSeconds < _digThresholdSeconds;
                     } else if(!_selfDig) {
-                        PluginLog.Warning($"No eligible map owner detected!");
+                        _plugin.Log.Warning($"No eligible map owner detected!");
                         SetStatus("Unable to determine map owner, verify and add manually.", StatusLevel.ERROR);
                     }
                 } else if(Regex.IsMatch(message.ToString(), @"releasing a powerful musk into the air!$", RegexOptions.IgnoreCase)) {
@@ -104,7 +103,7 @@ namespace MapPartyAssist.Services {
                         if(!_diggerKey.IsNullOrEmpty()) {
                             AddMap(_plugin.CurrentPartyList[_diggerKey], _plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(_plugin.ClientState.TerritoryType)?.PlaceName.Value?.Name!);
                             if(_extraDigCount > 0) {
-                                PluginLog.Warning($"Multiple map owner candidates detected!");
+                                _plugin.Log.Warning($"Multiple map owner candidates detected!");
                                 SetStatus("Multiple map owner candidates found, verify last map ownership.", StatusLevel.CAUTION);
                             }
                         }
@@ -167,7 +166,7 @@ namespace MapPartyAssist.Services {
         }
 
         public void AddMap(MPAMember player, string zone = "", string type = "", bool isManual = false, bool isPortal = false) {
-            PluginLog.Information($"Adding new map for {player.Key}");
+            _plugin.Log.Information($"Adding new map for {player.Key}");
             //zone ??= DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name!;
             //zone = _textInfo.ToTitleCase(zone);
             type = _textInfo.ToTitleCase(type);
@@ -191,7 +190,7 @@ namespace MapPartyAssist.Services {
         }
 
         public void ClearAllMaps() {
-            PluginLog.Information("Archiving all maps...");
+            _plugin.Log.Information("Archiving all maps...");
             var maps = _plugin.StorageManager.GetMaps().Query().ToList();
             maps.ForEach(m => m.IsArchived = true);
             _plugin.StorageManager.UpdateMaps(maps).ContinueWith(t => {
@@ -201,7 +200,7 @@ namespace MapPartyAssist.Services {
         }
 
         public void ArchiveMaps(IEnumerable<MPAMap> maps) {
-            PluginLog.Information("Archiving maps...");
+            _plugin.Log.Information("Archiving maps...");
             maps.ToList().ForEach(m => m.IsArchived = true);
             _plugin.StorageManager.UpdateMaps(maps).ContinueWith(t => {
                 _plugin.BuildRecentPartyList();
@@ -210,7 +209,7 @@ namespace MapPartyAssist.Services {
         }
 
         public void DeleteMaps(IEnumerable<MPAMap> maps) {
-            PluginLog.Information("Deleting maps...");
+            _plugin.Log.Information("Deleting maps...");
             maps.ToList().ForEach(m => m.IsDeleted = true);
             _plugin.StorageManager.UpdateMaps(maps).ContinueWith(t => {
                 _plugin.BuildRecentPartyList();
@@ -219,7 +218,7 @@ namespace MapPartyAssist.Services {
         }
 
         public void CheckAndArchiveMaps() {
-            PluginLog.Information("Checking and archiving old maps...");
+            _plugin.Log.Information("Checking and archiving old maps...");
             DateTime currentTime = DateTime.Now;
             var storageMaps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived).ToList();
             foreach(var map in storageMaps) {

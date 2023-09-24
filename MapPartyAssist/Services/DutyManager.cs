@@ -1,6 +1,5 @@
 ﻿using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
-using Dalamud.Logging;
 using Dalamud.Utility;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Types;
@@ -157,7 +156,7 @@ namespace MapPartyAssist.Services {
 
         public void Dispose() {
 #if DEBUG
-            PluginLog.Debug("disposing duty manager");
+            _plugin.Log.Debug("disposing duty manager");
 #endif
             _plugin.DutyState.DutyStarted -= OnDutyStart;
             _plugin.DutyState.DutyCompleted -= OnDutyCompleted;
@@ -178,7 +177,7 @@ namespace MapPartyAssist.Services {
 
             if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null) {
                 var lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().Last();
-                PluginLog.Information($"Starting new duty results for duty id: {dutyId}");
+                _plugin.Log.Information($"Starting new duty results for duty id: {dutyId}");
                 //_currentDutyResults = new DutyResults(dutyId, Duties[dutyId].Name, _plugin.CurrentPartyList, "");
                 _currentDutyResults = new DutyResults {
                     DutyId = dutyId,
@@ -215,7 +214,7 @@ namespace MapPartyAssist.Services {
                 TimeSpan lastTimeDiff = DateTime.Now - lastDutyResults.Time;
                 //pickup if duty is valid, and matches the last duty which was not completed and not more than an hour has elapsed (fallback)
                 if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null && lastDutyResults.DutyId == dutyId && !lastDutyResults.IsComplete && !_firstTerritoryChange && lastTimeDiff.TotalHours < 1) {
-                    PluginLog.Information($"re-picking up last duty results id:{lastDutyResults.Id.ToString()}");
+                    _plugin.Log.Information($"re-picking up last duty results id:{lastDutyResults.Id.ToString()}");
                     _currentDutyResults = lastDutyResults;
                     _currentDutyResults.IsPickup = true;
 
@@ -264,9 +263,9 @@ namespace MapPartyAssist.Services {
         private bool ValidateUpdateDutyResults(DutyResults dutyResults) {
             //check for no players
             if(dutyResults.Players == null || dutyResults.Players.Length <= 0) {
-                PluginLog.Warning($"No players on duty results {dutyResults.Id.ToString()}");
+                _plugin.Log.Warning($"No players on duty results {dutyResults.Id.ToString()}");
                 if(dutyResults.Owner.IsNullOrEmpty()) {
-                    PluginLog.Warning($"No owner on duty results {dutyResults.Id.ToString()}");
+                    _plugin.Log.Warning($"No owner on duty results {dutyResults.Id.ToString()}");
                 } else {
                     //dutyResults.Players = new[] { dutyResults.Owner };
                 }
@@ -277,35 +276,35 @@ namespace MapPartyAssist.Services {
         }
 
         private void OnDutyStart(object? sender, ushort territoryId) {
-            PluginLog.Verbose($"Duty has started with territory id: {territoryId} name: {_plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId)?.PlaceName.Value?.Name} ");
+            _plugin.Log.Verbose($"Duty has started with territory id: {territoryId} name: {_plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId)?.PlaceName.Value?.Name} ");
             var dutyId = _plugin.Functions.GetCurrentDutyId();
-            PluginLog.Verbose($"Current duty ID: {dutyId}");
+            _plugin.Log.Verbose($"Current duty ID: {dutyId}");
             var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
-            PluginLog.Verbose($"Duty Name: {duty?.Name}");
+            _plugin.Log.Verbose($"Duty Name: {duty?.Name}");
 
             //check if duty is ongoing to attempt to pickup...
-            PluginLog.Verbose($"Current duty ongoing? {_currentDutyResults != null}");
+            _plugin.Log.Verbose($"Current duty ongoing? {_currentDutyResults != null}");
         }
 
         private void OnDutyCompleted(object? sender, ushort param1) {
-            PluginLog.Verbose("Duty completed!");
+            _plugin.Log.Verbose("Duty completed!");
             //EndDuty();
         }
 
         private void OnDutyWiped(object? sender, ushort param1) {
-            PluginLog.Verbose("Duty wiped!");
+            _plugin.Log.Verbose("Duty wiped!");
             //EndDuty();
         }
 
         private void OnDutyRecommenced(object? sender, ushort param1) {
-            PluginLog.Verbose("Duty recommenced!");
+            _plugin.Log.Verbose("Duty recommenced!");
             //EndDuty();
         }
 
-        private void OnTerritoryChanged(object? sender, ushort territoryId) {
+        private void OnTerritoryChanged(ushort territoryId) {
             var dutyId = _plugin.Functions.GetCurrentDutyId();
             var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
-            PluginLog.Debug($"Territory changed: {territoryId}, Current duty: {_plugin.Functions.GetCurrentDutyId()}");
+            _plugin.Log.Debug($"Territory changed: {territoryId}, Current duty: {_plugin.Functions.GetCurrentDutyId()}");
 
             if(IsDutyInProgress()) {
                 //clear current duty if it was completed successfully or clear as a fallback. attempt to pickup otherwise on disconnect
@@ -459,7 +458,7 @@ namespace MapPartyAssist.Services {
 
         private void EndCurrentDuty() {
             if(IsDutyInProgress()) {
-                PluginLog.Information($"Ending duty results id: {_currentDutyResults!.Id}");
+                _plugin.Log.Information($"Ending duty results id: {_currentDutyResults!.Id}");
                 _currentDutyResults!.IsComplete = true;
                 if(_currentDutyResults.CompletionTime.Ticks == 0) {
                     _currentDutyResults.CompletionTime = DateTime.Now;
