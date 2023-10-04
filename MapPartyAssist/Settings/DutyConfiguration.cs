@@ -6,7 +6,7 @@
         public bool DisplayDeaths { get; set; } = false;
         public bool OmitZeroCheckpoints { get; set; } = false;
 
-        public DutyConfiguration() { 
+        public DutyConfiguration() {
         }
 
         public DutyConfiguration(int dutyId, bool displayClearSequence = false, bool displayDeaths = false) {

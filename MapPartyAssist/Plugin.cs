@@ -1,19 +1,14 @@
 using Dalamud.Configuration;
-using Dalamud.Data;
-using Dalamud.Game;
-using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Party;
 using Dalamud.Game.Command;
-using Dalamud.Game.DutyState;
-using Dalamud.Game.Gui;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
-using Dalamud.Logging;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using MapPartyAssist.Services;
 using MapPartyAssist.Settings;
@@ -48,15 +43,16 @@ namespace MapPartyAssist {
 
         //Dalamud services
         internal DalamudPluginInterface PluginInterface { get; init; }
-        private CommandManager CommandManager { get; init; }
-        internal DataManager DataManager { get; init; }
-        internal ClientState ClientState { get; init; }
-        internal Condition Condition { get; init; }
-        internal DutyState DutyState { get; init; }
-        private PartyList PartyList { get; init; }
-        internal ChatGui ChatGui { get; init; }
-        private GameGui GameGui { get; init; }
-        private Framework Framework { get; init; }
+        private ICommandManager CommandManager { get; init; }
+        internal IDataManager DataManager { get; init; }
+        internal IClientState ClientState { get; init; }
+        internal ICondition Condition { get; init; }
+        internal IDutyState DutyState { get; init; }
+        private IPartyList PartyList { get; init; }
+        internal IChatGui ChatGui { get; init; }
+        private IGameGui GameGui { get; init; }
+        private IFramework Framework { get; init; }
+        internal IPluginLog Log { get; init; }
 
         //Custom services
         internal DutyManager DutyManager { get; init; }
@@ -87,15 +83,16 @@ namespace MapPartyAssist {
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
-            [RequiredVersion("1.0")] CommandManager commandManager,
-            [RequiredVersion("1.0")] DataManager dataManager,
-            [RequiredVersion("1.0")] ClientState clientState,
-            [RequiredVersion("1.0")] Condition condition,
-            [RequiredVersion("1.0")] DutyState dutyState,
-            [RequiredVersion("1.0")] PartyList partyList,
-            [RequiredVersion("1.0")] ChatGui chatGui,
-            [RequiredVersion("1.0")] GameGui gameGui,
-            [RequiredVersion("1.0")] Framework framework) {
+            [RequiredVersion("1.0")] ICommandManager commandManager,
+            [RequiredVersion("1.0")] IDataManager dataManager,
+            [RequiredVersion("1.0")] IClientState clientState,
+            [RequiredVersion("1.0")] ICondition condition,
+            [RequiredVersion("1.0")] IDutyState dutyState,
+            [RequiredVersion("1.0")] IPartyList partyList,
+            [RequiredVersion("1.0")] IChatGui chatGui,
+            [RequiredVersion("1.0")] IGameGui gameGui,
+            [RequiredVersion("1.0")] IFramework framework,
+            [RequiredVersion("1.0")] IPluginLog log) {
             try {
                 PluginInterface = pluginInterface;
                 CommandManager = commandManager;
@@ -107,13 +104,14 @@ namespace MapPartyAssist {
                 ChatGui = chatGui;
                 GameGui = gameGui;
                 Framework = framework;
+                Log = log;
 
                 Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
-                PluginLog.Information($"Client language: {ClientState.ClientLanguage}");
-                PluginLog.Verbose($"Current culture: {CultureInfo.CurrentCulture.Name}");
+                Log.Information($"Client language: {ClientState.ClientLanguage}");
+                Log.Verbose($"Current culture: {CultureInfo.CurrentCulture.Name}");
                 if(!IsEnglishClient()) {
-                    PluginLog.Warning("Client is not English, most functions will be unavailable.");
+                    Log.Warning("Client is not English, most functions will be unavailable.");
                 }
 
                 StorageManager = new StorageManager(this, $"{PluginInterface.GetPluginConfigDirectory()}\\{DatabaseName}");
@@ -179,9 +177,10 @@ namespace MapPartyAssist {
                     RecentPartyList = new();
                 }
             } catch(Exception e) {
-                PluginLog.Error($"Failed to initialize plugin constructor: {e.Message}");
                 //remove handlers and release database if we fail to start
                 Dispose();
+                //it really shouldn't ever be null
+                Log!.Error($"Failed to initialize plugin constructor: {e.Message}");
                 //re-throw to prevent constructor from initializing
                 throw;
             }
@@ -202,7 +201,7 @@ namespace MapPartyAssist {
 
         public void Dispose() {
 #if DEBUG
-            PluginLog.Debug("disposing plugin");
+            Log.Debug("disposing plugin");
 #endif
 
             WindowSystem.RemoveAllWindows();
@@ -260,7 +259,7 @@ namespace MapPartyAssist {
             ConfigWindow.IsOpen = true;
         }
 
-        private void OnFrameworkUpdate(Framework framework) {
+        private void OnFrameworkUpdate(IFramework framework) {
             var playerJob = ClientState.LocalPlayer?.ClassJob.GameData?.Abbreviation;
             var currentTerritory = ClientState.TerritoryType;
             var currentPartySize = PartyList.Length;
@@ -269,16 +268,16 @@ namespace MapPartyAssist {
             bool betweenAreasNew = Condition[ConditionFlag.BetweenAreas];
             if(betweenAreasNew != _betweenAreas) {
                 if(betweenAreasNew) {
-                    PluginLog.Debug("Between areas!");
+                    Log.Debug("Between areas!");
                 } else {
-                    PluginLog.Debug("Not between areas!");
+                    Log.Debug("Not between areas!");
                 }
                 _betweenAreas = betweenAreasNew;
             }
 #endif
 
             if(!Condition[ConditionFlag.BetweenAreas] && playerJob != null && currentPartySize != _lastPartySize) {
-                PluginLog.Verbose($"Party size has changed: {_lastPartySize} to {currentPartySize}");
+                Log.Verbose($"Party size has changed: {_lastPartySize} to {currentPartySize}");
                 BuildCurrentPartyList();
                 BuildRecentPartyList();
                 _lastPartySize = currentPartySize;
@@ -399,24 +398,24 @@ namespace MapPartyAssist {
                 case 23337:
                     break;
                 default:
-                    PluginLog.Verbose($"Message received: {type} {message} from {sender}");
+                    Log.Verbose($"Message received: {type} {message} from {sender}");
                     //foreach(Payload payload in message.Payloads) {
-                    //    PluginLog.Verbose($"payload: {payload}");
+                    //    Log.Verbose($"payload: {payload}");
                     //}
                     break;
             }
         }
 
-        private void OnLogin(object? sender, EventArgs e) {
+        private void OnLogin() {
 #if DEBUG
-            PluginLog.Debug("logging in");
+            Log.Debug("logging in");
 #endif
             BuildCurrentPartyList();
             BuildRecentPartyList();
             MapManager.CheckAndArchiveMaps();
         }
 
-        private void OnLogout(object? sender, EventArgs e) {
+        private void OnLogout() {
             //remove all party members
             CurrentPartyList = new();
             Save();
@@ -426,7 +425,7 @@ namespace MapPartyAssist {
         public void BuildCurrentPartyList() {
             try {
                 _saveLock.Wait();
-                PluginLog.Verbose("Rebuilding current party list.");
+                Log.Verbose("Rebuilding current party list.");
                 string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
                 string currentPlayerWorld = ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
                 string currentPlayerKey = GetCurrentPlayer();
@@ -476,7 +475,7 @@ namespace MapPartyAssist {
         public void BuildRecentPartyList() {
             try {
                 _saveLock.Wait();
-                PluginLog.Verbose("Rebuilding recent party list.");
+                Log.Verbose("Rebuilding recent party list.");
                 RecentPartyList = new();
                 var allPlayers = StorageManager.GetPlayers();
                 var currentMaps = StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted).ToList();

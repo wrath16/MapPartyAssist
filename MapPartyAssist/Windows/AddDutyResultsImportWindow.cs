@@ -1,8 +1,8 @@
 ﻿using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
-using Dalamud.Logging;
 using Dalamud.Utility;
 using ImGuiNET;
 using MapPartyAssist.Types;
@@ -294,12 +294,12 @@ namespace MapPartyAssist.Windows {
             if(ImGui.Button("Save")) {
                 if(_plugin.ImportManager.ValidateImport(_model)) {
                     //save
-                    PluginLog.Debug("Valid Import");
+                    _plugin.Log.Debug("Valid Import");
                     _plugin.ImportManager.AddorEditImport(_model, false);
                     _statusMessage = "";
                     IsOpen = false;
                 } else {
-                    PluginLog.Debug("Invalid Import");
+                    _plugin.Log.Debug("Invalid Import");
                     _statusMessage = "Invalid data, check numbers.";
                 }
             }
