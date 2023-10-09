@@ -76,8 +76,6 @@ namespace MapPartyAssist {
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
         public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
         private int _lastPartySize = 0;
-        //to delete
-        private bool _betweenAreas = false;
 
         private SemaphoreSlim _saveLock = new SemaphoreSlim(1, 1);
 
@@ -261,20 +259,7 @@ namespace MapPartyAssist {
 
         private void OnFrameworkUpdate(IFramework framework) {
             var playerJob = ClientState.LocalPlayer?.ClassJob.GameData?.Abbreviation;
-            var currentTerritory = ClientState.TerritoryType;
             var currentPartySize = PartyList.Length;
-
-#if DEBUG
-            bool betweenAreasNew = Condition[ConditionFlag.BetweenAreas];
-            if(betweenAreasNew != _betweenAreas) {
-                if(betweenAreasNew) {
-                    Log.Debug("Between areas!");
-                } else {
-                    Log.Debug("Not between areas!");
-                }
-                _betweenAreas = betweenAreasNew;
-            }
-#endif
 
             if(!Condition[ConditionFlag.BetweenAreas] && playerJob != null && currentPartySize != _lastPartySize) {
                 Log.Verbose($"Party size has changed: {_lastPartySize} to {currentPartySize}");

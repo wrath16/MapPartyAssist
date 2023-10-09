@@ -304,7 +304,7 @@ namespace MapPartyAssist.Services {
         private void OnTerritoryChanged(ushort territoryId) {
             var dutyId = _plugin.Functions.GetCurrentDutyId();
             var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
-            _plugin.Log.Debug($"Territory changed: {territoryId}, Current duty: {_plugin.Functions.GetCurrentDutyId()}");
+            _plugin.Log.Verbose($"Territory changed: {territoryId}, Current duty: {_plugin.Functions.GetCurrentDutyId()}");
 
             if(IsDutyInProgress()) {
                 //clear current duty if it was completed successfully or clear as a fallback. attempt to pickup otherwise on disconnect

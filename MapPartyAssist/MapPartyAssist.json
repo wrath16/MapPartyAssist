@@ -6,7 +6,7 @@
   "InternalName": "MapPartyAssist",
   "RepoUrl": "https://github.com/wrath16/MapPartyAssist",
   "ApplicableVersion": "any",
-  "Changelog": "Updated for v9 API.",
+  "Changelog": "Initial Dalamud release.",
   "Tags": [
     "treasure maps",
     "maps",
