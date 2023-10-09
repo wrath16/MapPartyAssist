@@ -392,9 +392,6 @@ namespace MapPartyAssist {
         }
 
         private void OnLogin() {
-#if DEBUG
-            Log.Debug("logging in");
-#endif
             BuildCurrentPartyList();
             BuildRecentPartyList();
             MapManager.CheckAndArchiveMaps();
