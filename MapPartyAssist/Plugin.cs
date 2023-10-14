@@ -273,18 +273,25 @@ namespace MapPartyAssist {
             //filter nuisance combat messages...
             switch((int)type) {
                 case 2091:
+                case 2106: //self revived
+                case 2217:
+                case 2218:
                 case 2219:
                 case 2221: //you recover hp
                 case 2222:
                 case 2223: //you suffer from effect
                 case 2224:
                 case 2225: //you recover from effect
+                case 2350:
                 case 2603:
                 case 2729:
                 case 2730: //self combat
                 case 2731: //self cast
                 case 2735:
                 case 2858: //enemy resists
+                case 2859:
+                case 2861:
+                case 2864:
                 case 2874: //you defeat enemy
                 case 2857: //you crit/dh dmg enemy
                 case 2863: //enemy suffers effect
@@ -293,8 +300,11 @@ namespace MapPartyAssist {
                         goto default;
                     }
                     break;
+                case 4154: //party member revived
+                case 4266:
                 case 4269: //critical hp from party member
                 case 4270: //gain effect from party member
+                case 4393:
                 case 4394: //party member unaffected
                 case 4397:
                 case 4398:
@@ -306,11 +316,17 @@ namespace MapPartyAssist {
                 case 4783: //effect
                 case 4905: //combat
                 case 4906:
+                case 4909:
                 case 4911:
                 case 4922: //party member defeats enemy
                 case 6187:
+                case 6573:
                 case 6574:
                 case 6576:
+                case 6577:
+                case 6825:
+                case 6831:
+                case 6953:
                 case 6959:
                 case 8235:
                 case 8236:
@@ -329,17 +345,24 @@ namespace MapPartyAssist {
                 case 10410:
                 case 10537:
                 case 10538: //misses party member
+                case 10665:
                 case 10922: //attack misses
                 case 10926: //engaged enemy gains beneficial effect
                 case 10929:
                 case 11305: //companion
                 case 11306: //companion
                 case 12331:
+                case 12346:
                 case 12457:
                 case 12458:
+                case 12461:
+                case 12463:
+                case 12464:
                 case 12585: //hits party member
                 case 12586: //attack misses party member
+                case 12589:
                 case 12591:
+                case 12592:
                 case 12713:
                 case 12717:
                 case 12719:
@@ -370,17 +393,32 @@ namespace MapPartyAssist {
                 case 17456:
                 case 18475:
                 case 18605: //crit hp
+                case 18606:
                 case 18733:
+                case 18734:
                 case 19113: //enemy taking dmg
+                case 19247:
                 case 19241: //crit
+                case 19258:
                 case 19632: //party member companion loses beneficial effect
+                case 19633:
+                case 19626:
+                case 20523:
+                case 20909:
+                case 21161:
                 case 22571: //other companion
+                case 22697:
+                case 22703:
                 case 22825:
+                case 22831:
                 case 23081:
                 case 23082: //other
                 case 23085: //other
                 case 23086: //other
                 case 23337:
+                case 23342:
+                case 23985:
+                case 23978:
                     break;
                 default:
                     Log.Verbose($"Message received: {type} {message} from {sender}");

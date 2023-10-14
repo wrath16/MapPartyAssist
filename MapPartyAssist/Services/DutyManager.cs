@@ -355,15 +355,17 @@ namespace MapPartyAssist.Services {
 
         //return true if updates made
         private bool ProcessCheckpointsDoors(XivChatType type, uint senderId, SeString sender, SeString message) {
-            var nextCheckpoint = _currentDuty!.Checkpoints![_currentDutyResults!.CheckpointResults.Count];
-            if(((int)type == 2233 || (int)type == 2105) && Regex.IsMatch(message.ToString(), nextCheckpoint.Message!, RegexOptions.IgnoreCase)) {
-                _currentDutyResults.CheckpointResults.Add(new CheckpointResults(nextCheckpoint, true));
-                //if all checkpoints reached, set to duty complete
-                if(_currentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == _currentDuty.Checkpoints!.Count) {
-                    _currentDutyResults.IsComplete = true;
-                    _currentDutyResults.CompletionTime = DateTime.Now;
+            if(_currentDutyResults!.CheckpointResults.Count < _currentDuty!.Checkpoints!.Count) {
+                var nextCheckpoint = _currentDuty!.Checkpoints![_currentDutyResults!.CheckpointResults.Count];
+                if(((int)type == 2233 || (int)type == 2105) && Regex.IsMatch(message.ToString(), nextCheckpoint.Message!, RegexOptions.IgnoreCase)) {
+                    _currentDutyResults.CheckpointResults.Add(new CheckpointResults(nextCheckpoint, true));
+                    //if all checkpoints reached, set to duty complete
+                    if(_currentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == _currentDuty.Checkpoints!.Count) {
+                        _currentDutyResults.IsComplete = true;
+                        _currentDutyResults.CompletionTime = DateTime.Now;
+                    }
+                    return true;
                 }
-                return true;
             }
 
             //check for failure
@@ -374,6 +376,7 @@ namespace MapPartyAssist.Services {
                 //_currentDutyResults.CheckpointResults.Add(new CheckpointResults(FailureCheckpoint, false));
                 return true;
             }
+
             return false;
         }
 

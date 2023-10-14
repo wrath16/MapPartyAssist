@@ -62,8 +62,8 @@
     </Reference>
   </ItemGroup>
 
-	<ItemGroup>
-	    <PackageReference Include="LiteDB" Version="5.0.16" />
-	</ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="LiteDB" Version="5.0.16" />
+  </ItemGroup>
 
 </Project>
