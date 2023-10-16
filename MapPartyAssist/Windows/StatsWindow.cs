@@ -8,6 +8,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows {
 
@@ -33,6 +35,10 @@ namespace MapPartyAssist.Windows {
         private readonly string[] _dutyNameCombo;
         private List<DutyResults> _dutyResults = new();
         private List<DutyResultsImport> _dutyResultsImports = new();
+        private string _partyMemberFilter = "";
+        private string _ownerFilter = "";
+
+        private SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
 
         internal StatsWindow(Plugin plugin) : base("Treasure Dungeon Stats") {
             SizeConstraints = new WindowSizeConstraints {
@@ -51,9 +57,66 @@ namespace MapPartyAssist.Windows {
             }
         }
 
-        public void Refresh() {
-            UpdateDutyResults();
-            _viewImportsWindow.Refresh();
+        public Task Refresh() {
+            return Task.Run(async () => {
+                try {
+                    _refreshLock.Wait();
+                    if(_statRange == StatRange.Current) {
+                        //_dutyResults = Plugin.DutyManager.GetRecentDutyResultsList(_dutyId);
+                        _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted && dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+                    } else if(_statRange == StatRange.PastDay) {
+                        _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToEnumerable().Where(dr => (DateTime.Now - dr.Time).TotalHours < 24).ToList();
+                    } else if(_statRange == StatRange.PastWeek) {
+                        _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToEnumerable().Where(dr => (DateTime.Now - dr.Time).TotalDays < 7).ToList();
+                    } else if(_statRange == StatRange.All) {
+                        _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+                    } else if(_statRange == StatRange.AllLegacy) {
+                        _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+                        _dutyResultsImports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted && i.DutyId == _dutyId).OrderBy(i => i.Time).ToList();
+                    } else if(_statRange == StatRange.SinceLastClear) {
+                        var lastClear = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList().Where(dr => dr.CheckpointResults.Count == _plugin.DutyManager.Duties[_dutyId].Checkpoints!.Count && dr.CheckpointResults.Last().IsReached).LastOrDefault();
+                        if(lastClear != null) {
+                            _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId && dr.Time > lastClear.Time).OrderBy(dr => dr.Time).ToList();
+                        } else {
+                            _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+                        }
+                    }
+
+                    if(_plugin.Configuration.CurrentCharacterStatsOnly) {
+                        _dutyResults = _dutyResults.Where(dr => dr.Players.Contains(_plugin.GetCurrentPlayer())).ToList();
+                    }
+
+                    if(_plugin.Configuration.DutyConfigurations[_dutyId].OmitZeroCheckpoints) {
+                        _dutyResults = _dutyResults.Where(dr => dr.CheckpointResults.Count > 0).ToList();
+                    }
+
+                    if(_plugin.Configuration.ShowAdvancedFilters) {
+                        //this is duplicated from DutyResultsWindow...
+                        string[] partyMemberFilters = _partyMemberFilter.Split(",");
+                        _dutyResults = _dutyResults.Where(dr => dr.Owner.Contains(_ownerFilter, StringComparison.OrdinalIgnoreCase)).Where(dr => {
+                            bool allMatch = true;
+                            foreach(string partyMemberFilter in partyMemberFilters) {
+                                bool matchFound = false;
+                                string partyMemberFilterTrimmed = partyMemberFilter.Trim();
+                                foreach(string partyMember in dr.Players) {
+                                    if(partyMember.Contains(partyMemberFilterTrimmed, StringComparison.OrdinalIgnoreCase)) {
+                                        matchFound = true;
+                                        break;
+                                    }
+                                }
+                                allMatch = allMatch && matchFound;
+                                if(!allMatch) {
+                                    return false;
+                                }
+                            }
+                            return allMatch;
+                        }).ToList();
+                    }
+                    await _viewImportsWindow.Refresh();
+                } finally {
+                    _refreshLock.Release();
+                }
+            });
         }
 
         public override void OnClose() {
@@ -61,46 +124,25 @@ namespace MapPartyAssist.Windows {
             base.OnClose();
         }
 
-        private void UpdateDutyResults() {
-            if(_statRange == StatRange.Current) {
-                //_dutyResults = Plugin.DutyManager.GetRecentDutyResultsList(_dutyId);
-                _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted && dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
-            } else if(_statRange == StatRange.PastDay) {
-                _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToEnumerable().Where(dr => (DateTime.Now - dr.Time).TotalHours < 24).ToList();
-            } else if(_statRange == StatRange.PastWeek) {
-                _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToEnumerable().Where(dr => (DateTime.Now - dr.Time).TotalDays < 7).ToList();
-            } else if(_statRange == StatRange.All) {
-                _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
-            } else if(_statRange == StatRange.AllLegacy) {
-                _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
-                _dutyResultsImports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted && i.DutyId == _dutyId).OrderBy(i => i.Time).ToList();
-            } else if(_statRange == StatRange.SinceLastClear) {
-                var lastClear = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList().Where(dr => dr.CheckpointResults.Count == _plugin.DutyManager.Duties[_dutyId].Checkpoints!.Count && dr.CheckpointResults.Last().IsReached).LastOrDefault();
-                if(lastClear != null) {
-                    _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId && dr.Time > lastClear.Time).OrderBy(dr => dr.Time).ToList();
-                } else {
-                    _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
-                }
-            }
-
-            if(_plugin.Configuration.CurrentCharacterStatsOnly) {
-                _dutyResults = _dutyResults.Where(dr => dr.Players.Contains(_plugin.GetCurrentPlayer())).ToList();
-            }
-
-            if(_plugin.Configuration.DutyConfigurations[_dutyId].OmitZeroCheckpoints) {
-                _dutyResults = _dutyResults.Where(dr => dr.CheckpointResults.Count > 0).ToList();
-            }
-        }
-
         public override void Draw() {
             if(ImGui.Combo($"Duty##DutyCombo", ref _selectedDuty, _dutyNameCombo, _dutyNameCombo.Length)) {
                 _dutyId = _dutyIdCombo[_selectedDuty];
-                UpdateDutyResults();
+                //UpdateDutyResults();
+                _plugin.Save();
             }
             int statRangeToInt = (int)_statRange;
             if(ImGui.Combo($"Data Range##includesCombo", ref statRangeToInt, _rangeCombo, _rangeCombo.Length)) {
                 _statRange = (StatRange)statRangeToInt;
-                UpdateDutyResults();
+                //UpdateDutyResults();
+                _plugin.Save();
+            }
+            if(_plugin.Configuration.ShowAdvancedFilters) {
+                if(ImGui.InputText($"Map Owner", ref _ownerFilter, 50)) {
+                    _plugin.Save();
+                }
+                if(ImGui.InputText($"Party Members", ref _partyMemberFilter, 100)) {
+                    _plugin.Save();
+                }
             }
 
             if(_statRange == StatRange.AllLegacy) {

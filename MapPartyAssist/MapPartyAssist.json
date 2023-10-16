@@ -6,7 +6,7 @@
   "InternalName": "MapPartyAssist",
   "RepoUrl": "https://github.com/wrath16/MapPartyAssist",
   "ApplicableVersion": "any",
-  "Changelog": "-Bug fixes\n-Added filtering and CSV export to dutyresults window",
+  "Changelog": "-Added extra filters to stats window",
   "Tags": [
     "treasure maps",
     "maps",

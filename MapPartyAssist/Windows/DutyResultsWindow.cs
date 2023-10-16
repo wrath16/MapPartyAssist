@@ -1,5 +1,6 @@
 ﻿using Dalamud.Interface;
 using Dalamud.Interface.Colors;
+using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
@@ -9,6 +10,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows {
 
@@ -31,10 +34,14 @@ namespace MapPartyAssist.Windows {
         private int _selectedDuty = 0;
         private readonly int[] _dutyIdCombo = { 0, 179, 268, 276, 586, 688, 745, 819, 909 };
         private readonly string[] _dutyNameCombo;
+        private string _partyMemberFilter = "";
+        private string _ownerFilter = "";
+
+        private SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
 
         internal DutyResultsWindow(Plugin plugin) : base("Edit Duty Results") {
             SizeConstraints = new WindowSizeConstraints {
-                MinimumSize = new Vector2(150, 50),
+                MinimumSize = new Vector2(400, 50),
                 MaximumSize = new Vector2(500, 800)
             };
             _plugin = plugin;
@@ -47,39 +54,87 @@ namespace MapPartyAssist.Windows {
             }
         }
 
-        internal void Refresh(int? pageIndex = null) {
-            _collapseAll = true;
-            //null index = stay on same page
-            pageIndex ??= _currentPage;
-            _currentPage = (int)pageIndex;
+        internal Task Refresh(int? pageIndex = null) {
+            return Task.Run(() => {
+                try {
+                    _refreshLock.Wait();
+                    _collapseAll = true;
+                    //null index = stay on same page
+                    pageIndex ??= _currentPage;
+                    _currentPage = (int)pageIndex;
 
-            //better performance to filter on DB than use LINQ
-            _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map)
-                .Where(dr => (_dutyRange != DutyRange.Current || (dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted))
-                //&& (_dutyRange != DutyRange.PastDay || ((DateTime.Now - dr.Time).TotalHours < 24))
-                //&& (_dutyRange != DutyRange.PastWeek || ((DateTime.Now - dr.Time).TotalDays < 7))
-                && (_dutyId == 0 || dr.DutyId == _dutyId)).OrderByDescending(dr => dr.Time).Offset(_currentPage * 100).Limit(100).ToList();
+                    //better performance to filter on DB than use LINQ due to indexing
+                    _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map)
+                        .Where(dr => (_dutyRange != DutyRange.Current || (dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted))
+                        //&& (_dutyRange != DutyRange.PastDay || ((DateTime.Now - dr.Time).TotalHours < 24))
+                        //&& (_dutyRange != DutyRange.PastWeek || ((DateTime.Now - dr.Time).TotalDays < 7))
+                        && dr.Owner.Contains(_ownerFilter, StringComparison.OrdinalIgnoreCase)
+                        && (_dutyId == 0 || dr.DutyId == _dutyId)).OrderByDescending(dr => dr.Time).ToList();
 
-            //these expressions don't get converted to BSONExpressions properly so we'll use LINQ
-            _dutyResults = _dutyResults.Where(dr => (_dutyRange != DutyRange.PastDay || ((DateTime.Now - dr.Time).TotalHours < 24))
-                && (_dutyRange != DutyRange.PastWeek || ((DateTime.Now - dr.Time).TotalDays < 7))).ToList();
+                    string[] partyMemberFilters = _partyMemberFilter.Split(",");
+
+                    //these expressions don't get converted to BSONExpressions properly so we'll use LINQ
+                    _dutyResults = _dutyResults.Where(dr => (_dutyRange != DutyRange.PastDay || ((DateTime.Now - dr.Time).TotalHours < 24))
+                        && (_dutyRange != DutyRange.PastWeek || ((DateTime.Now - dr.Time).TotalDays < 7))).Where(dr => {
+                            bool allMatch = true;
+                            foreach(string partyMemberFilter in partyMemberFilters) {
+                                bool matchFound = false;
+                                string partyMemberFilterTrimmed = partyMemberFilter.Trim();
+                                foreach(string partyMember in dr.Players) {
+                                    if(partyMember.Contains(partyMemberFilterTrimmed, StringComparison.OrdinalIgnoreCase)) {
+                                        matchFound = true;
+                                        break;
+                                    }
+                                }
+                                allMatch = allMatch && matchFound;
+                                if(!allMatch) {
+                                    return false;
+                                }
+                            }
+                            return allMatch;
+                        }).Skip(_currentPage * 100).Take(100).ToList();
+                } finally {
+                    _refreshLock.Release();
+                }
+            });
         }
 
         public override void OnClose() {
             base.OnClose();
-            Refresh(0);
+            //Refresh(0);
+        }
+
+        public override void OnOpen() {
+            base.OnOpen();
         }
 
         public override void Draw() {
-            if(ImGui.Combo($"Duty##DutyCombo", ref _selectedDuty, _dutyNameCombo, _dutyNameCombo.Length)) {
-                _dutyId = _dutyIdCombo[_selectedDuty];
+            if(ImGui.BeginTable($"##filterTable", 2, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX)) {
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                //ImGui.SetNextItemWidth(200f * ImGuiHelpers.GlobalScale);
+                if(ImGui.Combo($"Duty##DutyCombo", ref _selectedDuty, _dutyNameCombo, _dutyNameCombo.Length)) {
+                    _dutyId = _dutyIdCombo[_selectedDuty];
+                    Refresh(0);
+                }
+                ImGui.TableNextColumn();
+                int dutyRangeToInt = (int)_dutyRange;
+                //ImGui.SameLine();
+                //ImGui.SetNextItemWidth(200f * ImGuiHelpers.GlobalScale);
+                if(ImGui.Combo($"Range##includesCombo", ref dutyRangeToInt, _rangeCombo, _rangeCombo.Length)) {
+                    _dutyRange = (DutyRange)dutyRangeToInt;
+                    Refresh(0);
+                }
+                ImGui.EndTable();
+            }
+
+            if(ImGui.InputText($"Map Owner", ref _ownerFilter, 50)) {
                 Refresh(0);
             }
-            int dutyRangeToInt = (int)_dutyRange;
-            if(ImGui.Combo($"Data Range##includesCombo", ref dutyRangeToInt, _rangeCombo, _rangeCombo.Length)) {
-                _dutyRange = (DutyRange)dutyRangeToInt;
+            if(ImGui.InputText($"Party Members", ref _partyMemberFilter, 100)) {
                 Refresh(0);
             }
+            ImGuiComponents.HelpMarker("Party members present during run. \nSeparate party members by commas.");
 
             ImGui.PushFont(UiBuilder.IconFont);
             ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");

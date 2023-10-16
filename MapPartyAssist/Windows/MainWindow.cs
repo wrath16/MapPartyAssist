@@ -8,6 +8,8 @@ using MapPartyAssist.Types;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows;
 
@@ -30,6 +32,8 @@ internal class MainWindow : Window {
     internal Vector2 CurrentPosition { get; private set; }
     internal Vector2 CurrentSize { get; private set; }
 
+    private SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
+
     internal MainWindow(Plugin plugin) : base("Map Party Assist") {
         ForceMainWindow = true;
         PositionCondition = ImGuiCond.Always;
@@ -46,45 +50,48 @@ internal class MainWindow : Window {
         _plugin.WindowSystem.AddWindow(_statusMessageWindow);
     }
 
-    internal void Refresh() {
-        UpdateMaps();
-        _zoneCountWindow.Refresh();
-    }
+    internal Task Refresh() {
+        return Task.Run(() => {
+            try {
+                _refreshLock.Wait();
+                _currentMapCount = 0;
+                _recentMapCount = 0;
+                _currentPortalCount = 0;
+                _recentPortalCount = 0;
 
-    private void UpdateMaps() {
-        _currentMapCount = 0;
-        _recentMapCount = 0;
-        _currentPortalCount = 0;
-        _recentPortalCount = 0;
-
-        //setup players independent of Plugin's recent and current lists
-        _currentPlayerMaps = new Dictionary<MPAMember, List<MPAMap>>();
-        foreach(var kvp in _plugin.CurrentPartyList) {
-            _currentPlayerMaps.Add(kvp.Value, new List<MPAMap>());
-        }
-
-        _recentPlayerMaps = new Dictionary<MPAMember, List<MPAMap>>();
-        foreach(var kvp in _plugin.RecentPartyList) {
-            _recentPlayerMaps.Add(kvp.Value, new List<MPAMap>());
-        }
-
-        var maps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted && m.Owner != null).OrderBy(m => m.Time).ToList();
-        foreach(var map in maps) {
-            if(_plugin.CurrentPartyList.ContainsKey(map.Owner!)) {
-                _currentPlayerMaps[_plugin.CurrentPartyList[map.Owner!]].Add(map);
-                _currentMapCount++;
-                if(map.IsPortal) {
-                    _currentPortalCount++;
+                //setup players independent of Plugin's recent and current lists
+                _currentPlayerMaps = new Dictionary<MPAMember, List<MPAMap>>();
+                foreach(var kvp in _plugin.CurrentPartyList) {
+                    _currentPlayerMaps.Add(kvp.Value, new List<MPAMap>());
                 }
-            } else if(_plugin.RecentPartyList.ContainsKey(map.Owner!)) {
-                _recentPlayerMaps[_plugin.RecentPartyList[map.Owner!]].Add(map);
-                _recentMapCount++;
-                if(map.IsPortal) {
-                    _recentPortalCount++;
+
+                _recentPlayerMaps = new Dictionary<MPAMember, List<MPAMap>>();
+                foreach(var kvp in _plugin.RecentPartyList) {
+                    _recentPlayerMaps.Add(kvp.Value, new List<MPAMap>());
                 }
+
+                var maps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted && m.Owner != null).OrderBy(m => m.Time).ToList();
+                foreach(var map in maps) {
+                    if(_plugin.CurrentPartyList.ContainsKey(map.Owner!)) {
+                        _currentPlayerMaps[_plugin.CurrentPartyList[map.Owner!]].Add(map);
+                        _currentMapCount++;
+                        if(map.IsPortal) {
+                            _currentPortalCount++;
+                        }
+                    } else if(_plugin.RecentPartyList.ContainsKey(map.Owner!)) {
+                        _recentPlayerMaps[_plugin.RecentPartyList[map.Owner!]].Add(map);
+                        _recentMapCount++;
+                        if(map.IsPortal) {
+                            _recentPortalCount++;
+                        }
+                    }
+                }
+                _lastMapPlayer = maps.LastOrDefault()?.Owner;
+                _zoneCountWindow.Refresh();
+            } finally {
+                _refreshLock.Release();
             }
-        }
-        _lastMapPlayer = maps.LastOrDefault()?.Owner;
+        });
     }
 
     public override void OnClose() {

@@ -5,6 +5,8 @@ using ImGuiNET;
 using MapPartyAssist.Types;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows {
     internal class ViewDutyResultsImportsWindow : Window {
@@ -13,6 +15,8 @@ namespace MapPartyAssist.Windows {
         private AddDutyResultsImportWindow _addImportWindow;
         private List<DutyResultsImport> _imports = new();
         private int _currentPage = 0;
+
+        private SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
 
         internal ViewDutyResultsImportsWindow(Plugin plugin, StatsWindow statsWindow) : base("Manage Imports") {
             SizeConstraints = new WindowSizeConstraints {
@@ -27,9 +31,18 @@ namespace MapPartyAssist.Windows {
             _plugin.WindowSystem.AddWindow(_addImportWindow);
         }
 
-        public void Refresh(int pageIndex = 0) {
-            _imports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted).OrderByDescending(i => i.Time).Offset(pageIndex * 100).Limit(100).ToList();
-            _currentPage = pageIndex;
+        public Task Refresh(int? pageIndex = 0) {
+            return Task.Run(() => {
+                try {
+                    _refreshLock.Wait();
+                    //null index = stay on same page
+                    pageIndex ??= _currentPage;
+                    _currentPage = (int)pageIndex;
+                    _imports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted).OrderByDescending(i => i.Time).Offset(_currentPage * 100).Limit(100).ToList();
+                } finally {
+                    _refreshLock.Release();
+                }
+            });
         }
 
         public override void OnClose() {

@@ -66,6 +66,13 @@ namespace MapPartyAssist.Windows {
                 _plugin.Save();
             }
 
+            bool showAdvancedFilters = _plugin.Configuration.ShowAdvancedFilters;
+            if(ImGui.Checkbox("Show more filters", ref showAdvancedFilters)) {
+                _plugin.Configuration.ShowAdvancedFilters = showAdvancedFilters;
+                _plugin.Save();
+            }
+            ImGuiComponents.HelpMarker("Filter stats by party members and map owner.");
+
             bool separateStatsByPlayer = _plugin.Configuration.CurrentCharacterStatsOnly;
             if(ImGui.Checkbox("Only include stats for current character", ref separateStatsByPlayer)) {
                 _plugin.Configuration.CurrentCharacterStatsOnly = separateStatsByPlayer;

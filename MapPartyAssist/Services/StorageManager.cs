@@ -47,6 +47,7 @@ namespace MapPartyAssist.Services {
             drCollection.EnsureIndex(dr => dr.Time);
             drCollection.EnsureIndex(dr => dr.DutyName);
             drCollection.EnsureIndex(dr => dr.DutyId);
+            drCollection.EnsureIndex(dr => dr.Owner);
 
             var importCollection = Database.GetCollection<DutyResultsImport>(StatsImportTable);
             importCollection.EnsureIndex(i => i.Time);

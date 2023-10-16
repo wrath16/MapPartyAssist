@@ -21,6 +21,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist {
 
@@ -540,16 +541,20 @@ namespace MapPartyAssist {
             return ClientState.ClientLanguage == Dalamud.ClientLanguage.English;
         }
 
-        public void Save() {
-            try {
-                _saveLock.Wait();
-                Configuration.Save();
-                StatsWindow.Refresh();
-                MainWindow.Refresh();
-                DutyResultsWindow.Refresh();
-            } finally {
-                _saveLock.Release();
-            }
+        public Task Save() {
+            Configuration.Save();
+            //performance reasons...
+            return Task.Run(() => {
+                try {
+                    _saveLock.Wait();
+                    Task statsWindowTask = StatsWindow.Refresh();
+                    Task mainWindowTask = MainWindow.Refresh();
+                    Task dutyResultsWindowTask = DutyResultsWindow.Refresh();
+                    Task.WaitAll(new[] { statsWindowTask, mainWindowTask, dutyResultsWindowTask });
+                } finally {
+                    _saveLock.Release();
+                }
+            });
         }
     }
 }
