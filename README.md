@@ -30,13 +30,15 @@ Tool for automatically keeping track of treasure maps opened by players in your 
 * Only works with the client language set to English.
 * The plugin primarily works by parsing system chat messages. Sometimes it isn't always possible to know exactly who owns a map and the tracker can make mistakes (known cases are listed below), so stay vigilant and correct mistakes as necessary.
 * You can use '/mpartydutyresults' to amend the results of a dungeon in the case of a mistake by the tracker or you miss a checkpoint due to a disconnect. Do so at your own risk!
+* Use imports to add alternatively-recorded stats when the plugin is unavailable!
 
 ## Known issues:
 
 #### Map tracker issues:
-* If you are too far away from a party member who uses Dig, the tracker will not know who opened it and will require manual verification.
-* If two or more party members use Dig at the same time, the tracker will assume the first player to use Dig is the owner of the coffer that spawns, but this is not always the case and should be verified.
-* Discarding an opened map generates the same message as using it, and can disrupt any ongoing maps.
+* If you are too far away from a party member who successfully uses Dig, the tracker will not know who owns the treasure coffer and will require manual verification.
+* If you are too far away from the party member who successfully uses Dig but are within range of another party member who unsucessfully uses Dig, the tracker will assume the latter player is the map owner and will require correction.
+* If two or more party members use Dig around the same time and are within range, the tracker will assume the first player to use Dig is the owner of the coffer that spawns, but this is not always the case and should be verified.
+* Discarding an opened map generates the same message as using it, and will be added as if it were used.
 * If a party member goes offline just as you are entering a portal, this will cancel the portal and can lead to double-counting for Thief's Maps only.
 * A party member consuming a Thief's Map immediately after finishing another party member's regular map without entering a portal may result in it not being counted.
-* Waiting too long to enter a (non-Thief's Map, non-self-owned) portal can result in double counting.
+* Waiting too long to enter a (non-Thief's Map, non-self-owned) portal can result in double counting, as can restarting the game or Dalamud.

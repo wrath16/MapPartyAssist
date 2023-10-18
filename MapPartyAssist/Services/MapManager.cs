@@ -19,24 +19,25 @@ namespace MapPartyAssist.Services {
         public string StatusMessage { get; set; } = "";
         public StatusLevel Status { get; set; } = StatusLevel.OK;
 
-        //window within which to block subsequent digs while awaiting treasure coffer message
-        private readonly int _digThresholdSeconds = 3;
-        //if no treasure coffer opened after this time of dig locking in, unlock and allow digging
-        private readonly int _digFallbackSeconds = 60 * 10;
+        //upper limit between dig time and treasure coffer message to consider it eligible as ownership
+        private readonly int _digThresholdMS = 3000;
+        //ideal time between dig and "you discover a treasure coffer"
+        private readonly int _digTargetMS = 600;
         //timer to block portal from adding a duplicate map after finishing a chest
         private readonly int _portalBlockSeconds = 60;
         //delay added onto adding a map to avoid double-counting self maps with another player using dig at same time
         private readonly int _addMapDelaySeconds = 2;
+        //window within last map was added to a player to suppress warning messages
+        private readonly int _lastMapAddedThresholdMS = 10000;
         //for setting map name
         private readonly TextInfo _textInfo = new CultureInfo("en-US", false).TextInfo;
 
         private Plugin _plugin;
-        private string _diggerKey = "";
-        private int _extraDigCount = 0;
-        private bool _selfDig = false;
-        //private Dictionary<string, DateTime> _diggers = new();
-        private DateTime _digTime = DateTime.UnixEpoch;
-        private bool _isDigLockedIn = false;
+
+        private Dictionary<string, DateTime> _diggers = new();
+        private string _lockedInDiggerKey = "";
+        private int _candidateCount;
+        private DateTime _lastMapTime = DateTime.UnixEpoch;
         private DateTime _portalBlockUntil = DateTime.UnixEpoch;
 
         public MapManager(Plugin plugin) {
@@ -63,6 +64,7 @@ namespace MapPartyAssist.Services {
             bool isPortal = false;
             string key = "";
             string mapType = "";
+            DateTime messageTime = DateTime.Now;
 
             //refuse to process if not in English
             //if(!Plugin.IsEnglishClient()) {
@@ -72,7 +74,7 @@ namespace MapPartyAssist.Services {
             if((int)type == 2361) {
                 //party member opens portal while not blocked
                 if(Regex.IsMatch(message.ToString(), @"complete[s]? preparations to enter the portal.$", RegexOptions.IgnoreCase)) {
-                    if(_portalBlockUntil <= DateTime.Now) {
+                    if(_portalBlockUntil <= messageTime) {
                         //thief's maps
                         var playerPayload = (PlayerPayload)message.Payloads.First(p => p.Type == PayloadType.Player);
                         key = $"{playerPayload.PlayerName} {playerPayload.World.Name}";
@@ -86,26 +88,29 @@ namespace MapPartyAssist.Services {
                     newMapFound = true;
                     mapType = Regex.Match(message.ToString(), @"\w* [\w']* map(?=\scrumbles into dust)", RegexOptions.IgnoreCase).ToString();
                     key = $"{_plugin.ClientState.LocalPlayer!.Name} {_plugin.ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
+                    //_lastMapTime = messageTime;
                     //clear dig info just in case to prevent double-counting map if another player uses dig at the same time
                     ResetDigStatus();
                 } else if(Regex.IsMatch(message.ToString(), @"discover a treasure coffer!$", RegexOptions.IgnoreCase)) {
-                    if(!_diggerKey.IsNullOrEmpty()) {
-                        _plugin.Log.Debug($"Time since dig: {(DateTime.Now - _digTime).TotalMilliseconds} ms");
-                        //lock in dig only if we have a recent digger
-                        _isDigLockedIn = (DateTime.Now - _digTime).TotalSeconds < _digThresholdSeconds;
-                    } else if(!_selfDig) {
-                        _plugin.Log.Warning($"No eligible map owner detected!");
+                    //find (non-current PC) party member with the closest matching dig time and assume they are owner
+                    _lockedInDiggerKey = GetLikelyMapOwner(messageTime, _plugin.GetCurrentPlayer());
+                    if(_lockedInDiggerKey.IsNullOrEmpty() && !IsPlayerCandidateOwner(messageTime, _plugin.GetCurrentPlayer())) {
+                        _plugin.Log.Warning($"No eligible map owner detected for discovered coffer!");
                         SetStatus("Unable to determine map owner, verify and add manually.", StatusLevel.ERROR);
                     }
                 } else if(Regex.IsMatch(message.ToString(), @"releasing a powerful musk into the air!$", RegexOptions.IgnoreCase)) {
-                    //add delay because this message occurs before "crumbles into dust"
+                    //add delay because this message occurs before "crumbles into dust" to avoid double-counting with self-dig
                     Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
-                        if(!_diggerKey.IsNullOrEmpty()) {
-                            AddMap(_plugin.CurrentPartyList[_diggerKey], _plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(_plugin.ClientState.TerritoryType)?.PlaceName.Value?.Name!);
-                            if(_extraDigCount > 0) {
+                        if(!_lockedInDiggerKey.IsNullOrEmpty()) {
+                            AddMap(_plugin.CurrentPartyList[_lockedInDiggerKey], _plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(_plugin.ClientState.TerritoryType)?.PlaceName.Value?.Name!);
+                            if(_candidateCount > 1) {
                                 _plugin.Log.Warning($"Multiple map owner candidates detected!");
                                 SetStatus("Multiple map owner candidates found, verify last map ownership.", StatusLevel.CAUTION);
                             }
+                        } else if((messageTime - _lastMapTime).TotalMilliseconds > _lastMapAddedThresholdMS) {
+                            //need this in case player used a false dig out of range
+                            _plugin.Log.Warning($"No eligible map owner detected on opened coffer!");
+                            SetStatus("Unable to determine map owner, verify and add manually.", StatusLevel.ERROR);
                         }
                         //have to reset here in case you fail to defeat the treasure chest enemies -_-
                         ResetDigStatus();
@@ -121,25 +126,20 @@ namespace MapPartyAssist.Services {
                 if(Regex.IsMatch(message.ToString(), @"uses Dig.$", RegexOptions.IgnoreCase)) {
                     var playerPayload = (PlayerPayload)message.Payloads.First(p => p.Type == PayloadType.Player);
                     var diggerKey = $"{playerPayload.PlayerName} {playerPayload.World.Name}";
-                    var newDigTime = DateTime.Now;
-                    //_diggers.Add(key, newDigTime);
-                    //_diggers.Add(playerPayload)
-                    //register dig if no dig locked in or fallback time elapsed AND no digger registered or threshold time elapsed
-                    bool unlockedDig = !_isDigLockedIn || (newDigTime - _digTime).TotalSeconds > _digFallbackSeconds;
-                    bool noDigger = _diggerKey.IsNullOrEmpty() || (newDigTime - _digTime).TotalSeconds > _digThresholdSeconds;
-                    if(unlockedDig && noDigger) {
-                        ResetDigStatus();
-                        _diggerKey = diggerKey;
-                        _digTime = newDigTime;
-                        //other diggers who may be eligible
-                    } else if(unlockedDig && !noDigger) {
-                        _extraDigCount++;
+                    if(_diggers.ContainsKey(diggerKey)) {
+                        _diggers[diggerKey] = messageTime;
+                    } else {
+                        _diggers.Add(diggerKey, messageTime);
                     }
                 }
             } else if((int)type == 2091) {
-                //need this to prevent warning on own maps
+                //need this to prevent warnings on own maps
                 if(Regex.IsMatch(message.ToString(), @"^You use Dig\.$", RegexOptions.IgnoreCase)) {
-                    _selfDig = true;
+                    if(_diggers.ContainsKey(_plugin.GetCurrentPlayer())) {
+                        _diggers[_plugin.GetCurrentPlayer()] = messageTime;
+                    } else {
+                        _diggers.Add(_plugin.GetCurrentPlayer(), messageTime);
+                    }
                 }
             } else if(type == XivChatType.Party || type == XivChatType.Say || type == XivChatType.Alliance) {
                 //getting map links
@@ -166,13 +166,14 @@ namespace MapPartyAssist.Services {
         }
 
         public void AddMap(MPAMember player, string zone = "", string type = "", bool isManual = false, bool isPortal = false) {
-            _plugin.Log.Information($"Adding new map for {player.Key}");
+            _plugin.Log.Information(string.Format("Adding new{0} map for {1}", isManual ? " manual" : "", player.Key));
+            DateTime currentTime = DateTime.Now;
             //zone ??= DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name!;
             //zone = _textInfo.ToTitleCase(zone);
             type = _textInfo.ToTitleCase(type);
             MPAMap newMap = new() {
                 Name = type,
-                Time = DateTime.Now,
+                Time = currentTime,
                 Owner = player.Key,
                 Zone = zone,
                 IsManual = isManual,
@@ -180,6 +181,7 @@ namespace MapPartyAssist.Services {
             };
             player.MapLink = null;
             LastMapPlayerKey = player.Key;
+            _lastMapTime = currentTime;
 
             //add to DB
             _plugin.StorageManager.AddMap(newMap);
@@ -303,13 +305,50 @@ namespace MapPartyAssist.Services {
         }
 
         private void ResetDigStatus() {
-            _diggerKey = "";
-            _extraDigCount = 0;
-            _selfDig = false;
-            //_diggers = new();
-            _isDigLockedIn = false;
+            _diggers = new();
+            _lockedInDiggerKey = "";
+            _candidateCount = 0;
             _portalBlockUntil = DateTime.UnixEpoch;
-            _digTime = DateTime.UnixEpoch;
+        }
+
+        //closest dig to 650 ms
+        //ignores player
+        private string GetLikelyMapOwner(DateTime cofferTime, params string[] ignorePlayers) {
+            string closestKey = "";
+            double closestTimeMS = 5000;
+            foreach(var digger in _diggers) {
+                bool foundIgnore = false;
+                foreach(var ignorePlayer in ignorePlayers) {
+                    if(ignorePlayer.Equals(digger.Key)) {
+                        foundIgnore = true;
+                        break;
+                    }
+                }
+                if(foundIgnore) {
+                    continue;
+                }
+                double timeDiffMS = (cofferTime - digger.Value).TotalMilliseconds;
+                double diffFromIdealMS = Math.Abs(timeDiffMS - _digTargetMS);
+#if DEBUG
+                _plugin.Log.Debug($"digger: {digger.Key} timediffMS: {timeDiffMS} diffFromIdeal: {diffFromIdealMS}");
+#endif
+                if(timeDiffMS < _digThresholdMS) {
+                    _candidateCount++;
+                    if(diffFromIdealMS < closestTimeMS) {
+                        closestKey = digger.Key;
+                        closestTimeMS = diffFromIdealMS;
+                    }
+                }
+            }
+            return closestKey;
+        }
+
+        private bool IsPlayerCandidateOwner(DateTime cofferTime, string playerKey) {
+            if(!_diggers.ContainsKey(playerKey)) {
+                return false;
+            }
+
+            return (cofferTime - _diggers[playerKey]).TotalMilliseconds < _digThresholdMS;
         }
 
         private void SetStatus(string message, StatusLevel level) {

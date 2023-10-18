@@ -320,6 +320,10 @@ namespace MapPartyAssist {
                 case 4909:
                 case 4911:
                 case 4922: //party member defeats enemy
+                case 5165:
+                case 5166:
+                case 5293:
+                case 5294:
                 case 6187:
                 case 6573:
                 case 6574:
@@ -341,6 +345,7 @@ namespace MapPartyAssist {
                 case 9001: //other combat
                 case 9002:
                 case 9007: //other combat
+                case 9646:
                 case 10283:
                 case 10409: //you dmged by enemy
                 case 10410:
@@ -348,10 +353,12 @@ namespace MapPartyAssist {
                 case 10538: //misses party member
                 case 10665:
                 case 10922: //attack misses
+                case 10925:
                 case 10926: //engaged enemy gains beneficial effect
                 case 10929:
                 case 11305: //companion
                 case 11306: //companion
+                case 11433:
                 case 12331:
                 case 12346:
                 case 12457:
@@ -362,6 +369,7 @@ namespace MapPartyAssist {
                 case 12585: //hits party member
                 case 12586: //attack misses party member
                 case 12589:
+                case 12842:
                 case 12591:
                 case 12592:
                 case 12713:
@@ -379,6 +387,8 @@ namespace MapPartyAssist {
                 case 13225: //npc hits enemy
                 case 13226: //npc status
                 case 13353: //companion
+                case 13737:
+                case 13743:
                 case 14379: //npc uses ability
                 case 15145: //npc takes damage
                 case 15146: //miss
@@ -389,7 +399,12 @@ namespace MapPartyAssist {
                 case 15281: //npc recovers from status
                 case 16427:
                 case 16558: //gain choco regen
+                case 16686:
                 case 17065:
+                case 17071:
+                case 17210:
+                case 17193:
+                case 17450:
                 case 17454: //companion
                 case 17456:
                 case 18475:
@@ -401,6 +416,7 @@ namespace MapPartyAssist {
                 case 19247:
                 case 19241: //crit
                 case 19258:
+                case 19630:
                 case 19632: //party member companion loses beneficial effect
                 case 19633:
                 case 19626:
@@ -417,9 +433,13 @@ namespace MapPartyAssist {
                 case 23085: //other
                 case 23086: //other
                 case 23337:
+                case 23338:
                 case 23342:
+                case 23343:
+                case 23982:
                 case 23985:
                 case 23978:
+                case 23984:
                     break;
                 default:
                     Log.Verbose($"Message received: {type} {message} from {sender}");
