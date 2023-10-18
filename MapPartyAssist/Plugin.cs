@@ -349,8 +349,11 @@ namespace MapPartyAssist {
                 case 10283:
                 case 10409: //you dmged by enemy
                 case 10410:
+                case 10417:
                 case 10537:
                 case 10538: //misses party member
+                case 10543:
+                case 10545:
                 case 10665:
                 case 10922: //attack misses
                 case 10925:
