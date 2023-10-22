@@ -75,6 +75,11 @@ namespace MapPartyAssist.Windows {
                 _plugin.Save();
             }
 
+            if(ImGui.Button("GetCurrentPlayer()")) {
+                _plugin.GetCurrentPlayer();
+            }
+
+
             if(ImGui.Button("Import Config")) {
                 _plugin.StorageManager.Import();
             }

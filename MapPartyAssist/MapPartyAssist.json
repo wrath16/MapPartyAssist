@@ -6,7 +6,7 @@
   "InternalName": "MapPartyAssist",
   "RepoUrl": "https://github.com/wrath16/MapPartyAssist",
   "ApplicableVersion": "any",
-  "Changelog": "-Added extra filters to stats window",
+  "Changelog": "-Possible fix for an error message.",
   "Tags": [
     "treasure maps",
     "maps",

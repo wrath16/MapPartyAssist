@@ -549,8 +549,8 @@ namespace MapPartyAssist {
         }
 
         public string GetCurrentPlayer() {
-            string currentPlayerName = ClientState.LocalPlayer?.Name.ToString()!;
-            string currentPlayerWorld = ClientState.LocalPlayer?.HomeWorld.GameData?.Name!;
+            string? currentPlayerName = ClientState.LocalPlayer?.Name?.ToString();
+            string? currentPlayerWorld = ClientState.LocalPlayer?.HomeWorld?.GameData?.Name?.ToString();
             if(currentPlayerName == null || currentPlayerWorld == null) {
                 //throw exception?
                 //throw new InvalidOperationException("Cannot retrieve current player");

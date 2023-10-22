@@ -1,5 +1,6 @@
 ﻿using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
+using Dalamud.Utility;
 using ImGuiNET;
 using MapPartyAssist.Settings;
 using MapPartyAssist.Types;
@@ -82,7 +83,7 @@ namespace MapPartyAssist.Windows {
                         }
                     }
 
-                    if(_plugin.Configuration.CurrentCharacterStatsOnly) {
+                    if(_plugin.Configuration.CurrentCharacterStatsOnly && !_plugin.GetCurrentPlayer().IsNullOrEmpty()) {
                         _dutyResults = _dutyResults.Where(dr => dr.Players.Contains(_plugin.GetCurrentPlayer())).ToList();
                     }
 
