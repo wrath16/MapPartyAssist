@@ -1,4 +1,5 @@
-﻿using Dalamud.Game.Text;
+﻿using Dalamud;
+using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Utility;
 using Lumina.Excel.GeneratedSheets;
@@ -23,49 +24,49 @@ namespace MapPartyAssist.Services {
 
         internal readonly Dictionary<int, Duty> Duties = new Dictionary<int, Duty>() {
             { 179 , new Duty(179, "the aquapolis", DutyStructure.Doors, 7, new() {
-                new Checkpoint("Clear 1st chamber", "The cages are empty"),
-                new Checkpoint("Open 2nd chamber", "The gate to the 2nd chamber opens"),
-                new Checkpoint("Clear 2nd chamber", "The cages are empty"),
-                new Checkpoint("Open 3rd chamber", "The gate to the 3rd chamber opens"),
-                new Checkpoint("Clear 3rd chamber", "The cages are empty"),
-                new Checkpoint("Open 4th chamber", "The gate to the 4th chamber opens"),
-                new Checkpoint("Clear 4th chamber", "The cages are empty"),
-                new Checkpoint("Open 5th chamber", "The gate to the 5th chamber opens"),
-                new Checkpoint("Clear 5th chamber", "The cages are empty"),
-                new Checkpoint("Open 6th chamber", "The gate to the 6th chamber opens"),
-                new Checkpoint("Clear 6th chamber", "The cages are empty"),
-                new Checkpoint("Open final chamber", "The gate to the final chamber opens"),
-                new Checkpoint("Clear final chamber", "The cages are empty")
+                new Checkpoint("Clear 1st chamber", EmptyCagesRegex),
+                new Checkpoint("Open 2nd chamber", SecondChamberRegex),
+                new Checkpoint("Clear 2nd chamber", EmptyCagesRegex),
+                new Checkpoint("Open 3rd chamber", ThirdChamberRegex),
+                new Checkpoint("Clear 3rd chamber", EmptyCagesRegex),
+                new Checkpoint("Open 4th chamber", FourthChamberRegex),
+                new Checkpoint("Clear 4th chamber", EmptyCagesRegex),
+                new Checkpoint("Open 5th chamber", FifthChamberRegex),
+                new Checkpoint("Clear 5th chamber", EmptyCagesRegex),
+                new Checkpoint("Open 6th chamber", SixthChamberRegex),
+                new Checkpoint("Clear 6th chamber", EmptyCagesRegex),
+                new Checkpoint("Open final chamber", FinalChamberRegex),
+                new Checkpoint("Clear final chamber", EmptyCagesRegex)
             }, new Checkpoint("Failure", "The Aquapolis has ended")) },
             { 268, new Duty(268, "the lost canals of uznair", DutyStructure.Doors, 7, new() {
-                new Checkpoint("Clear 1st chamber", "The cages are empty"),
-                new Checkpoint("Open 2nd chamber", "The gate to the 2nd chamber opens"),
-                new Checkpoint("Clear 2nd chamber", "The cages are empty"),
-                new Checkpoint("Open 3rd chamber", "The gate to the 3rd chamber opens"),
-                new Checkpoint("Clear 3rd chamber", "The cages are empty"),
-                new Checkpoint("Open 4th chamber", "The gate to the 4th chamber opens"),
-                new Checkpoint("Clear 4th chamber", "The cages are empty"),
-                new Checkpoint("Open 5th chamber", "The gate to the 5th chamber opens"),
-                new Checkpoint("Clear 5th chamber", "The cages are empty"),
-                new Checkpoint("Open 6th chamber", "The gate to the 6th chamber opens"),
-                new Checkpoint("Clear 6th chamber", "The cages are empty"),
-                new Checkpoint("Open final chamber", "The gate to the final chamber opens"),
-                new Checkpoint("Clear final chamber", "The cages are empty")
+                new Checkpoint("Clear 1st chamber", EmptyCagesRegex),
+                new Checkpoint("Open 2nd chamber", SecondChamberRegex),
+                new Checkpoint("Clear 2nd chamber", EmptyCagesRegex),
+                new Checkpoint("Open 3rd chamber", ThirdChamberRegex),
+                new Checkpoint("Clear 3rd chamber", EmptyCagesRegex),
+                new Checkpoint("Open 4th chamber", FourthChamberRegex),
+                new Checkpoint("Clear 4th chamber", EmptyCagesRegex),
+                new Checkpoint("Open 5th chamber", FifthChamberRegex),
+                new Checkpoint("Clear 5th chamber", EmptyCagesRegex),
+                new Checkpoint("Open 6th chamber", SixthChamberRegex),
+                new Checkpoint("Clear 6th chamber", EmptyCagesRegex),
+                new Checkpoint("Open final chamber", FinalChamberRegex),
+                new Checkpoint("Clear final chamber", EmptyCagesRegex)
             }, new Checkpoint("Failure", "The Lost Canals of Uznair has ended")) },
             { 276 , new Duty(276, "the hidden canals of uznair", DutyStructure.Doors, 7, new() {
-                new Checkpoint("Clear 1st chamber", "The cages are empty"),
-                new Checkpoint("Open 2nd chamber", "The gate to the 2nd chamber opens"),
-                new Checkpoint("Clear 2nd chamber", "The cages are empty"),
-                new Checkpoint("Open 3rd chamber", "The gate to the 3rd chamber opens"),
-                new Checkpoint("Clear 3rd chamber", "The cages are empty"),
-                new Checkpoint("Open 4th chamber", "The gate to the 4th chamber opens"),
-                new Checkpoint("Clear 4th chamber", "The cages are empty"),
-                new Checkpoint("Open 5th chamber", "The gate to the 5th chamber opens"),
-                new Checkpoint("Clear 5th chamber", "The cages are empty"),
-                new Checkpoint("Open 6th chamber", "The gate to the 6th chamber opens"),
-                new Checkpoint("Clear 6th chamber", "The cages are empty"),
-                new Checkpoint("Open final chamber", "The gate to the final chamber opens"),
-                new Checkpoint("Clear final chamber", "The cages are empty")
+                new Checkpoint("Clear 1st chamber", EmptyCagesRegex),
+                new Checkpoint("Open 2nd chamber", SecondChamberRegex),
+                new Checkpoint("Clear 2nd chamber", EmptyCagesRegex),
+                new Checkpoint("Open 3rd chamber", ThirdChamberRegex),
+                new Checkpoint("Clear 3rd chamber", EmptyCagesRegex),
+                new Checkpoint("Open 4th chamber", FourthChamberRegex),
+                new Checkpoint("Clear 4th chamber", EmptyCagesRegex),
+                new Checkpoint("Open 5th chamber", FifthChamberRegex),
+                new Checkpoint("Clear 5th chamber", EmptyCagesRegex),
+                new Checkpoint("Open 6th chamber", SixthChamberRegex),
+                new Checkpoint("Clear 6th chamber", EmptyCagesRegex),
+                new Checkpoint("Open final chamber", FinalChamberRegex),
+                new Checkpoint("Clear final chamber", EmptyCagesRegex)
             }, new Checkpoint("Failure", "The Hidden Canals of Uznair has ended")) },
             { 586, new Duty(586, "the shifting altars of uznair", DutyStructure.Roulette, 5, new() {
                 new Checkpoint("Complete 1st Summon"),
@@ -84,15 +85,15 @@ namespace MapPartyAssist.Services {
                 new string[] {"altar airavata", "altar mandragora", "the great gold whisker" },
                 new string[] {"altar apanda", "altar diresaur", "altar manticore" }) },
             { 688 , new Duty(688, "the dungeons of lyhe ghiah", DutyStructure.Doors, 5, new() {
-                new Checkpoint("Clear 1st chamber", "The cages are empty"),
-                new Checkpoint("Open 2nd chamber", "The gate to the 2nd chamber opens"),
-                new Checkpoint("Clear 2nd chamber", "The cages are empty"),
-                new Checkpoint("Open 3rd chamber", "The gate to the 3rd chamber opens"),
-                new Checkpoint("Clear 3rd chamber", "The cages are empty"),
-                new Checkpoint("Open 4th chamber", "The gate to the 4th chamber opens"),
-                new Checkpoint("Clear 4th chamber", "The cages are empty"),
-                new Checkpoint("Open final chamber", @"(The gate to Condemnation( is)? open(s)?|The gate to the final chamber opens)"),
-                new Checkpoint("Clear final chamber", "The cages are empty")
+                new Checkpoint("Clear 1st chamber", EmptyCagesRegex),
+                new Checkpoint("Open 2nd chamber", SecondChamberRegex),
+                new Checkpoint("Clear 2nd chamber", EmptyCagesRegex),
+                new Checkpoint("Open 3rd chamber", ThirdChamberRegex),
+                new Checkpoint("Clear 3rd chamber", EmptyCagesRegex),
+                new Checkpoint("Open 4th chamber", FourthChamberRegex),
+                new Checkpoint("Clear 4th chamber", EmptyCagesRegex),
+                new Checkpoint("Open final chamber", FinalChamberRegex),
+                new Checkpoint("Clear final chamber", EmptyCagesRegex)
             }, new Checkpoint("Failure", "The Dungeons of Lyhe Ghiah has ended")) },
             { 745 , new Duty(745, "the shifting oubliettes of lyhe ghiah", DutyStructure.Roulette, 5, new() {
                 new Checkpoint("Complete 1st Summon"),
@@ -111,15 +112,15 @@ namespace MapPartyAssist.Services {
                 new string[] {"secret korrigan", "secret keeper", "fuath troublemaker" },
                 new string[] {"daen ose the avaricious" }) },
             { 819 , new Duty(819, "the excitatron 6000", DutyStructure.Doors, 5, new() {
-                new Checkpoint("Clear 1st chamber", "The cages are empty"),
-                new Checkpoint("Open 2nd chamber", "The gate to the 2nd chamber opens"),
-                new Checkpoint("Clear 2nd chamber", "The cages are empty"),
-                new Checkpoint("Open 3rd chamber", "The gate to the 3rd chamber opens"),
-                new Checkpoint("Clear 3rd chamber", "The cages are empty"),
-                new Checkpoint("Open 4th chamber", "The gate to the 4th chamber opens"),
-                new Checkpoint("Clear 4th chamber", "The cages are empty"),
-                new Checkpoint("Open final chamber", @"(The gate to Condemnation( is)? open(s)?|The gate to the final chamber opens)"),
-                new Checkpoint("Clear final chamber", "The cages are empty")
+                new Checkpoint("Clear 1st chamber", EmptyCagesRegex),
+                new Checkpoint("Open 2nd chamber", SecondChamberRegex),
+                new Checkpoint("Clear 2nd chamber", EmptyCagesRegex),
+                new Checkpoint("Open 3rd chamber", ThirdChamberRegex),
+                new Checkpoint("Clear 3rd chamber", EmptyCagesRegex),
+                new Checkpoint("Open 4th chamber", FourthChamberRegex),
+                new Checkpoint("Clear 4th chamber", EmptyCagesRegex),
+                new Checkpoint("Open final chamber", FinalChamberRegex),
+                new Checkpoint("Clear final chamber", EmptyCagesRegex)
             }, new Checkpoint("Failure", "The Excitatron 6000 has ended")) },
             { 909 , new Duty(909, "the shifting gymnasion agonon", DutyStructure.Roulette, 5, new() {
                 new Checkpoint("Complete 1st Summon"),
@@ -139,8 +140,103 @@ namespace MapPartyAssist.Services {
                 new string[] {"hippomenes", "phaethon", "narkissos" }) }
         };
 
+        private static readonly Dictionary<ClientLanguage, Regex> GilObtainedRegex = new() {
+            { ClientLanguage.English, new Regex(@"(?<=You obtain )[\d,\.]+(?= gil)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"(?<=Vous obtenez )[\d,\.\W]+(?= gils)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"", RegexOptions.IgnoreCase) }
+        };
+
+        //LogMessage: 3777, 3800
+        private static readonly Dictionary<ClientLanguage, Regex> EmptyCagesRegex = new() {
+            { ClientLanguage.English, new Regex(@"The cages are empty", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"Vous avez vaincu tous les monstres!", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"(Die Gegner sind besiegt!|Du hast alle Gegner besiegt)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"すべての敵を倒した！", RegexOptions.IgnoreCase) }
+        };
+
+        //LogMessage: 6998, 9365
+        private static readonly Dictionary<ClientLanguage, Regex> SecondChamberRegex = new() {
+            { ClientLanguage.English, new Regex(@"The gate to the 2nd chamber opens", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"Vous avez ouvert la porte menant (vers|à) la deuxième salle", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"Das Tor zur zweiten Kammer (öffnet sich|steht offen!)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"「第二区画」への扉が開いた！", RegexOptions.IgnoreCase) }
+        };
+
+        private static readonly Dictionary<ClientLanguage, Regex> ThirdChamberRegex = new() {
+            { ClientLanguage.English, new Regex(@"The gate to the 3rd chamber opens", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"Vous avez ouvert la porte menant (vers|à) la troisième salle", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"Das Tor zur dritten Kammer (öffnet sich|steht offen!)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"「第三区画」への扉が開いた！", RegexOptions.IgnoreCase) }
+        };
+
+        private static readonly Dictionary<ClientLanguage, Regex> FourthChamberRegex = new() {
+            { ClientLanguage.English, new Regex(@"The gate to the 4th chamber opens", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"Vous avez ouvert la porte menant (vers|à) la quatrième salle", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"Das Tor zur vierten Kammer (öffnet sich|steht offen!)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"「第四区画」への扉が開いた！", RegexOptions.IgnoreCase) }
+        };
+
+        private static readonly Dictionary<ClientLanguage, Regex> FifthChamberRegex = new() {
+            { ClientLanguage.English, new Regex(@"The gate to the 5th chamber opens", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"Vous avez ouvert la porte menant (vers|à) la cinquième salle", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"Das Tor zur fünften Kammer (öffnet sich|steht offen!)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"「第五区画」への扉が開いた！", RegexOptions.IgnoreCase) }
+        };
+
+        private static readonly Dictionary<ClientLanguage, Regex> SixthChamberRegex = new() {
+            { ClientLanguage.English, new Regex(@"The gate to the 6th chamber opens", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"Vous avez ouvert la porte menant (vers|à) la sixième salle", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"Das Tor zur sechsten Kammer (öffnet sich|steht offen!)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"「第六区画」への扉が開いた！", RegexOptions.IgnoreCase) }
+        };
+
+        private static readonly Dictionary<ClientLanguage, Regex> FinalChamberRegex = new() {
+            { ClientLanguage.English, new Regex(@"(The gate to Condemnation( is)? open(s)?|The gate to the final chamber opens)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"Vous avez ouvert la porte menant (vers|à) la dernière salle", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"Das Tor zur (letzten|Verdammnis) Kammer (öffnet sich|steht offen!)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"「最終区画」への扉が開いた！", RegexOptions.IgnoreCase) }
+        };
+
+        //LogMessage: 9352
+        private static readonly Dictionary<ClientLanguage, Regex> IsSavedRegex = new() {
+            { ClientLanguage.English, new Regex(@"^An unknown force", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"n'est plus.*apparaît\!$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"^Als .* fällt.*erscheint!$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"が消滅したことで、.*が現れた！$", RegexOptions.IgnoreCase) }
+        };
+
+        //LogMessage: 9360, 9366
+        private static readonly Dictionary<ClientLanguage, Regex> AbominationRegex = new() {
+            { ClientLanguage.English, new Regex(@"^The .* retreats into the shadows", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"(Les ennemis se sont enfuis|L'avatar de l'observateur est parti)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"(Ihr konntet nicht alle Wächter bezwingen|Ihr konntet nicht alle Beobachter bezwingen)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"(魔物は立ち去ったようだ|観察者の幻体は去ったようだ)", RegexOptions.IgnoreCase) }
+        };
+
+        //LogMessage: 9360, 9366
+        private static readonly Dictionary<ClientLanguage, Regex> SummonDefeatedRegex = new() {
+            { ClientLanguage.English, new Regex(@"^(The summon is dispelled|The trial is passed)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"Vous avez terrassé tous les ennemis", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"(Alle Wächter sind besiegt|Alle Beobachter sind besiegt)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"すべての魔物を倒した", RegexOptions.IgnoreCase) }
+        };
+
         public DutyManager(Plugin plugin) {
             _plugin = plugin;
+
+            //setup regexes
+            foreach(var duty in Duties) {
+                duty.Value.FailureCheckpoint = new Checkpoint("Failure", GetFailureRegex(duty.Value.DutyId));
+
+                if(duty.Value.Structure == DutyStructure.Roulette) {
+                    duty.Value.LesserSummonRegex = GetTranslatedSummonRegex(duty.Key, Summon.Lesser);
+                    duty.Value.GreaterSummonRegex = GetTranslatedSummonRegex(duty.Key, Summon.Greater);
+                    duty.Value.ElderSummonRegex = GetTranslatedSummonRegex(duty.Key, Summon.Elder);
+                    duty.Value.CircleShiftsRegex = GetTranslatedSummonRegex(duty.Key, Summon.Gold);
+                }
+            }
+
             _plugin.DutyState.DutyStarted += OnDutyStart;
             _plugin.DutyState.DutyCompleted += OnDutyCompleted;
             _plugin.DutyState.DutyWiped += OnDutyWiped;
@@ -149,7 +245,7 @@ namespace MapPartyAssist.Services {
             _plugin.ChatGui.ChatMessage += OnChatMessage;
 
             //attempt to pickup
-            if(_plugin.ClientState.IsLoggedIn && _plugin.IsEnglishClient() && !IsDutyInProgress()) {
+            if(_plugin.ClientState.IsLoggedIn && _plugin.IsLanguageSupported() && !IsDutyInProgress()) {
                 PickupLastDuty();
             }
         }
@@ -171,9 +267,9 @@ namespace MapPartyAssist.Services {
         private bool StartNewDuty(int dutyId) {
 
             //abort if not in English-language client
-            if(!_plugin.IsEnglishClient()) {
-                return false;
-            }
+            //if(!_plugin.IsEnglishClient()) {
+            //    return false;
+            //}
 
             if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null) {
                 var lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().Last();
@@ -322,33 +418,37 @@ namespace MapPartyAssist.Services {
 
         private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled) {
             if(IsDutyInProgress()) {
+                bool isChange = false;
+
                 //check for gil obtained
                 if((int)type == 62) {
-                    Match m = Regex.Match(message.ToString(), @"(?<=You obtain )[\d,\.]+(?= gil)");
+                    Match m = GilObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
                     if(m.Success) {
-                        string parsedGilString = m.Value.Replace(",", "").Replace(".", "");
+                        string parsedGilString = m.Value.Replace(",", "").Replace(".", "").Replace(" ", "");
                         _currentDutyResults!.TotalGil += int.Parse(parsedGilString);
-                        _plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
-                        _plugin.Save();
-                        return;
+                        isChange = true;
                     }
-                }
-
-                bool isChange = false;
-                switch(_currentDuty!.Structure) {
-                    case DutyStructure.Doors:
-                        isChange = ProcessCheckpointsDoors(type, senderId, sender, message);
-                        break;
-                    case DutyStructure.Roulette:
-                        isChange = ProcessCheckpointsRoulette(type, senderId, sender, message);
-                        break;
-                    default:
-                        break;
+                //check for failure
+                } else if(((int)type == 2233 || (int)type == 2105) && _currentDuty!.FailureCheckpoint!.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
+                    _currentDutyResults!.IsComplete = true;
+                    _currentDutyResults!.CompletionTime = DateTime.Now;
+                    isChange = true;
+                } else {
+                    switch(_currentDuty!.Structure) {
+                        case DutyStructure.Doors:
+                            isChange = ProcessCheckpointsDoors(type, senderId, sender, message);
+                            break;
+                        case DutyStructure.Roulette:
+                            isChange = ProcessCheckpointsRoulette(type, senderId, sender, message);
+                            break;
+                        default:
+                            break;
+                    }
                 }
                 //save if changes discovered
                 if(isChange) {
                     _plugin.StorageManager.UpdateDutyResults(_currentDutyResults!);
-                    _plugin.Save();
+                    //_plugin.Save();
                 }
             }
         }
@@ -357,7 +457,8 @@ namespace MapPartyAssist.Services {
         private bool ProcessCheckpointsDoors(XivChatType type, uint senderId, SeString sender, SeString message) {
             if(_currentDutyResults!.CheckpointResults.Count < _currentDuty!.Checkpoints!.Count) {
                 var nextCheckpoint = _currentDuty!.Checkpoints![_currentDutyResults!.CheckpointResults.Count];
-                if(((int)type == 2233 || (int)type == 2105) && Regex.IsMatch(message.ToString(), nextCheckpoint.Message!, RegexOptions.IgnoreCase)) {
+                if(((int)type == 2233 || (int)type == 2105) && nextCheckpoint.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
+                    _plugin.Log.Information($"Adding new checkpoint: {nextCheckpoint.Name}");
                     _currentDutyResults.CheckpointResults.Add(new CheckpointResults(nextCheckpoint, true));
                     //if all checkpoints reached, set to duty complete
                     if(_currentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == _currentDuty.Checkpoints!.Count) {
@@ -367,31 +468,21 @@ namespace MapPartyAssist.Services {
                     return true;
                 }
             }
-
-            //check for failure
-            if(((int)type == 2233 || (int)type == 2105) && Regex.IsMatch(message.ToString(), _currentDuty!.FailureCheckpoint!.Message!, RegexOptions.IgnoreCase)) {
-                //CheckpointResults.Add(new CheckpointResults(nextCheckpoint, false));
-                _currentDutyResults.IsComplete = true;
-                _currentDutyResults.CompletionTime = DateTime.Now;
-                //_currentDutyResults.CheckpointResults.Add(new CheckpointResults(FailureCheckpoint, false));
-                return true;
-            }
-
             return false;
         }
 
         private bool ProcessCheckpointsRoulette(XivChatType type, uint senderId, SeString sender, SeString message) {
             if((int)type == 2105 || (int)type == 2233) {
                 //check for save
-                bool isSave = Regex.IsMatch(message.ToString(), @"^An unknown force", RegexOptions.IgnoreCase);
+                bool isSave = IsSavedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString());
                 //check for circles shift
-                Match shiftMatch = Regex.Match(message.ToString(), @"(?<=The circles shift and (a |an )?)" + _currentDuty!.GetSummonPatternString(Summon.Elder) + @"(?=,? appears?)", RegexOptions.IgnoreCase);
+                Match shiftMatch = _currentDuty!.CircleShiftsRegex![_plugin.ClientState.ClientLanguage].Match(message.ToString());
                 if(shiftMatch.Success) {
-                    AddRouletteCheckpointResults(Summon.Gold, shiftMatch.Value, isSave);
+                    AddRouletteCheckpointResults(Summon.Gold, _plugin.TranslateBNpcName(shiftMatch.Value, ClientLanguage.English), isSave);
                     return true;
                 }
-                //check for special summon
-                Match specialMatch = Regex.Match(message.ToString(), @"^The .* retreats into the shadows", RegexOptions.IgnoreCase);
+                //check for abomination
+                Match specialMatch = AbominationRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
                 if(specialMatch.Success) {
                     AddRouletteCheckpointResults(Summon.Silver, null, isSave);
                     //add next checkpoint as well
@@ -403,25 +494,25 @@ namespace MapPartyAssist.Services {
                     return true;
                 }
                 //check for lesser summon
-                Match lesserMatch = Regex.Match(message.ToString(), _currentDuty.GetSummonPatternString(Summon.Lesser) + @"(?=,? appears?)", RegexOptions.IgnoreCase);
+                Match lesserMatch = _currentDuty.LesserSummonRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
                 if(lesserMatch.Success) {
-                    AddRouletteCheckpointResults(Summon.Lesser, lesserMatch.Value, isSave);
+                    AddRouletteCheckpointResults(Summon.Lesser, _plugin.TranslateBNpcName(lesserMatch.Value, ClientLanguage.English), isSave);
                     return true;
                 }
                 //check for greater summon
-                Match greaterMatch = Regex.Match(message.ToString(), _currentDuty.GetSummonPatternString(Summon.Greater) + @"(?=,? appears?)", RegexOptions.IgnoreCase);
+                Match greaterMatch = _currentDuty.GreaterSummonRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
                 if(greaterMatch.Success) {
-                    AddRouletteCheckpointResults(Summon.Greater, greaterMatch.Value, isSave);
+                    AddRouletteCheckpointResults(Summon.Greater, _plugin.TranslateBNpcName(greaterMatch.Value, ClientLanguage.English), isSave);
                     return true;
                 }
                 //check for elder summon
-                Match elderMatch = Regex.Match(message.ToString(), _currentDuty.GetSummonPatternString(Summon.Elder) + "(?=,? appears?)", RegexOptions.IgnoreCase);
+                Match elderMatch = _currentDuty.ElderSummonRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
                 if(elderMatch.Success) {
-                    AddRouletteCheckpointResults(Summon.Elder, elderMatch.Value, isSave);
+                    AddRouletteCheckpointResults(Summon.Elder, _plugin.TranslateBNpcName(elderMatch.Value, ClientLanguage.English), isSave);
                     return true;
                 }
                 //enemy defeated
-                if(Regex.IsMatch(message.ToString(), @"^(The summon is dispelled|The trial is passed)", RegexOptions.IgnoreCase)) {
+                if(SummonDefeatedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
                     AddRouletteCheckpointResults(null);
                     if(_currentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == _currentDuty.Checkpoints!.Count) {
                         _currentDutyResults.IsComplete = true;
@@ -434,18 +525,12 @@ namespace MapPartyAssist.Services {
                 //Match unknownMatch = Regex.Match(message.ToString(), ".*(?=,? appears?)", RegexOptions.IgnoreCase);
                 //(?<=\ban?\b ).*(?=,? appears\.*\!*$)
             }
-            //failure
-            if(((int)type == 2233 || (int)type == 2105) && Regex.IsMatch(message.ToString(), _currentDuty!.FailureCheckpoint!.Message!, RegexOptions.IgnoreCase)) {
-                _currentDutyResults!.IsComplete = true;
-                _currentDutyResults.CompletionTime = DateTime.Now;
-                return true;
-            }
             return false;
         }
 
         private void AddRouletteCheckpointResults(Summon? summon, string? monsterName = null, bool isSaved = false) {
             int size = _currentDutyResults!.CheckpointResults.Count;
-            //_currentDutyResults.CheckpointResults.Add(new RouletteCheckpointResults(_currentDuty!.Checkpoints![size], summon, monsterName, isSaved, true));
+            _plugin.Log.Information($"Adding new checkpoint: {_currentDuty!.Checkpoints![size].Name}");
             _currentDutyResults.CheckpointResults.Add(new RouletteCheckpointResults {
                 Checkpoint = _currentDuty!.Checkpoints![size],
                 Time = DateTime.Now,
@@ -475,6 +560,84 @@ namespace MapPartyAssist.Services {
 
         private bool IsDutyInProgress() {
             return _currentDutyResults != null;
+        }
+
+        private Dictionary<ClientLanguage, Regex> GetFailureRegex(int dutyId) {
+            string? dutyNameEnglish = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.English).Where(r => r.RowId == dutyId).FirstOrDefault()?.Name;
+            string? dutyNameFrench = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.French).Where(r => r.RowId == dutyId).FirstOrDefault()?.Name;
+            string? dutyNameGerman = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.German).Where(r => r.RowId == dutyId).FirstOrDefault()?.Name;
+            string? dutyNameJapanese = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.Japanese).Where(r => r.RowId == dutyId).FirstOrDefault()?.Name;
+
+            return new Dictionary<ClientLanguage, Regex>() {
+                { ClientLanguage.English, new Regex($"{dutyNameEnglish} has ended", RegexOptions.IgnoreCase) },
+                { ClientLanguage.French, new Regex($"La mission “{dutyNameFrench}” prend fin", RegexOptions.IgnoreCase) },
+                { ClientLanguage.German, new Regex($"„{dutyNameGerman}“ wurde beendet", RegexOptions.IgnoreCase) },
+                { ClientLanguage.Japanese, new Regex($"「{dutyNameJapanese}」 の攻略を終了した。", RegexOptions.IgnoreCase) }
+            };
+        }
+
+        private Dictionary<ClientLanguage, Regex> GetTranslatedSummonRegex(int dutyId, Summon summonType) {
+            var duty = Duties[dutyId];
+            if(duty == null || duty.Structure != DutyStructure.Roulette) {
+                throw new InvalidOperationException("cannot build summon regex for null/non-roulette duty!");
+            }
+
+            Dictionary<ClientLanguage, string> patterns = new() {
+                {ClientLanguage.French, "(" },
+                {ClientLanguage.German, "(" },
+                {ClientLanguage.Japanese, "(" }
+            };
+
+            string[] toIterate;
+            switch(summonType) {
+                case Summon.Lesser:
+                    toIterate = duty.LesserSummons; break;
+                case Summon.Greater:
+                    toIterate = duty.GreaterSummons; break;
+                case Summon.Elder:
+                case Summon.Gold:
+                    toIterate = duty.ElderSummons.ToList().Concat(duty.FinalSummons).ToArray(); break;
+                default:
+                    throw new InvalidOperationException("cannot build summon regex for invalid summon type!");
+            }
+
+            for(int i = 0; i < toIterate.Length; i++) {
+                foreach(var kvp in patterns) {
+                    var translatedName = _plugin.TranslateBNpcName(toIterate[i], kvp.Key, ClientLanguage.English);
+                    patterns[kvp.Key] += translatedName;
+                    if(i == toIterate.Length - 1) {
+                        patterns[kvp.Key] += ")";
+                    } else {
+                        patterns[kvp.Key] += "|";
+                    }
+                }
+            }
+
+            //language-specific terminations
+            switch(summonType) {
+                case Summon.Lesser:
+                case Summon.Greater:
+                case Summon.Elder:
+                default:
+                    patterns.Add(ClientLanguage.English, duty.GetSummonPatternString(summonType) + @"(?=,? appears?)");
+                    patterns[ClientLanguage.French] += "(?= apparaît)";
+                    patterns[ClientLanguage.German] += "(?= erscheint)";
+                    patterns[ClientLanguage.Japanese] += "(?=が現れた)";
+                    break;
+                case Summon.Gold:
+                    patterns.Add(ClientLanguage.English, "(?<=The circles shift and (a | an )?)" + duty.GetSummonPatternString(Summon.Elder) + "(?=,? appears?)");
+                    patterns[ClientLanguage.French] = "(?<=Aubaine! (Un |Une )?)" + patterns[ClientLanguage.French] + " (?= apparaît)";
+                    patterns[ClientLanguage.German] = "(?<=Eine glückliche Fügung wird euch zuteil und (ein |eine |einen )?)" + patterns[ClientLanguage.German] + " (?= erscheint)";
+                    patterns[ClientLanguage.Japanese] = "(?<=特殊召喚が発動し、)" + patterns[ClientLanguage.Japanese] + "(?=が現れた)";
+                    break;
+            }
+
+            return new Dictionary<ClientLanguage, Regex>() {
+                { ClientLanguage.English, new Regex(patterns[ClientLanguage.English], RegexOptions.IgnoreCase) },
+                { ClientLanguage.French, new Regex(patterns[ClientLanguage.French], RegexOptions.IgnoreCase) },
+                { ClientLanguage.German, new Regex(patterns[ClientLanguage.German], RegexOptions.IgnoreCase) },
+                { ClientLanguage.Japanese, new Regex(patterns[ClientLanguage.Japanese], RegexOptions.IgnoreCase) },
+            };
         }
     }
 }

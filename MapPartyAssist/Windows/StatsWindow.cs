@@ -156,6 +156,7 @@ namespace MapPartyAssist.Windows {
                 }
             }
 
+            //todo these calculations should happen in same thread as refresh
             ProgressTable(_dutyResults, _dutyId);
             if(_plugin.DutyManager.Duties[_dutyId].Structure == DutyStructure.Roulette) {
                 SummonTable(_dutyResults, _dutyId);

@@ -1,3 +1,4 @@
+using Dalamud;
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
@@ -120,8 +121,8 @@ internal class MainWindow : Window {
         //set status message window visibility
         _statusMessageWindow.IsOpen = !_plugin.MapManager.StatusMessage.IsNullOrEmpty();
 
-        if(!_plugin.IsEnglishClient()) {
-            ImGui.TextColored(ImGuiColors.DalamudRed, $"Non-English client, automatic tracking unavailable.");
+        if(!_plugin.IsLanguageSupported()) {
+            ImGui.TextColored(ImGuiColors.DalamudRed, $"Unsupported language, automatic tracking unavailable.");
         }
 
         if(ImGui.Button("Clear All")) {

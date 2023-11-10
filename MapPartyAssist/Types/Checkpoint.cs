@@ -1,6 +1,9 @@
-﻿using LiteDB;
+﻿using Dalamud;
+using LiteDB;
 using MapPartyAssist.Types.Attributes;
 using System;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace MapPartyAssist.Types {
     [ValidatedDataType]
@@ -12,11 +15,18 @@ namespace MapPartyAssist.Types {
         public int? MessageChannel { get; init; }
         //whether this checkpoint's message must occur in order
         public bool IsSequential { get; init; }
+        [BsonIgnore]
+        public Dictionary<ClientLanguage, Regex>? LocalizedRegex { get; init; } = new();
 
         [BsonCtor]
         public Checkpoint() {
             Name = "";
             IsSequential = true;
+        }
+
+        public Checkpoint(string name, Dictionary<ClientLanguage, Regex> regex) {
+            Name = name;
+            LocalizedRegex = regex;
         }
 
         public Checkpoint(string name, string message = "", bool isSequential = true, int messageChannel = 2105) {

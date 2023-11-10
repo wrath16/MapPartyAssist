@@ -1,5 +1,6 @@
 ﻿#pragma warning disable
 #if DEBUG
+using Dalamud;
 using Dalamud.Interface.Windowing;
 using Dalamud.Logging;
 using ImGuiNET;
@@ -85,9 +86,9 @@ namespace MapPartyAssist.Windows {
             }
 
 
-            if(ImGui.Button("Drop Import Table")) {
-                _plugin.StorageManager.GetDutyResultsImports().DeleteAll();
-            }
+            //if(ImGui.Button("Drop Import Table")) {
+            //    _plugin.StorageManager.GetDutyResultsImports().DeleteAll();
+            //}
 
             //if(ImGui.Button("fix record")) {
             //    //var dr = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.DutyId == 745).OrderBy(dr => dr.Time).ToList().Last();
@@ -156,19 +157,19 @@ namespace MapPartyAssist.Windows {
             }
 
 
-            if(ImGui.Button("Check map and member nullability")) {
-                //var map = Plugin.StorageManager.GetMaps().Query().First();
-                //_plugin.Log.Debug($"Checking validity of {map.Id}");
-                //_plugin.Log.Debug($"Is valid? {map.IsValid()}");
+            //if(ImGui.Button("Check map and member nullability")) {
+            //    //var map = Plugin.StorageManager.GetMaps().Query().First();
+            //    //_plugin.Log.Debug($"Checking validity of {map.Id}");
+            //    //_plugin.Log.Debug($"Is valid? {map.IsValid()}");
 
-                //var dr = Plugin.StorageManager.GetDutyResults().Query().ToList().Last();
+            //    //var dr = Plugin.StorageManager.GetDutyResults().Query().ToList().Last();
 
-                var dr = _plugin.StorageManager.GetDutyResults().Query().ToList();
-                foreach(var x in dr) {
-                    _plugin.Log.Debug($"Checking validity of {x.Id}....valid? {_plugin.StorageManager.ValidateDataType(x)}");
-                    //_plugin.Log.Debug($"Is valid? {Plugin.StorageManager.ValidateDataType(dr)}");
-                }
-            }
+            //    var dr = _plugin.StorageManager.GetDutyResults().Query().ToList();
+            //    foreach(var x in dr) {
+            //        _plugin.Log.Debug($"Checking validity of {x.Id}....valid? {_plugin.StorageManager.ValidateDataType(x)}");
+            //        //_plugin.Log.Debug($"Is valid? {Plugin.StorageManager.ValidateDataType(dr)}");
+            //    }
+            //}
 
             if(ImGui.Button("VALIDATE ALL DUTYRESULTS")) {
 
@@ -185,6 +186,16 @@ namespace MapPartyAssist.Windows {
                 var map = _plugin.StorageManager.GetMaps().Query().Where(m => m.DutyName.Equals("the hidden canals of uznair", StringComparison.OrdinalIgnoreCase)).OrderByDescending(m => m.Time).FirstOrDefault();
                 _plugin.Log.Debug($"map id: {map.Id.ToString()}");
                 _plugin.StorageManager.UpdateMap(map);
+            }
+
+            if(ImGui.Button("translate 1")) {
+                var translated = _plugin.TranslateDataTableEntry<BNpcName>("the great gold whisker", "Singular", ClientLanguage.French, ClientLanguage.English);
+                _plugin.Log.Debug($"{translated}");
+            }
+
+            if(ImGui.Button("translate 2")) {
+                var translated = _plugin.TranslateDataTableEntry<EventItem>("Gazelleskin Treasure Map", "Singular", ClientLanguage.French, ClientLanguage.English);
+                _plugin.Log.Debug($"{translated}");
             }
 
             //if(ImGui.Button("altars lesser string")) {
