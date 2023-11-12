@@ -1,4 +1,4 @@
-using Dalamud;
+﻿using Dalamud;
 using Dalamud.Configuration;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Party;
@@ -11,8 +11,8 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
-using Lumina.Excel.GeneratedSheets;
 using Lumina.Excel;
+using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Services;
 using MapPartyAssist.Settings;
 using MapPartyAssist.Types;
@@ -20,10 +20,10 @@ using MapPartyAssist.Windows;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -77,6 +77,9 @@ namespace MapPartyAssist {
 #if DEBUG
         private TestFunctionWindow TestFunctionWindow;
 #endif
+        public bool PrintAllMessages { get; set; } = false;
+        public bool PrintPayloads { get; set; } = false;
+
 
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
         public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
@@ -279,7 +282,7 @@ namespace MapPartyAssist {
             switch((int)type) {
                 case 2091:  //self actions
                 case 4139:  //party member actions
-                    if(message.ToString().Contains("Dig", StringComparison.OrdinalIgnoreCase) || message.ToString().Contains("Decipher", StringComparison.OrdinalIgnoreCase)) {
+                    if(Regex.IsMatch(message.ToString(), @"(Dig|Excavation|Ausgraben|ディグ)", RegexOptions.IgnoreCase)) {
                         goto case 2105;
                     }
                     goto default;
@@ -289,10 +292,21 @@ namespace MapPartyAssist {
                 case 2110:  //self loot obtained
                 case 4158:  //party loot obtained
                 case 8254:  //alliance loot obtained
+                case (int)XivChatType.Say:
+                case (int)XivChatType.Party:
                 case (int)XivChatType.SystemMessage:
-                    Log.Verbose($"Message received: {type} {message} from {sender}");
+                    //Log.Verbose($"Message received: {type} {message} from {sender}");
+                    Log.Verbose(String.Format("type: {0,-6} sender: {1,-20} message: {2}", type, sender, message));
+                    if(PrintPayloads) {
+                        foreach(Payload payload in message.Payloads) {
+                            Log.Verbose($"payload: {payload}");
+                        }
+                    }
                     break;
                 default:
+                    if(PrintAllMessages) {
+                        goto case 2105;
+                    }
                     break;
             }
         }
@@ -404,11 +418,6 @@ namespace MapPartyAssist {
             return $"{currentPlayerName} {currentPlayerWorld}";
         }
 
-        public bool IsLanguageSupported(ClientLanguage? language = null) {
-            language ??= ClientState.ClientLanguage;
-            return SupportedLanguages.Contains((ClientLanguage)language);
-        }
-
         public Task Save() {
             Configuration.Save();
             //performance reasons...
@@ -425,58 +434,87 @@ namespace MapPartyAssist {
             });
         }
 
-        internal string TranslateBNpcName(string npcName, ClientLanguage destinationLanguage, ClientLanguage? originLanguage = null) {
-            originLanguage ??= ClientState.ClientLanguage;
-            //get rowId
-            uint? rowId = null;
-            foreach(var row in DataManager.GetExcelSheet<BNpcName>((ClientLanguage)originLanguage)) {
-                if(row.Singular.ToString().Equals(npcName, StringComparison.OrdinalIgnoreCase)) {
-                    rowId = row.RowId; break;
-                }
-            }
-
-            if(rowId == null) {
-                throw new InvalidOperationException($"{npcName} does not exist.");
-            }
-
-            return DataManager.GetExcelSheet<BNpcName>(destinationLanguage).Where(r => r.RowId == rowId).FirstOrDefault().Singular ??
-                throw new InvalidOperationException($"{npcName} does not exist for language: {destinationLanguage}");
+        public bool IsLanguageSupported(ClientLanguage? language = null) {
+            language ??= ClientState.ClientLanguage;
+            return SupportedLanguages.Contains((ClientLanguage)language);
         }
 
-        internal string? TranslateDataTableEntry<T>(string data, string column, ClientLanguage destinationLanguage, ClientLanguage? originLanguage = null) where T : ExcelRow {
+        public string TranslateBNpcName(string npcName, ClientLanguage destinationLanguage, ClientLanguage? originLanguage = null) {
+            return TranslateDataTableEntry<BNpcName>(npcName, "Singular", destinationLanguage, originLanguage);
+        }
+
+        public string TranslateDataTableEntry<T>(string data, string column, ClientLanguage destinationLanguage, ClientLanguage? originLanguage = null) where T : ExcelRow {
             originLanguage ??= ClientState.ClientLanguage;
             uint? rowId = null;
             Type type = typeof(T);
+            bool isPlural = column.Equals("Plural", StringComparison.OrdinalIgnoreCase);
 
             if(!IsLanguageSupported(destinationLanguage) || !IsLanguageSupported(originLanguage)) {
                 throw new InvalidOperationException("Cannot translate to/from an unsupported client language.");
             }
 
             //check to make sure column is string
-            var columnProperty = type.GetProperty(column);
-            if(columnProperty is null) {
-                throw new InvalidOperationException($"No property of name: {column} on type {type.FullName}");
-            }
+            var columnProperty = type.GetProperty(column) ?? throw new InvalidOperationException($"No property of name: {column} on type {type.FullName}");
             if(!columnProperty.PropertyType.IsAssignableTo(typeof(Lumina.Text.SeString))) {
                 throw new InvalidOperationException($"property {column} of type {columnProperty.PropertyType.FullName} on type {type.FullName} is not assignable to a SeString!");
             }
 
             //iterate over table to find rowId
             foreach(var row in DataManager.GetExcelSheet<T>((ClientLanguage)originLanguage)!) {
-                var rowData = (string?)columnProperty!.GetValue(row).ToString();
+                var rowData = columnProperty!.GetValue(row)?.ToString();
+
+                //German declension placeholder replacement
+                if(originLanguage == ClientLanguage.German && rowData != null) {
+                    var pronounProperty = type.GetProperty("Pronoun");
+                    if(pronounProperty != null) {
+                        int pronoun = Convert.ToInt32(pronounProperty.GetValue(row))!;
+                        rowData = ReplaceGermanDeclensionPlaceholders(rowData, pronoun, isPlural);
+                    }
+                }
                 if(data.Equals(rowData, StringComparison.OrdinalIgnoreCase)) {
                     rowId = row.RowId; break;
                 }
             }
 
-            if(rowId == null) {
-                throw new InvalidOperationException($"'{data}' not found in table: {type.Name} for language: {originLanguage}.");
-            }
+            rowId = rowId ?? throw new InvalidOperationException($"'{data}' not found in table: {type.Name} for language: {originLanguage}.");
 
             //get data from destinationLanguage
-            var translatedRow = DataManager.GetExcelSheet<T>((ClientLanguage)destinationLanguage)!.Where(r => r.RowId == rowId).FirstOrDefault();
-            var translatedRowData = (string?)columnProperty!.GetValue(translatedRow).ToString();
-            return translatedRowData;
+            var translatedRow = DataManager.GetExcelSheet<T>(destinationLanguage)!.Where(r => r.RowId == rowId).FirstOrDefault();
+            string? translatedString = columnProperty!.GetValue(translatedRow)?.ToString() ?? throw new InvalidOperationException($"row id {rowId} not found in table {type.Name} for language: {destinationLanguage}");
+
+            //add German declensions. Assume nominative case
+            if(destinationLanguage == ClientLanguage.German) {
+                var pronounProperty = type.GetProperty("Pronoun");
+                if(pronounProperty != null) {
+                    int pronoun = Convert.ToInt32(pronounProperty.GetValue(translatedRow))!;
+                    translatedString = ReplaceGermanDeclensionPlaceholders(translatedString, pronoun, isPlural);
+                }
+            }
+
+            return translatedString;
+        }
+
+        //assumes nominative case
+        //male = 0, female = 1, neuter = 2
+        private string ReplaceGermanDeclensionPlaceholders(string input, int gender, bool isPlural) {
+            if(isPlural) {
+                input = input.Replace("[a]", "e");
+            }
+            switch(gender) {
+                default:
+                case 0: //male
+                    input = input.Replace("[a]", "er").Replace("[t]", "der");
+                    break;
+                case 1: //female
+                    input = input.Replace("[a]", "e").Replace("[t]", "die");
+                    break;
+                case 2: //neuter
+                    input = input.Replace("[a]", "es").Replace("[t]", "das");
+                    break;
+            }
+            //remove possessive placeholder
+            input = input.Replace("[p]", "");
+            return input;
         }
     }
 }

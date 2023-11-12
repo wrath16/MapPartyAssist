@@ -15,10 +15,10 @@ namespace MapPartyAssist.Services {
 
         private Plugin _plugin;
         private bool _firstTerritoryChange;
-        private DutyResults? _currentDutyResults;
-        private Duty? _currentDuty {
+        internal DutyResults? CurrentDutyResults { get; private set; }
+        internal Duty? CurrentDuty {
             get {
-                return IsDutyInProgress() ? Duties[_currentDutyResults!.DutyId] : null;
+                return IsDutyInProgress() ? Duties[CurrentDutyResults!.DutyId] : null;
             }
         }
 
@@ -143,8 +143,8 @@ namespace MapPartyAssist.Services {
         private static readonly Dictionary<ClientLanguage, Regex> GilObtainedRegex = new() {
             { ClientLanguage.English, new Regex(@"(?<=You obtain )[\d,\.]+(?= gil)", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"(?<=Vous obtenez )[\d,\.\W]+(?= gils)", RegexOptions.IgnoreCase) },
-            { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
-            { ClientLanguage.Japanese, new Regex(@"", RegexOptions.IgnoreCase) }
+            { ClientLanguage.German, new Regex(@"(?<=Du hast )[\d,\.\W]+(?= Gil erhalten)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"[\d,\.\W]+(?=ギルを手に入れた)", RegexOptions.IgnoreCase) }
         };
 
         //LogMessage: 3777, 3800
@@ -275,7 +275,7 @@ namespace MapPartyAssist.Services {
                 var lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().Last();
                 _plugin.Log.Information($"Starting new duty results for duty id: {dutyId}");
                 //_currentDutyResults = new DutyResults(dutyId, Duties[dutyId].Name, _plugin.CurrentPartyList, "");
-                _currentDutyResults = new DutyResults {
+                CurrentDutyResults = new DutyResults {
                     DutyId = dutyId,
                     DutyName = Duties[dutyId].Name,
                     Players = _plugin.CurrentPartyList.Keys.ToArray(),
@@ -283,17 +283,17 @@ namespace MapPartyAssist.Services {
                 };
                 //check last map, 10 min fallback for linking to most recent map
                 if((DateTime.Now - lastMap.Time).TotalMinutes < 10) {
-                    _currentDutyResults.Map = lastMap;
-                    _currentDutyResults.Owner = lastMap.Owner!;
+                    CurrentDutyResults.Map = lastMap;
+                    CurrentDutyResults.Owner = lastMap.Owner!;
                     lastMap.IsPortal = true;
                     lastMap.DutyName = Duties[dutyId].GetDisplayName();
                     _plugin.StorageManager.UpdateMap(lastMap);
                 } else {
-                    _currentDutyResults.Map = null;
-                    _currentDutyResults.Owner = "";
+                    CurrentDutyResults.Map = null;
+                    CurrentDutyResults.Owner = "";
                 }
 
-                _plugin.StorageManager.AddDutyResults(_currentDutyResults);
+                _plugin.StorageManager.AddDutyResults(CurrentDutyResults);
                 _plugin.Save();
                 return true;
             }
@@ -311,10 +311,10 @@ namespace MapPartyAssist.Services {
                 //pickup if duty is valid, and matches the last duty which was not completed and not more than an hour has elapsed (fallback)
                 if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null && lastDutyResults.DutyId == dutyId && !lastDutyResults.IsComplete && !_firstTerritoryChange && lastTimeDiff.TotalHours < 1) {
                     _plugin.Log.Information($"re-picking up last duty results id:{lastDutyResults.Id.ToString()}");
-                    _currentDutyResults = lastDutyResults;
-                    _currentDutyResults.IsPickup = true;
+                    CurrentDutyResults = lastDutyResults;
+                    CurrentDutyResults.IsPickup = true;
 
-                    _plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
+                    _plugin.StorageManager.UpdateDutyResults(CurrentDutyResults);
                     //if(toSave) {
                     //    Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
                     //    Plugin.Save();
@@ -334,11 +334,11 @@ namespace MapPartyAssist.Services {
             if(!IsDutyInProgress()) {
                 return false;
             }
-            var storageDutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.Id.Equals(_currentDutyResults!.Id)).FirstOrDefault();
+            var storageDutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.Id.Equals(CurrentDutyResults!.Id)).FirstOrDefault();
             if(storageDutyResults == null) {
                 return false;
             }
-            _currentDutyResults = storageDutyResults;
+            CurrentDutyResults = storageDutyResults;
             return true;
         }
 
@@ -379,7 +379,7 @@ namespace MapPartyAssist.Services {
             _plugin.Log.Verbose($"Duty Name: {duty?.Name}");
 
             //check if duty is ongoing to attempt to pickup...
-            _plugin.Log.Verbose($"Current duty ongoing? {_currentDutyResults != null}");
+            _plugin.Log.Verbose($"Current duty ongoing? {CurrentDutyResults != null}");
         }
 
         private void OnDutyCompleted(object? sender, ushort param1) {
@@ -404,7 +404,7 @@ namespace MapPartyAssist.Services {
 
             if(IsDutyInProgress()) {
                 //clear current duty if it was completed successfully or clear as a fallback. attempt to pickup otherwise on disconnect
-                if(_currentDutyResults!.IsComplete || dutyId != _currentDutyResults.DutyId) {
+                if(CurrentDutyResults!.IsComplete || dutyId != CurrentDutyResults.DutyId) {
                     EndCurrentDuty();
                 }
             } else if(duty != null) {
@@ -425,16 +425,16 @@ namespace MapPartyAssist.Services {
                     Match m = GilObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
                     if(m.Success) {
                         string parsedGilString = m.Value.Replace(",", "").Replace(".", "").Replace(" ", "");
-                        _currentDutyResults!.TotalGil += int.Parse(parsedGilString);
+                        CurrentDutyResults!.TotalGil += int.Parse(parsedGilString);
                         isChange = true;
                     }
-                //check for failure
-                } else if(((int)type == 2233 || (int)type == 2105) && _currentDuty!.FailureCheckpoint!.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
-                    _currentDutyResults!.IsComplete = true;
-                    _currentDutyResults!.CompletionTime = DateTime.Now;
+                    //check for failure
+                } else if(((int)type == 2233 || (int)type == 2105) && CurrentDuty!.FailureCheckpoint!.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
+                    CurrentDutyResults!.IsComplete = true;
+                    CurrentDutyResults!.CompletionTime = DateTime.Now;
                     isChange = true;
                 } else {
-                    switch(_currentDuty!.Structure) {
+                    switch(CurrentDuty!.Structure) {
                         case DutyStructure.Doors:
                             isChange = ProcessCheckpointsDoors(type, senderId, sender, message);
                             break;
@@ -447,7 +447,7 @@ namespace MapPartyAssist.Services {
                 }
                 //save if changes discovered
                 if(isChange) {
-                    _plugin.StorageManager.UpdateDutyResults(_currentDutyResults!);
+                    _plugin.StorageManager.UpdateDutyResults(CurrentDutyResults!);
                     //_plugin.Save();
                 }
             }
@@ -455,15 +455,15 @@ namespace MapPartyAssist.Services {
 
         //return true if updates made
         private bool ProcessCheckpointsDoors(XivChatType type, uint senderId, SeString sender, SeString message) {
-            if(_currentDutyResults!.CheckpointResults.Count < _currentDuty!.Checkpoints!.Count) {
-                var nextCheckpoint = _currentDuty!.Checkpoints![_currentDutyResults!.CheckpointResults.Count];
+            if(CurrentDutyResults!.CheckpointResults.Count < CurrentDuty!.Checkpoints!.Count) {
+                var nextCheckpoint = CurrentDuty!.Checkpoints![CurrentDutyResults!.CheckpointResults.Count];
                 if(((int)type == 2233 || (int)type == 2105) && nextCheckpoint.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
                     _plugin.Log.Information($"Adding new checkpoint: {nextCheckpoint.Name}");
-                    _currentDutyResults.CheckpointResults.Add(new CheckpointResults(nextCheckpoint, true));
+                    CurrentDutyResults.CheckpointResults.Add(new CheckpointResults(nextCheckpoint, true));
                     //if all checkpoints reached, set to duty complete
-                    if(_currentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == _currentDuty.Checkpoints!.Count) {
-                        _currentDutyResults.IsComplete = true;
-                        _currentDutyResults.CompletionTime = DateTime.Now;
+                    if(CurrentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == CurrentDuty.Checkpoints!.Count) {
+                        CurrentDutyResults.IsComplete = true;
+                        CurrentDutyResults.CompletionTime = DateTime.Now;
                     }
                     return true;
                 }
@@ -476,7 +476,7 @@ namespace MapPartyAssist.Services {
                 //check for save
                 bool isSave = IsSavedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString());
                 //check for circles shift
-                Match shiftMatch = _currentDuty!.CircleShiftsRegex![_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                Match shiftMatch = CurrentDuty!.CircleShiftsRegex![_plugin.ClientState.ClientLanguage].Match(message.ToString());
                 if(shiftMatch.Success) {
                     AddRouletteCheckpointResults(Summon.Gold, _plugin.TranslateBNpcName(shiftMatch.Value, ClientLanguage.English), isSave);
                     return true;
@@ -487,26 +487,26 @@ namespace MapPartyAssist.Services {
                     AddRouletteCheckpointResults(Summon.Silver, null, isSave);
                     //add next checkpoint as well
                     AddRouletteCheckpointResults(null);
-                    if(_currentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == _currentDuty.Checkpoints!.Count) {
-                        _currentDutyResults.IsComplete = true;
-                        _currentDutyResults.CompletionTime = DateTime.Now;
+                    if(CurrentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == CurrentDuty.Checkpoints!.Count) {
+                        CurrentDutyResults.IsComplete = true;
+                        CurrentDutyResults.CompletionTime = DateTime.Now;
                     }
                     return true;
                 }
                 //check for lesser summon
-                Match lesserMatch = _currentDuty.LesserSummonRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                Match lesserMatch = CurrentDuty.LesserSummonRegex[_plugin.ClientState.ClientLanguage]!.Match(message.ToString());
                 if(lesserMatch.Success) {
                     AddRouletteCheckpointResults(Summon.Lesser, _plugin.TranslateBNpcName(lesserMatch.Value, ClientLanguage.English), isSave);
                     return true;
                 }
                 //check for greater summon
-                Match greaterMatch = _currentDuty.GreaterSummonRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                Match greaterMatch = CurrentDuty.GreaterSummonRegex[_plugin.ClientState.ClientLanguage]!.Match(message.ToString());
                 if(greaterMatch.Success) {
                     AddRouletteCheckpointResults(Summon.Greater, _plugin.TranslateBNpcName(greaterMatch.Value, ClientLanguage.English), isSave);
                     return true;
                 }
                 //check for elder summon
-                Match elderMatch = _currentDuty.ElderSummonRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                Match elderMatch = CurrentDuty.ElderSummonRegex[_plugin.ClientState.ClientLanguage]!.Match(message.ToString());
                 if(elderMatch.Success) {
                     AddRouletteCheckpointResults(Summon.Elder, _plugin.TranslateBNpcName(elderMatch.Value, ClientLanguage.English), isSave);
                     return true;
@@ -514,9 +514,9 @@ namespace MapPartyAssist.Services {
                 //enemy defeated
                 if(SummonDefeatedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
                     AddRouletteCheckpointResults(null);
-                    if(_currentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == _currentDuty.Checkpoints!.Count) {
-                        _currentDutyResults.IsComplete = true;
-                        _currentDutyResults.CompletionTime = DateTime.Now;
+                    if(CurrentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == CurrentDuty.Checkpoints!.Count) {
+                        CurrentDutyResults.IsComplete = true;
+                        CurrentDutyResults.CompletionTime = DateTime.Now;
                     }
                     return true;
                 }
@@ -529,10 +529,10 @@ namespace MapPartyAssist.Services {
         }
 
         private void AddRouletteCheckpointResults(Summon? summon, string? monsterName = null, bool isSaved = false) {
-            int size = _currentDutyResults!.CheckpointResults.Count;
-            _plugin.Log.Information($"Adding new checkpoint: {_currentDuty!.Checkpoints![size].Name}");
-            _currentDutyResults.CheckpointResults.Add(new RouletteCheckpointResults {
-                Checkpoint = _currentDuty!.Checkpoints![size],
+            int size = CurrentDutyResults!.CheckpointResults.Count;
+            _plugin.Log.Information($"Adding new checkpoint: {CurrentDuty!.Checkpoints![size].Name}");
+            CurrentDutyResults.CheckpointResults.Add(new RouletteCheckpointResults {
+                Checkpoint = CurrentDuty!.Checkpoints![size],
                 Time = DateTime.Now,
                 SummonType = summon,
                 MonsterName = monsterName,
@@ -546,33 +546,33 @@ namespace MapPartyAssist.Services {
 
         private void EndCurrentDuty() {
             if(IsDutyInProgress()) {
-                _plugin.Log.Information($"Ending duty results id: {_currentDutyResults!.Id}");
-                _currentDutyResults!.IsComplete = true;
-                if(_currentDutyResults.CompletionTime.Ticks == 0) {
-                    _currentDutyResults.CompletionTime = DateTime.Now;
+                _plugin.Log.Information($"Ending duty results id: {CurrentDutyResults!.Id}");
+                CurrentDutyResults!.IsComplete = true;
+                if(CurrentDutyResults.CompletionTime.Ticks == 0) {
+                    CurrentDutyResults.CompletionTime = DateTime.Now;
                 }
                 //check for malformed/missing data
-                ValidateUpdateDutyResults(_currentDutyResults);
-                _currentDutyResults = null;
+                ValidateUpdateDutyResults(CurrentDutyResults);
+                CurrentDutyResults = null;
                 _plugin.Save();
             }
         }
 
         private bool IsDutyInProgress() {
-            return _currentDutyResults != null;
+            return CurrentDutyResults != null;
         }
 
         private Dictionary<ClientLanguage, Regex> GetFailureRegex(int dutyId) {
-            string? dutyNameEnglish = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.English).Where(r => r.RowId == dutyId).FirstOrDefault()?.Name;
-            string? dutyNameFrench = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.French).Where(r => r.RowId == dutyId).FirstOrDefault()?.Name;
-            string? dutyNameGerman = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.German).Where(r => r.RowId == dutyId).FirstOrDefault()?.Name;
-            string? dutyNameJapanese = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.Japanese).Where(r => r.RowId == dutyId).FirstOrDefault()?.Name;
+            string? dutyNameEnglish = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.English)?.Where(r => r.RowId == dutyId).FirstOrDefault()?.Name;
+            string? dutyNameFrench = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.French)?.Where(r => r.RowId == dutyId).FirstOrDefault()?.Name;
+            string? dutyNameGerman = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.German)?.Where(r => r.RowId == dutyId).FirstOrDefault()?.Name;
+            string? dutyNameJapanese = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.Japanese)?.Where(r => r.RowId == dutyId).FirstOrDefault()?.Name;
 
             return new Dictionary<ClientLanguage, Regex>() {
                 { ClientLanguage.English, new Regex($"{dutyNameEnglish} has ended", RegexOptions.IgnoreCase) },
                 { ClientLanguage.French, new Regex($"La mission “{dutyNameFrench}” prend fin", RegexOptions.IgnoreCase) },
                 { ClientLanguage.German, new Regex($"„{dutyNameGerman}“ wurde beendet", RegexOptions.IgnoreCase) },
-                { ClientLanguage.Japanese, new Regex($"「{dutyNameJapanese}」 の攻略を終了した。", RegexOptions.IgnoreCase) }
+                { ClientLanguage.Japanese, new Regex($"「{dutyNameJapanese}」の攻略を終了した。", RegexOptions.IgnoreCase) }
             };
         }
 
@@ -621,14 +621,14 @@ namespace MapPartyAssist.Services {
                 default:
                     patterns.Add(ClientLanguage.English, duty.GetSummonPatternString(summonType) + @"(?=,? appears?)");
                     patterns[ClientLanguage.French] += "(?= apparaît)";
-                    patterns[ClientLanguage.German] += "(?= erscheint)";
+                    patterns[ClientLanguage.German] += "";
                     patterns[ClientLanguage.Japanese] += "(?=が現れた)";
                     break;
                 case Summon.Gold:
                     patterns.Add(ClientLanguage.English, "(?<=The circles shift and (a | an )?)" + duty.GetSummonPatternString(Summon.Elder) + "(?=,? appears?)");
-                    patterns[ClientLanguage.French] = "(?<=Aubaine! (Un |Une )?)" + patterns[ClientLanguage.French] + " (?= apparaît)";
-                    patterns[ClientLanguage.German] = "(?<=Eine glückliche Fügung wird euch zuteil und (ein |eine |einen )?)" + patterns[ClientLanguage.German] + " (?= erscheint)";
-                    patterns[ClientLanguage.Japanese] = "(?<=特殊召喚が発動し、)" + patterns[ClientLanguage.Japanese] + "(?=が現れた)";
+                    patterns[ClientLanguage.French] = "(?<=Aubaine! (Un |Une )?)" + patterns[ClientLanguage.French] + "(?= apparaît)";
+                    patterns[ClientLanguage.German] = "(?<=Eine glückliche Fügung wird euch zuteil und (ein |eine |einen )?)" + patterns[ClientLanguage.German] + "(?= erscheint)";
+                    patterns[ClientLanguage.Japanese] = "(?<=召喚式変動が発動し、)" + patterns[ClientLanguage.Japanese] + "(?=が現れた)";
                     break;
             }
 

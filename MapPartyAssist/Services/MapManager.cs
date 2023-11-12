@@ -49,7 +49,6 @@ namespace MapPartyAssist.Services {
             { ClientLanguage.Japanese, new Regex(@"が、宝物庫へ突入申請しました。$", RegexOptions.IgnoreCase) }
         };
 
-        //todo add map to start for non-EN
         //LogMessage: 3766 or 4405
         private static readonly Dictionary<ClientLanguage, Regex> ConsumedMapRegex = new() {
             { ClientLanguage.English, new Regex(@"map crumbles into dust.$", RegexOptions.IgnoreCase) },
@@ -73,13 +72,15 @@ namespace MapPartyAssist.Services {
             { ClientLanguage.Japanese, new Regex(@"隠された宝箱を発見した！$", RegexOptions.IgnoreCase) }
         };
 
+        //LogMessage: 3756, 9361, 9363
         private static readonly Dictionary<ClientLanguage, Regex> OpenCofferRegex = new() {
             { ClientLanguage.English, new Regex(@"releasing a powerful musk into the air!$", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"libérant un musc très fort", RegexOptions.IgnoreCase) },
-            { ClientLanguage.German, new Regex(@"die einen starken Lockduft versprüht!$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"(Eine Falle! Das wird nicht ohne Blutvergießen vonstatten gehen\.|Eine Falle wurde ausgelöst, die einen starken Lockduft versprüht!)$", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"魔物を誘引する臭いが立ちこめた！$", RegexOptions.IgnoreCase) }
         };
 
+        //LogMessage: 3765
         private static readonly Dictionary<ClientLanguage, Regex> DefeatAllRegex = new() {
             { ClientLanguage.English, new Regex(@"defeat all the enemies drawn by the trap!$", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"Vous avez vaincu tous les monstres attirés par le piège\.$", RegexOptions.IgnoreCase) },
@@ -90,14 +91,15 @@ namespace MapPartyAssist.Services {
         private static readonly Dictionary<ClientLanguage, Regex> PartyMemberDigRegex = new() {
             { ClientLanguage.English, new Regex(@"uses Dig\.$", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"utilise Excavation\.$", RegexOptions.IgnoreCase) },
-            { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
-            { ClientLanguage.Japanese, new Regex(@"", RegexOptions.IgnoreCase) }
+            { ClientLanguage.German, new Regex(@"setzt Augraben ein\.$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"の「ディグ」$", RegexOptions.IgnoreCase) }
         };
 
+        //Japanese uses same for party member
         private static readonly Dictionary<ClientLanguage, Regex> SelfDigRegex = new() {
             { ClientLanguage.English, new Regex(@"^You use Dig\.$", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"^Vous utilisez Excavation\.$", RegexOptions.IgnoreCase) },
-            { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"^Du setzt Ausgraben ein\.$", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"", RegexOptions.IgnoreCase) }
         };
 
@@ -149,7 +151,11 @@ namespace MapPartyAssist.Services {
                     newMapFound = true;
                     mapType = MapNameRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString()).ToString();
                     if(!mapType.IsNullOrEmpty()) {
-                        mapType = _plugin.TranslateDataTableEntry<EventItem>(mapType, "Singular", ClientLanguage.English) ?? "";
+                        try {
+                            mapType = _plugin.TranslateDataTableEntry<EventItem>(mapType, "Singular", ClientLanguage.English);
+                        } catch {
+                            mapType = "";
+                        }
                     }
                     key = $"{_plugin.ClientState.LocalPlayer!.Name} {_plugin.ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
                     //_lastMapTime = messageTime;
@@ -167,7 +173,7 @@ namespace MapPartyAssist.Services {
                     //add delay because this message occurs before "crumbles into dust" to avoid double-counting with self-dig
                     Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
                         if(!_lockedInDiggerKey.IsNullOrEmpty()) {
-                            AddMap(_plugin.CurrentPartyList[_lockedInDiggerKey], _plugin.DataManager.GetExcelSheet<TerritoryType>(ClientLanguage.English)?.GetRow(_plugin.ClientState.TerritoryType)?.PlaceName.Value?.Name!);
+                            AddMap(_plugin.CurrentPartyList[_lockedInDiggerKey]);
                             if(_candidateCount > 1) {
                                 _plugin.Log.Warning($"Multiple map owner candidates detected!");
                                 SetStatus("Multiple map owner candidates found, verify last map ownership.", StatusLevel.CAUTION);
@@ -190,8 +196,9 @@ namespace MapPartyAssist.Services {
             } else if((int)type == 4139) {
                 //party member uses dig
                 if(PartyMemberDigRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
-                    var playerPayload = (PlayerPayload)message.Payloads.First(p => p.Type == PayloadType.Player);
-                    var diggerKey = $"{playerPayload.PlayerName} {playerPayload.World.Name}";
+                    var playerPayload = (PlayerPayload?)message.Payloads.FirstOrDefault(p => p.Type == PayloadType.Player);
+                    //no payload on Japanese self-dig or maybe other from same world...?
+                    var diggerKey = playerPayload != null ? $"{playerPayload.PlayerName} {playerPayload.World.Name}" : $"{_plugin.GetCurrentPlayer()}";
                     if(_diggers.ContainsKey(diggerKey)) {
                         _diggers[diggerKey] = messageTime;
                     } else {
@@ -227,21 +234,25 @@ namespace MapPartyAssist.Services {
             }
 
             if(newMapFound && _plugin.CurrentPartyList.Count > 0) {
-                AddMap(_plugin.CurrentPartyList[key], _plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(_plugin.ClientState.TerritoryType)?.PlaceName.Value?.Name!, mapType, false, isPortal);
+                AddMap(_plugin.CurrentPartyList[key], null, mapType, false, isPortal);
             }
         }
 
-        public void AddMap(MPAMember player, string zone = "", string type = "", bool isManual = false, bool isPortal = false) {
+        public void AddMap(MPAMember player, string? zone = null, string? mapType = null, bool isManual = false, bool isPortal = false) {
             _plugin.Log.Information(string.Format("Adding new{0} map for {1}", isManual ? " manual" : "", player.Key));
             DateTime currentTime = DateTime.Now;
 
-            //lookup type and zone...?
+            if(_plugin.IsLanguageSupported()) {
+                //have to do lookup on PlaceName sheet otherwise will not translate properly
+                var placeNameId = _plugin.DataManager.GetExcelSheet<TerritoryType>(ClientLanguage.English)?.GetRow(_plugin.ClientState.TerritoryType)?.PlaceName.Row;
+                zone ??= placeNameId != null ? _plugin.DataManager.GetExcelSheet<PlaceName>(ClientLanguage.English)!.GetRow((uint)placeNameId)!.Name : "";
+            }
 
-            //zone ??= DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name!;
-            //zone = _textInfo.ToTitleCase(zone);
-            type = _textInfo.ToTitleCase(type);
+            mapType ??= "";
+            mapType = _textInfo.ToTitleCase(mapType);
+
             MPAMap newMap = new() {
-                Name = type,
+                Name = mapType,
                 Time = currentTime,
                 Owner = player.Key,
                 Zone = zone,
