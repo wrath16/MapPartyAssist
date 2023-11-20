@@ -21,7 +21,7 @@ namespace MapPartyAssist.Services {
         public StatusLevel Status { get; set; } = StatusLevel.OK;
 
         //upper limit between dig time and treasure coffer message to consider it eligible as ownership
-        private readonly int _digThresholdMS = 3000;
+        private readonly int _digThresholdMS = 6000;
         //ideal time between dig and "you discover a treasure coffer"
         private readonly int _digTargetMS = 600;
         //timer to block portal from adding a duplicate map after finishing a chest
@@ -91,7 +91,7 @@ namespace MapPartyAssist.Services {
         private static readonly Dictionary<ClientLanguage, Regex> PartyMemberDigRegex = new() {
             { ClientLanguage.English, new Regex(@"uses Dig\.$", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"utilise Excavation\.$", RegexOptions.IgnoreCase) },
-            { ClientLanguage.German, new Regex(@"setzt Augraben ein\.$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"setzt Ausgraben ein\.$", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"の「ディグ」$", RegexOptions.IgnoreCase) }
         };
 
@@ -137,12 +137,15 @@ namespace MapPartyAssist.Services {
             if((int)type == 2361) {
                 //party member opens portal while not blocked
                 if(EnterPortalRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
+                    _plugin.Log.Debug("enter portal detected!");
                     if(_portalBlockUntil <= messageTime) {
                         //thief's maps
                         var playerPayload = (PlayerPayload)message.Payloads.First(p => p.Type == PayloadType.Player);
                         key = $"{playerPayload.PlayerName} {playerPayload.World.Name}";
                         newMapFound = true;
                         isPortal = true;
+                    } else {
+                        //TODO compare to last map to verify ownership
                     }
                 }
             } else if((int)type == 2105 || (int)type == 2233) {
@@ -246,6 +249,8 @@ namespace MapPartyAssist.Services {
                 //have to do lookup on PlaceName sheet otherwise will not translate properly
                 var placeNameId = _plugin.DataManager.GetExcelSheet<TerritoryType>(ClientLanguage.English)?.GetRow(_plugin.ClientState.TerritoryType)?.PlaceName.Row;
                 zone ??= placeNameId != null ? _plugin.DataManager.GetExcelSheet<PlaceName>(ClientLanguage.English)!.GetRow((uint)placeNameId)!.Name : "";
+            } else {
+                zone ??= "";
             }
 
             mapType ??= "";
@@ -395,7 +400,7 @@ namespace MapPartyAssist.Services {
         //ignores player
         private string GetLikelyMapOwner(DateTime cofferTime, params string[] ignorePlayers) {
             string closestKey = "";
-            double closestTimeMS = 5000;
+            double closestTimeMS = _digThresholdMS;
             foreach(var digger in _diggers) {
                 bool foundIgnore = false;
                 foreach(var ignorePlayer in ignorePlayers) {

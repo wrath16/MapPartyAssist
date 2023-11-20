@@ -472,6 +472,10 @@ namespace MapPartyAssist.Services {
         }
 
         private bool ProcessCheckpointsRoulette(XivChatType type, uint senderId, SeString sender, SeString message) {
+            if(!IsDutyInProgress() || CurrentDuty!.Structure != DutyStructure.Roulette) {
+                throw new InvalidOperationException("Incorrect duty type.");
+            }
+
             if((int)type == 2105 || (int)type == 2233) {
                 //check for save
                 bool isSave = IsSavedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString());
@@ -494,19 +498,19 @@ namespace MapPartyAssist.Services {
                     return true;
                 }
                 //check for lesser summon
-                Match lesserMatch = CurrentDuty.LesserSummonRegex[_plugin.ClientState.ClientLanguage]!.Match(message.ToString());
+                Match lesserMatch = CurrentDuty.LesserSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message.ToString());
                 if(lesserMatch.Success) {
                     AddRouletteCheckpointResults(Summon.Lesser, _plugin.TranslateBNpcName(lesserMatch.Value, ClientLanguage.English), isSave);
                     return true;
                 }
                 //check for greater summon
-                Match greaterMatch = CurrentDuty.GreaterSummonRegex[_plugin.ClientState.ClientLanguage]!.Match(message.ToString());
+                Match greaterMatch = CurrentDuty.GreaterSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message.ToString());
                 if(greaterMatch.Success) {
                     AddRouletteCheckpointResults(Summon.Greater, _plugin.TranslateBNpcName(greaterMatch.Value, ClientLanguage.English), isSave);
                     return true;
                 }
                 //check for elder summon
-                Match elderMatch = CurrentDuty.ElderSummonRegex[_plugin.ClientState.ClientLanguage]!.Match(message.ToString());
+                Match elderMatch = CurrentDuty.ElderSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message.ToString());
                 if(elderMatch.Success) {
                     AddRouletteCheckpointResults(Summon.Elder, _plugin.TranslateBNpcName(elderMatch.Value, ClientLanguage.English), isSave);
                     return true;
@@ -563,10 +567,10 @@ namespace MapPartyAssist.Services {
         }
 
         private Dictionary<ClientLanguage, Regex> GetFailureRegex(int dutyId) {
-            string? dutyNameEnglish = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.English)?.Where(r => r.RowId == dutyId).FirstOrDefault()?.Name;
-            string? dutyNameFrench = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.French)?.Where(r => r.RowId == dutyId).FirstOrDefault()?.Name;
-            string? dutyNameGerman = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.German)?.Where(r => r.RowId == dutyId).FirstOrDefault()?.Name;
-            string? dutyNameJapanese = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.Japanese)?.Where(r => r.RowId == dutyId).FirstOrDefault()?.Name;
+            string? dutyNameEnglish = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.English)?.Where(r => r.RowId == dutyId).FirstOrDefault()?.Name.ToString();
+            string? dutyNameFrench = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.French)?.Where(r => r.RowId == dutyId).FirstOrDefault()?.Name.ToString();
+            string? dutyNameGerman = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.German)?.Where(r => r.RowId == dutyId).FirstOrDefault()?.Name.ToString();
+            string? dutyNameJapanese = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.Japanese)?.Where(r => r.RowId == dutyId).FirstOrDefault()?.Name.ToString();
 
             return new Dictionary<ClientLanguage, Regex>() {
                 { ClientLanguage.English, new Regex($"{dutyNameEnglish} has ended", RegexOptions.IgnoreCase) },
@@ -591,12 +595,12 @@ namespace MapPartyAssist.Services {
             string[] toIterate;
             switch(summonType) {
                 case Summon.Lesser:
-                    toIterate = duty.LesserSummons; break;
+                    toIterate = duty.LesserSummons!; break;
                 case Summon.Greater:
-                    toIterate = duty.GreaterSummons; break;
+                    toIterate = duty.GreaterSummons!; break;
                 case Summon.Elder:
                 case Summon.Gold:
-                    toIterate = duty.ElderSummons.ToList().Concat(duty.FinalSummons).ToArray(); break;
+                    toIterate = duty.ElderSummons!.ToList().Concat(duty.FinalSummons!).ToArray(); break;
                 default:
                     throw new InvalidOperationException("cannot build summon regex for invalid summon type!");
             }

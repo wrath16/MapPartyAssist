@@ -230,7 +230,6 @@ internal class MainWindow : Window {
                         ImGui.EndTooltip();
                     }
                     if(ImGui.IsItemClicked()) {
-
                         _plugin.OpenMapLink(playerMaps.Key.MapLink.GetMapLinkPayload());
                     }
                 }

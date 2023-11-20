@@ -288,6 +288,7 @@ namespace MapPartyAssist {
                     goto default;
                 case 2233:
                 case 2105:  //system messages of some kind
+                case 2361:
                 case 62:    //self gil
                 case 2110:  //self loot obtained
                 case 4158:  //party loot obtained
