@@ -1,4 +1,5 @@
-﻿using Dalamud.Game.Text;
+﻿using Dalamud;
+using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Utility;
@@ -20,7 +21,7 @@ namespace MapPartyAssist.Services {
         public StatusLevel Status { get; set; } = StatusLevel.OK;
 
         //upper limit between dig time and treasure coffer message to consider it eligible as ownership
-        private readonly int _digThresholdMS = 3000;
+        private readonly int _digThresholdMS = 6000;
         //ideal time between dig and "you discover a treasure coffer"
         private readonly int _digTargetMS = 600;
         //timer to block portal from adding a duplicate map after finishing a chest
@@ -39,6 +40,68 @@ namespace MapPartyAssist.Services {
         private int _candidateCount;
         private DateTime _lastMapTime = DateTime.UnixEpoch;
         private DateTime _portalBlockUntil = DateTime.UnixEpoch;
+
+        //LogMessage: 3778
+        private static readonly Dictionary<ClientLanguage, Regex> EnterPortalRegex = new() {
+            { ClientLanguage.English, new Regex(@"complete[s]? preparations to enter the portal.$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"(a|avez)? enregistré l'équipe afin de pénétrer dans une cache au trésor\.$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"(hat|hast)? die Gruppe angemeldet, um einen geheimen Hort zu betreten\.$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"が、宝物庫へ突入申請しました。$", RegexOptions.IgnoreCase) }
+        };
+
+        //LogMessage: 3766 or 4405
+        private static readonly Dictionary<ClientLanguage, Regex> ConsumedMapRegex = new() {
+            { ClientLanguage.English, new Regex(@"map crumbles into dust.$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"carte .* tombe en poussière\.\.\.$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"karte zerfällt zu Staub\.$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"地図.*」は消失した……$", RegexOptions.IgnoreCase) }
+        };
+
+        private static readonly Dictionary<ClientLanguage, Regex> MapNameRegex = new() {
+            { ClientLanguage.English, new Regex(@"\w* [\w']* map(?=\scrumbles into dust)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"(?<=(La |Le |L'))carte .*(?=\stombe en poussière)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"(?<=(Der |Die |Das )).*(-)?(schatz)?karte(?=\szerfällt zu Staub)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"(?<=「).*地図.*(?=」は消失した……)", RegexOptions.IgnoreCase) }
+        };
+
+        //LogMessage: 3759
+        private static readonly Dictionary<ClientLanguage, Regex> DiscoverCofferRegex = new() {
+            { ClientLanguage.English, new Regex(@"discover a treasure coffer!$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"Vous avez découvert un coffre au trésor!$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"Du hast eine versteckte Schatztruhe gefunden!$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"隠された宝箱を発見した！$", RegexOptions.IgnoreCase) }
+        };
+
+        //LogMessage: 3756, 9361, 9363
+        private static readonly Dictionary<ClientLanguage, Regex> OpenCofferRegex = new() {
+            { ClientLanguage.English, new Regex(@"releasing a powerful musk into the air!$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"libérant un musc très fort", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"(Eine Falle! Das wird nicht ohne Blutvergießen vonstatten gehen\.|Eine Falle wurde ausgelöst, die einen starken Lockduft versprüht!)$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"魔物を誘引する臭いが立ちこめた！$", RegexOptions.IgnoreCase) }
+        };
+
+        //LogMessage: 3765
+        private static readonly Dictionary<ClientLanguage, Regex> DefeatAllRegex = new() {
+            { ClientLanguage.English, new Regex(@"defeat all the enemies drawn by the trap!$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"Vous avez vaincu tous les monstres attirés par le piège\.$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"Du hast alle Gegner besiegt, die an der Falle gelauert hatten!$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"宝箱の罠で誘引されたすべての魔物を倒した！$", RegexOptions.IgnoreCase) }
+        };
+
+        private static readonly Dictionary<ClientLanguage, Regex> PartyMemberDigRegex = new() {
+            { ClientLanguage.English, new Regex(@"uses Dig\.$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"utilise Excavation\.$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"setzt Ausgraben ein\.$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"の「ディグ」$", RegexOptions.IgnoreCase) }
+        };
+
+        //Japanese uses same for party member
+        private static readonly Dictionary<ClientLanguage, Regex> SelfDigRegex = new() {
+            { ClientLanguage.English, new Regex(@"^You use Dig\.$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"^Vous utilisez Excavation\.$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"^Du setzt Ausgraben ein\.$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"", RegexOptions.IgnoreCase) }
+        };
 
         public MapManager(Plugin plugin) {
             _plugin = plugin;
@@ -66,43 +129,53 @@ namespace MapPartyAssist.Services {
             string mapType = "";
             DateTime messageTime = DateTime.Now;
 
-            //refuse to process if not in English
+            //refuse to process if not a supported language
             //if(!Plugin.IsEnglishClient()) {
             //    return;
             //}
 
             if((int)type == 2361) {
                 //party member opens portal while not blocked
-                if(Regex.IsMatch(message.ToString(), @"complete[s]? preparations to enter the portal.$", RegexOptions.IgnoreCase)) {
+                if(EnterPortalRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
                     if(_portalBlockUntil <= messageTime) {
                         //thief's maps
                         var playerPayload = (PlayerPayload)message.Payloads.First(p => p.Type == PayloadType.Player);
                         key = $"{playerPayload.PlayerName} {playerPayload.World.Name}";
                         newMapFound = true;
                         isPortal = true;
+                    } else {
+                        //TODO compare to last map to verify ownership
                     }
                 }
             } else if((int)type == 2105 || (int)type == 2233) {
                 //self map detection
-                if(Regex.IsMatch(message.ToString(), @"map crumbles into dust.$")) {
+                if(ConsumedMapRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
                     newMapFound = true;
-                    mapType = Regex.Match(message.ToString(), @"\w* [\w']* map(?=\scrumbles into dust)", RegexOptions.IgnoreCase).ToString();
+                    mapType = MapNameRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString()).ToString();
+                    if(!mapType.IsNullOrEmpty()) {
+                        try {
+                            mapType = _plugin.TranslateDataTableEntry<EventItem>(mapType, "Singular", ClientLanguage.English);
+                        } catch {
+                            mapType = "";
+                        }
+                    }
                     key = $"{_plugin.ClientState.LocalPlayer!.Name} {_plugin.ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
                     //_lastMapTime = messageTime;
                     //clear dig info just in case to prevent double-counting map if another player uses dig at the same time
                     ResetDigStatus();
-                } else if(Regex.IsMatch(message.ToString(), @"discover a treasure coffer!$", RegexOptions.IgnoreCase)) {
+                } else if(DiscoverCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
                     //find (non-current PC) party member with the closest matching dig time and assume they are owner
                     _lockedInDiggerKey = GetLikelyMapOwner(messageTime, _plugin.GetCurrentPlayer());
                     if(_lockedInDiggerKey.IsNullOrEmpty() && !IsPlayerCandidateOwner(messageTime, _plugin.GetCurrentPlayer())) {
                         _plugin.Log.Warning($"No eligible map owner detected for discovered coffer!");
                         SetStatus("Unable to determine map owner, verify and add manually.", StatusLevel.ERROR);
                     }
-                } else if(Regex.IsMatch(message.ToString(), @"releasing a powerful musk into the air!$", RegexOptions.IgnoreCase)) {
+                    //LogMessage: 3756, 9361, 9363
+                } else if(OpenCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
                     //add delay because this message occurs before "crumbles into dust" to avoid double-counting with self-dig
                     Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
                         if(!_lockedInDiggerKey.IsNullOrEmpty()) {
-                            AddMap(_plugin.CurrentPartyList[_lockedInDiggerKey], _plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(_plugin.ClientState.TerritoryType)?.PlaceName.Value?.Name!);
+                            AddMap(_plugin.CurrentPartyList[_lockedInDiggerKey]);
                             if(_candidateCount > 1) {
                                 _plugin.Log.Warning($"Multiple map owner candidates detected!");
                                 SetStatus("Multiple map owner candidates found, verify last map ownership.", StatusLevel.CAUTION);
@@ -115,7 +188,8 @@ namespace MapPartyAssist.Services {
                         //have to reset here in case you fail to defeat the treasure chest enemies -_-
                         ResetDigStatus();
                     });
-                } else if(Regex.IsMatch(message.ToString(), @"defeat all the enemies drawn by the trap!$", RegexOptions.IgnoreCase)) {
+                    //LogMessage: 3765
+                } else if(DefeatAllRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
                     ResetDigStatus();
                     //block portals from adding maps for a brief period to avoid double counting
                     //this can cause issues where someone opens a thief map immediately after, but whatever
@@ -123,9 +197,10 @@ namespace MapPartyAssist.Services {
                 }
             } else if((int)type == 4139) {
                 //party member uses dig
-                if(Regex.IsMatch(message.ToString(), @"uses Dig.$", RegexOptions.IgnoreCase)) {
-                    var playerPayload = (PlayerPayload)message.Payloads.First(p => p.Type == PayloadType.Player);
-                    var diggerKey = $"{playerPayload.PlayerName} {playerPayload.World.Name}";
+                if(PartyMemberDigRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
+                    var playerPayload = (PlayerPayload?)message.Payloads.FirstOrDefault(p => p.Type == PayloadType.Player);
+                    //no payload on Japanese self-dig or maybe other from same world...?
+                    var diggerKey = playerPayload != null ? $"{playerPayload.PlayerName} {playerPayload.World.Name}" : $"{_plugin.GetCurrentPlayer()}";
                     if(_diggers.ContainsKey(diggerKey)) {
                         _diggers[diggerKey] = messageTime;
                     } else {
@@ -134,7 +209,7 @@ namespace MapPartyAssist.Services {
                 }
             } else if((int)type == 2091) {
                 //need this to prevent warnings on own maps
-                if(Regex.IsMatch(message.ToString(), @"^You use Dig\.$", RegexOptions.IgnoreCase)) {
+                if(SelfDigRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
                     if(_diggers.ContainsKey(_plugin.GetCurrentPlayer())) {
                         _diggers[_plugin.GetCurrentPlayer()] = messageTime;
                     } else {
@@ -161,18 +236,27 @@ namespace MapPartyAssist.Services {
             }
 
             if(newMapFound && _plugin.CurrentPartyList.Count > 0) {
-                AddMap(_plugin.CurrentPartyList[key], _plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(_plugin.ClientState.TerritoryType)?.PlaceName.Value?.Name!, mapType, false, isPortal);
+                AddMap(_plugin.CurrentPartyList[key], null, mapType, false, isPortal);
             }
         }
 
-        public void AddMap(MPAMember player, string zone = "", string type = "", bool isManual = false, bool isPortal = false) {
+        public void AddMap(MPAMember player, string? zone = null, string? mapType = null, bool isManual = false, bool isPortal = false) {
             _plugin.Log.Information(string.Format("Adding new{0} map for {1}", isManual ? " manual" : "", player.Key));
             DateTime currentTime = DateTime.Now;
-            //zone ??= DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name!;
-            //zone = _textInfo.ToTitleCase(zone);
-            type = _textInfo.ToTitleCase(type);
+
+            if(_plugin.IsLanguageSupported()) {
+                //have to do lookup on PlaceName sheet otherwise will not translate properly
+                var placeNameId = _plugin.DataManager.GetExcelSheet<TerritoryType>(ClientLanguage.English)?.GetRow(_plugin.ClientState.TerritoryType)?.PlaceName.Row;
+                zone ??= placeNameId != null ? _plugin.DataManager.GetExcelSheet<PlaceName>(ClientLanguage.English)!.GetRow((uint)placeNameId)!.Name : "";
+            } else {
+                zone ??= "";
+            }
+
+            mapType ??= "";
+            mapType = _textInfo.ToTitleCase(mapType);
+
             MPAMap newMap = new() {
-                Name = type,
+                Name = mapType,
                 Time = currentTime,
                 Owner = player.Key,
                 Zone = zone,
@@ -315,7 +399,7 @@ namespace MapPartyAssist.Services {
         //ignores player
         private string GetLikelyMapOwner(DateTime cofferTime, params string[] ignorePlayers) {
             string closestKey = "";
-            double closestTimeMS = 5000;
+            double closestTimeMS = _digThresholdMS;
             foreach(var digger in _diggers) {
                 bool foundIgnore = false;
                 foreach(var ignorePlayer in ignorePlayers) {

@@ -120,8 +120,8 @@ internal class MainWindow : Window {
         //set status message window visibility
         _statusMessageWindow.IsOpen = !_plugin.MapManager.StatusMessage.IsNullOrEmpty();
 
-        if(!_plugin.IsEnglishClient()) {
-            ImGui.TextColored(ImGuiColors.DalamudRed, $"Non-English client, automatic tracking unavailable.");
+        if(!_plugin.IsLanguageSupported()) {
+            ImGui.TextColored(ImGuiColors.DalamudRed, $"Unsupported language, automatic tracking unavailable.");
         }
 
         if(ImGui.Button("Clear All")) {
@@ -230,7 +230,6 @@ internal class MainWindow : Window {
                         ImGui.EndTooltip();
                     }
                     if(ImGui.IsItemClicked()) {
-
                         _plugin.OpenMapLink(playerMaps.Key.MapLink.GetMapLinkPayload());
                     }
                 }

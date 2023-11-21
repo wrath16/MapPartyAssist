@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Dalamud;
+using LiteDB;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -13,11 +15,21 @@ namespace MapPartyAssist.Types {
         //not used
         public Type? ResultsType { get; init; }
         public List<Checkpoint>? Checkpoints { get; init; }
-        public Checkpoint? FailureCheckpoint { get; init; }
+        //have to be able to set in duty manager constructor...
+        public Checkpoint? FailureCheckpoint { get; set; }
         public string[]? LesserSummons { get; init; }
         public string[]? GreaterSummons { get; init; }
         public string[]? ElderSummons { get; init; }
         public string[]? FinalSummons { get; init; }
+
+        [BsonIgnore]
+        public Dictionary<ClientLanguage, Regex>? LesserSummonRegex { get; set; }
+        [BsonIgnore]
+        public Dictionary<ClientLanguage, Regex>? GreaterSummonRegex { get; set; }
+        [BsonIgnore]
+        public Dictionary<ClientLanguage, Regex>? ElderSummonRegex { get; set; }
+        [BsonIgnore]
+        public Dictionary<ClientLanguage, Regex>? CircleShiftsRegex { get; set; }
 
         public Duty(int id, string name, DutyStructure structure, int chamberCount, List<Checkpoint>? checkpoints = null, Checkpoint? failureCheckpoint = null, string[]? lesserSummons = null, string[]? greaterSummons = null, string[]? elderSummons = null, string[]? finalSummons = null) {
             DutyId = id;

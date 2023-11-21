@@ -1,5 +1,6 @@
 ﻿using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
+using Dalamud.Utility;
 using ImGuiNET;
 using MapPartyAssist.Settings;
 using MapPartyAssist.Types;
@@ -82,7 +83,7 @@ namespace MapPartyAssist.Windows {
                         }
                     }
 
-                    if(_plugin.Configuration.CurrentCharacterStatsOnly) {
+                    if(_plugin.Configuration.CurrentCharacterStatsOnly && !_plugin.GetCurrentPlayer().IsNullOrEmpty()) {
                         _dutyResults = _dutyResults.Where(dr => dr.Players.Contains(_plugin.GetCurrentPlayer())).ToList();
                     }
 
@@ -155,6 +156,7 @@ namespace MapPartyAssist.Windows {
                 }
             }
 
+            //todo these calculations should happen in same thread as refresh
             ProgressTable(_dutyResults, _dutyId);
             if(_plugin.DutyManager.Duties[_dutyId].Structure == DutyStructure.Roulette) {
                 SummonTable(_dutyResults, _dutyId);

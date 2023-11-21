@@ -1,3 +1,4 @@
+﻿using Dalamud;
 using Dalamud.Configuration;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Party;
@@ -10,6 +11,8 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
+using Lumina.Excel;
+using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Services;
 using MapPartyAssist.Settings;
 using MapPartyAssist.Types;
@@ -20,6 +23,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -33,8 +37,8 @@ namespace MapPartyAssist {
 
     public sealed class Plugin : IDalamudPlugin {
         public string Name => "Map Party Assist";
-
         private const string DatabaseName = "data.db";
+        public readonly ClientLanguage[] SupportedLanguages = { ClientLanguage.English, ClientLanguage.French, ClientLanguage.German, ClientLanguage.Japanese };
 
         private const string CommandName = "/mparty";
         private const string ConfigCommandName = "/mpartyconfig";
@@ -73,6 +77,9 @@ namespace MapPartyAssist {
 #if DEBUG
         private TestFunctionWindow TestFunctionWindow;
 #endif
+        public bool PrintAllMessages { get; set; } = false;
+        public bool PrintPayloads { get; set; } = false;
+
 
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
         public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
@@ -109,8 +116,8 @@ namespace MapPartyAssist {
 
                 Log.Information($"Client language: {ClientState.ClientLanguage}");
                 Log.Verbose($"Current culture: {CultureInfo.CurrentCulture.Name}");
-                if(!IsEnglishClient()) {
-                    Log.Warning("Client is not English, most functions will be unavailable.");
+                if(!IsLanguageSupported()) {
+                    Log.Warning("Client language unsupported, most functions will be unavailable.");
                 }
 
                 StorageManager = new StorageManager(this, $"{PluginInterface.GetPluginConfigDirectory()}\\{DatabaseName}");
@@ -273,182 +280,34 @@ namespace MapPartyAssist {
         private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled) {
             //filter nuisance combat messages...
             switch((int)type) {
-                case 2091:
-                case 2106: //self revived
-                case 2217:
-                case 2218:
-                case 2219:
-                case 2221: //you recover hp
-                case 2222:
-                case 2223: //you suffer from effect
-                case 2224:
-                case 2225: //you recover from effect
-                case 2350:
-                case 2603:
-                case 2729:
-                case 2730: //self combat
-                case 2731: //self cast
-                case 2735:
-                case 2858: //enemy resists
-                case 2859:
-                case 2861:
-                case 2864:
-                case 2874: //you defeat enemy
-                case 2857: //you crit/dh dmg enemy
-                case 2863: //enemy suffers effect
-                case 4139: //party member actions
-                    if(message.ToString().Contains("Dig", StringComparison.OrdinalIgnoreCase) || message.ToString().Contains("Decipher", StringComparison.OrdinalIgnoreCase)) {
-                        goto default;
+                case 2091:  //self actions
+                case 4139:  //party member actions
+                    if(Regex.IsMatch(message.ToString(), @"(Dig|Excavation|Ausgraben|ディグ)", RegexOptions.IgnoreCase)) {
+                        goto case 2105;
+                    }
+                    goto default;
+                case 2233:
+                case 2105:  //system messages of some kind
+                case 2361:
+                case 62:    //self gil
+                case 2110:  //self loot obtained
+                case 4158:  //party loot obtained
+                case 8254:  //alliance loot obtained
+                case (int)XivChatType.Say:
+                case (int)XivChatType.Party:
+                case (int)XivChatType.SystemMessage:
+                    //Log.Verbose($"Message received: {type} {message} from {sender}");
+                    Log.Verbose(String.Format("type: {0,-6} sender: {1,-20} message: {2}", type, sender, message));
+                    if(PrintPayloads) {
+                        foreach(Payload payload in message.Payloads) {
+                            Log.Verbose($"payload: {payload}");
+                        }
                     }
                     break;
-                case 4154: //party member revived
-                case 4266:
-                case 4269: //critical hp from party member
-                case 4270: //gain effect from party member
-                case 4393:
-                case 4394: //party member unaffected
-                case 4397:
-                case 4398:
-                case 4399: //party member brush with death
-                case 4400:
-                case 4401: //party member recovers from detrimental effect
-                case 4777:
-                case 4778:
-                case 4783: //effect
-                case 4905: //combat
-                case 4906:
-                case 4909:
-                case 4911:
-                case 4922: //party member defeats enemy
-                case 5165:
-                case 5166:
-                case 5293:
-                case 5294:
-                case 6187:
-                case 6573:
-                case 6574:
-                case 6576:
-                case 6577:
-                case 6825:
-                case 6831:
-                case 6953:
-                case 6959:
-                case 8235:
-                case 8236:
-                case 8745: //takes fall dmg
-                case 8746:
-                case 8749: //other recover hp
-                case 8750:
-                case 8751: //other suffers effect
-                case 8752:
-                case 8753: //other recover from effect
-                case 9001: //other combat
-                case 9002:
-                case 9007: //other combat
-                case 9646:
-                case 10283:
-                case 10409: //you dmged by enemy
-                case 10410:
-                case 10417:
-                case 10537:
-                case 10538: //misses party member
-                case 10543:
-                case 10545:
-                case 10665:
-                case 10922: //attack misses
-                case 10925:
-                case 10926: //engaged enemy gains beneficial effect
-                case 10929:
-                case 11305: //companion
-                case 11306: //companion
-                case 11433:
-                case 12331:
-                case 12346:
-                case 12457:
-                case 12458:
-                case 12461:
-                case 12463:
-                case 12464:
-                case 12585: //hits party member
-                case 12586: //attack misses party member
-                case 12589:
-                case 12842:
-                case 12591:
-                case 12592:
-                case 12713:
-                case 12717:
-                case 12719:
-                case 12841: //other combat
-                case 13098:
-                case 13101:
-                case 13102:
-                case 13103:
-                case 13104:
-                case 13105: //enemy recovers from status
-                case 13097:
-                case 13114: //enemy defeated
-                case 13225: //npc hits enemy
-                case 13226: //npc status
-                case 13353: //companion
-                case 13737:
-                case 13743:
-                case 14379: //npc uses ability
-                case 15145: //npc takes damage
-                case 15146: //miss
-                case 15151: //suffers effect
-                case 15162: //npc defeats enemy
-                case 15278: //gains effect
-                case 15280: //loses effect
-                case 15281: //npc recovers from status
-                case 16427:
-                case 16558: //gain choco regen
-                case 16686:
-                case 17065:
-                case 17071:
-                case 17210:
-                case 17193:
-                case 17450:
-                case 17454: //companion
-                case 17456:
-                case 18475:
-                case 18605: //crit hp
-                case 18606:
-                case 18733:
-                case 18734:
-                case 19113: //enemy taking dmg
-                case 19247:
-                case 19241: //crit
-                case 19258:
-                case 19630:
-                case 19632: //party member companion loses beneficial effect
-                case 19633:
-                case 19626:
-                case 20523:
-                case 20909:
-                case 21161:
-                case 22571: //other companion
-                case 22697:
-                case 22703:
-                case 22825:
-                case 22831:
-                case 23081:
-                case 23082: //other
-                case 23085: //other
-                case 23086: //other
-                case 23337:
-                case 23338:
-                case 23342:
-                case 23343:
-                case 23982:
-                case 23985:
-                case 23978:
-                case 23984:
-                    break;
                 default:
-                    Log.Verbose($"Message received: {type} {message} from {sender}");
-                    //foreach(Payload payload in message.Payloads) {
-                    //    Log.Verbose($"payload: {payload}");
-                    //}
+                    if(PrintAllMessages) {
+                        goto case 2105;
+                    }
                     break;
             }
         }
@@ -549,8 +408,8 @@ namespace MapPartyAssist {
         }
 
         public string GetCurrentPlayer() {
-            string currentPlayerName = ClientState.LocalPlayer?.Name.ToString()!;
-            string currentPlayerWorld = ClientState.LocalPlayer?.HomeWorld.GameData?.Name!;
+            string? currentPlayerName = ClientState.LocalPlayer?.Name?.ToString();
+            string? currentPlayerWorld = ClientState.LocalPlayer?.HomeWorld?.GameData?.Name?.ToString();
             if(currentPlayerName == null || currentPlayerWorld == null) {
                 //throw exception?
                 //throw new InvalidOperationException("Cannot retrieve current player");
@@ -558,10 +417,6 @@ namespace MapPartyAssist {
             }
 
             return $"{currentPlayerName} {currentPlayerWorld}";
-        }
-
-        public bool IsEnglishClient() {
-            return ClientState.ClientLanguage == Dalamud.ClientLanguage.English;
         }
 
         public Task Save() {
@@ -578,6 +433,89 @@ namespace MapPartyAssist {
                     _saveLock.Release();
                 }
             });
+        }
+
+        public bool IsLanguageSupported(ClientLanguage? language = null) {
+            language ??= ClientState.ClientLanguage;
+            return SupportedLanguages.Contains((ClientLanguage)language);
+        }
+
+        public string TranslateBNpcName(string npcName, ClientLanguage destinationLanguage, ClientLanguage? originLanguage = null) {
+            return TranslateDataTableEntry<BNpcName>(npcName, "Singular", destinationLanguage, originLanguage);
+        }
+
+        public string TranslateDataTableEntry<T>(string data, string column, ClientLanguage destinationLanguage, ClientLanguage? originLanguage = null) where T : ExcelRow {
+            originLanguage ??= ClientState.ClientLanguage;
+            uint? rowId = null;
+            Type type = typeof(T);
+            bool isPlural = column.Equals("Plural", StringComparison.OrdinalIgnoreCase);
+
+            if(!IsLanguageSupported(destinationLanguage) || !IsLanguageSupported(originLanguage)) {
+                throw new InvalidOperationException("Cannot translate to/from an unsupported client language.");
+            }
+
+            //check to make sure column is string
+            var columnProperty = type.GetProperty(column) ?? throw new InvalidOperationException($"No property of name: {column} on type {type.FullName}");
+            if(!columnProperty.PropertyType.IsAssignableTo(typeof(Lumina.Text.SeString))) {
+                throw new InvalidOperationException($"property {column} of type {columnProperty.PropertyType.FullName} on type {type.FullName} is not assignable to a SeString!");
+            }
+
+            //iterate over table to find rowId
+            foreach(var row in DataManager.GetExcelSheet<T>((ClientLanguage)originLanguage)!) {
+                var rowData = columnProperty!.GetValue(row)?.ToString();
+
+                //German declension placeholder replacement
+                if(originLanguage == ClientLanguage.German && rowData != null) {
+                    var pronounProperty = type.GetProperty("Pronoun");
+                    if(pronounProperty != null) {
+                        int pronoun = Convert.ToInt32(pronounProperty.GetValue(row))!;
+                        rowData = ReplaceGermanDeclensionPlaceholders(rowData, pronoun, isPlural);
+                    }
+                }
+                if(data.Equals(rowData, StringComparison.OrdinalIgnoreCase)) {
+                    rowId = row.RowId; break;
+                }
+            }
+
+            rowId = rowId ?? throw new InvalidOperationException($"'{data}' not found in table: {type.Name} for language: {originLanguage}.");
+
+            //get data from destinationLanguage
+            var translatedRow = DataManager.GetExcelSheet<T>(destinationLanguage)!.Where(r => r.RowId == rowId).FirstOrDefault();
+            string? translatedString = columnProperty!.GetValue(translatedRow)?.ToString() ?? throw new InvalidOperationException($"row id {rowId} not found in table {type.Name} for language: {destinationLanguage}");
+
+            //add German declensions. Assume nominative case
+            if(destinationLanguage == ClientLanguage.German) {
+                var pronounProperty = type.GetProperty("Pronoun");
+                if(pronounProperty != null) {
+                    int pronoun = Convert.ToInt32(pronounProperty.GetValue(translatedRow))!;
+                    translatedString = ReplaceGermanDeclensionPlaceholders(translatedString, pronoun, isPlural);
+                }
+            }
+
+            return translatedString;
+        }
+
+        //assumes nominative case
+        //male = 0, female = 1, neuter = 2
+        private string ReplaceGermanDeclensionPlaceholders(string input, int gender, bool isPlural) {
+            if(isPlural) {
+                input = input.Replace("[a]", "e");
+            }
+            switch(gender) {
+                default:
+                case 0: //male
+                    input = input.Replace("[a]", "er").Replace("[t]", "der");
+                    break;
+                case 1: //female
+                    input = input.Replace("[a]", "e").Replace("[t]", "die");
+                    break;
+                case 2: //neuter
+                    input = input.Replace("[a]", "es").Replace("[t]", "das");
+                    break;
+            }
+            //remove possessive placeholder
+            input = input.Replace("[p]", "");
+            return input;
         }
     }
 }
