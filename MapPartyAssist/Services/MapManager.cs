@@ -137,7 +137,6 @@ namespace MapPartyAssist.Services {
             if((int)type == 2361) {
                 //party member opens portal while not blocked
                 if(EnterPortalRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
-                    _plugin.Log.Debug("enter portal detected!");
                     if(_portalBlockUntil <= messageTime) {
                         //thief's maps
                         var playerPayload = (PlayerPayload)message.Payloads.First(p => p.Type == PayloadType.Player);
