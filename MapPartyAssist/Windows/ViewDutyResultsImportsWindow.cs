@@ -31,18 +31,13 @@ namespace MapPartyAssist.Windows {
             _plugin.WindowSystem.AddWindow(_addImportWindow);
         }
 
-        public Task Refresh(int? pageIndex = 0) {
-            return Task.Run(async () => {
-                try {
-                    await _refreshLock.WaitAsync();
-                    //null index = stay on same page
-                    pageIndex ??= _currentPage;
-                    _currentPage = (int)pageIndex;
-                    _imports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted).OrderByDescending(i => i.Time).Offset(_currentPage * 100).Limit(100).ToList();
-                } finally {
-                    _refreshLock.Release();
-                }
-            });
+        public void Refresh(int? pageIndex = 0) {
+            _plugin.AddDataTask(new(() => {
+                //null index = stay on same page
+                pageIndex ??= _currentPage;
+                _currentPage = (int)pageIndex;
+                _imports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted).OrderByDescending(i => i.Time).Offset(_currentPage * 100).Limit(100).ToList();
+            }));
         }
 
         public override void OnClose() {

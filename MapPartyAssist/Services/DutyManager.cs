@@ -402,44 +402,54 @@ namespace MapPartyAssist.Services {
             var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
             _plugin.Log.Verbose($"Territory changed: {territoryId}, Current duty: {_plugin.Functions.GetCurrentDutyId()}");
 
-            if(IsDutyInProgress()) {
-                //clear current duty if it was completed successfully or clear as a fallback. attempt to pickup otherwise on disconnect
-                if(CurrentDutyResults!.IsComplete || dutyId != CurrentDutyResults.DutyId) {
-                    EndCurrentDuty();
+
+            _plugin.AddDataTask(new(() => {
+                if(IsDutyInProgress()) {
+                    //clear current duty if it was completed successfully or clear as a fallback. attempt to pickup otherwise on disconnect
+                    if(CurrentDutyResults!.IsComplete || dutyId != CurrentDutyResults.DutyId) {
+                        EndCurrentDuty();
+                    }
+                } else if(duty != null) {
+                    //attempt to pickup if game closed without completing properly
+                    if(!PickupLastDuty(true)) {
+                        StartNewDuty(dutyId);
+                    }
                 }
-            } else if(duty != null) {
-                //attempt to pickup if game closed without completing properly
-                if(!PickupLastDuty(true)) {
-                    StartNewDuty(dutyId);
-                }
-            }
-            _firstTerritoryChange = true;
+                _firstTerritoryChange = true;
+            }));
         }
 
         private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled) {
-            if(IsDutyInProgress()) {
+            if(!IsDutyInProgress()) {
+                return;
+            }
+            SeString messageUnRef = message;
+            SeString senderUnRef = sender;
+            DateTime messageTime = DateTime.Now;
+
+            _plugin.AddDataTask(new(() => {
                 bool isChange = false;
 
                 //check for gil obtained
                 if((int)type == 62) {
-                    Match m = GilObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                    Match m = GilObtainedRegex[_plugin.ClientState.ClientLanguage].Match(messageUnRef.ToString());
                     if(m.Success) {
                         string parsedGilString = m.Value.Replace(",", "").Replace(".", "").Replace(" ", "");
                         CurrentDutyResults!.TotalGil += int.Parse(parsedGilString);
                         isChange = true;
                     }
                     //check for failure
-                } else if(((int)type == 2233 || (int)type == 2105) && CurrentDuty!.FailureCheckpoint!.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
+                } else if(((int)type == 2233 || (int)type == 2105) && CurrentDuty!.FailureCheckpoint!.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(messageUnRef.ToString())) {
                     CurrentDutyResults!.IsComplete = true;
-                    CurrentDutyResults!.CompletionTime = DateTime.Now;
+                    CurrentDutyResults!.CompletionTime = messageTime;
                     isChange = true;
                 } else {
                     switch(CurrentDuty!.Structure) {
                         case DutyStructure.Doors:
-                            isChange = ProcessCheckpointsDoors(type, senderId, sender, message);
+                            isChange = ProcessCheckpointsDoors(type, messageUnRef, messageTime);
                             break;
                         case DutyStructure.Roulette:
-                            isChange = ProcessCheckpointsRoulette(type, senderId, sender, message);
+                            isChange = ProcessCheckpointsRoulette(type, messageUnRef, messageTime);
                             break;
                         default:
                             break;
@@ -448,13 +458,12 @@ namespace MapPartyAssist.Services {
                 //save if changes discovered
                 if(isChange) {
                     _plugin.StorageManager.UpdateDutyResults(CurrentDutyResults!);
-                    //_plugin.Save();
                 }
-            }
+            })); 
         }
 
         //return true if updates made
-        private bool ProcessCheckpointsDoors(XivChatType type, uint senderId, SeString sender, SeString message) {
+        private bool ProcessCheckpointsDoors(XivChatType type, SeString message, DateTime messageTime) {
             if(CurrentDutyResults!.CheckpointResults.Count < CurrentDuty!.Checkpoints!.Count) {
                 var nextCheckpoint = CurrentDuty!.Checkpoints![CurrentDutyResults!.CheckpointResults.Count];
                 if(((int)type == 2233 || (int)type == 2105) && nextCheckpoint.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
@@ -463,7 +472,7 @@ namespace MapPartyAssist.Services {
                     //if all checkpoints reached, set to duty complete
                     if(CurrentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == CurrentDuty.Checkpoints!.Count) {
                         CurrentDutyResults.IsComplete = true;
-                        CurrentDutyResults.CompletionTime = DateTime.Now;
+                        CurrentDutyResults.CompletionTime = messageTime;
                     }
                     return true;
                 }
@@ -471,7 +480,7 @@ namespace MapPartyAssist.Services {
             return false;
         }
 
-        private bool ProcessCheckpointsRoulette(XivChatType type, uint senderId, SeString sender, SeString message) {
+        private bool ProcessCheckpointsRoulette(XivChatType type, SeString message, DateTime messageTime) {
             if(!IsDutyInProgress() || CurrentDuty!.Structure != DutyStructure.Roulette) {
                 throw new InvalidOperationException("Incorrect duty type.");
             }
@@ -482,45 +491,45 @@ namespace MapPartyAssist.Services {
                 //check for circles shift
                 Match shiftMatch = CurrentDuty!.CircleShiftsRegex![_plugin.ClientState.ClientLanguage].Match(message.ToString());
                 if(shiftMatch.Success) {
-                    AddRouletteCheckpointResults(Summon.Gold, _plugin.TranslateBNpcName(shiftMatch.Value, ClientLanguage.English), isSave);
+                    AddRouletteCheckpointResults(messageTime, Summon.Gold, _plugin.TranslateBNpcName(shiftMatch.Value, ClientLanguage.English), isSave);
                     return true;
                 }
                 //check for abomination
                 Match specialMatch = AbominationRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
                 if(specialMatch.Success) {
-                    AddRouletteCheckpointResults(Summon.Silver, null, isSave);
+                    AddRouletteCheckpointResults(messageTime, Summon.Silver, null, isSave);
                     //add next checkpoint as well
-                    AddRouletteCheckpointResults(null);
+                    AddRouletteCheckpointResults(messageTime, null);
                     if(CurrentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == CurrentDuty.Checkpoints!.Count) {
                         CurrentDutyResults.IsComplete = true;
-                        CurrentDutyResults.CompletionTime = DateTime.Now;
+                        CurrentDutyResults.CompletionTime = messageTime;
                     }
                     return true;
                 }
                 //check for lesser summon
                 Match lesserMatch = CurrentDuty.LesserSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message.ToString());
                 if(lesserMatch.Success) {
-                    AddRouletteCheckpointResults(Summon.Lesser, _plugin.TranslateBNpcName(lesserMatch.Value, ClientLanguage.English), isSave);
+                    AddRouletteCheckpointResults(messageTime, Summon.Lesser, _plugin.TranslateBNpcName(lesserMatch.Value, ClientLanguage.English), isSave);
                     return true;
                 }
                 //check for greater summon
                 Match greaterMatch = CurrentDuty.GreaterSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message.ToString());
                 if(greaterMatch.Success) {
-                    AddRouletteCheckpointResults(Summon.Greater, _plugin.TranslateBNpcName(greaterMatch.Value, ClientLanguage.English), isSave);
+                    AddRouletteCheckpointResults(messageTime, Summon.Greater, _plugin.TranslateBNpcName(greaterMatch.Value, ClientLanguage.English), isSave);
                     return true;
                 }
                 //check for elder summon
                 Match elderMatch = CurrentDuty.ElderSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message.ToString());
                 if(elderMatch.Success) {
-                    AddRouletteCheckpointResults(Summon.Elder, _plugin.TranslateBNpcName(elderMatch.Value, ClientLanguage.English), isSave);
+                    AddRouletteCheckpointResults(messageTime, Summon.Elder, _plugin.TranslateBNpcName(elderMatch.Value, ClientLanguage.English), isSave);
                     return true;
                 }
                 //enemy defeated
                 if(SummonDefeatedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
-                    AddRouletteCheckpointResults(null);
+                    AddRouletteCheckpointResults(messageTime, null);
                     if(CurrentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == CurrentDuty.Checkpoints!.Count) {
                         CurrentDutyResults.IsComplete = true;
-                        CurrentDutyResults.CompletionTime = DateTime.Now;
+                        CurrentDutyResults.CompletionTime = messageTime;
                     }
                     return true;
                 }
@@ -532,12 +541,12 @@ namespace MapPartyAssist.Services {
             return false;
         }
 
-        private void AddRouletteCheckpointResults(Summon? summon, string? monsterName = null, bool isSaved = false) {
+        private void AddRouletteCheckpointResults(DateTime messageTime, Summon? summon, string? monsterName = null, bool isSaved = false) {
             int size = CurrentDutyResults!.CheckpointResults.Count;
             _plugin.Log.Information($"Adding new checkpoint: {CurrentDuty!.Checkpoints![size].Name}");
             CurrentDutyResults.CheckpointResults.Add(new RouletteCheckpointResults {
                 Checkpoint = CurrentDuty!.Checkpoints![size],
-                Time = DateTime.Now,
+                Time = messageTime,
                 SummonType = summon,
                 MonsterName = monsterName,
                 IsSaved = isSaved,

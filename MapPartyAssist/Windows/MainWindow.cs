@@ -50,48 +50,43 @@ internal class MainWindow : Window {
         _plugin.WindowSystem.AddWindow(_statusMessageWindow);
     }
 
-    internal Task Refresh() {
-        return Task.Run(async () => {
-            try {
-                await _refreshLock.WaitAsync();
-                _currentMapCount = 0;
-                _recentMapCount = 0;
-                _currentPortalCount = 0;
-                _recentPortalCount = 0;
+    internal void Refresh() {
+        _plugin.AddDataTask(new(() => {
+            _currentMapCount = 0;
+            _recentMapCount = 0;
+            _currentPortalCount = 0;
+            _recentPortalCount = 0;
 
-                //setup players independent of Plugin's recent and current lists
-                _currentPlayerMaps = new Dictionary<MPAMember, List<MPAMap>>();
-                foreach(var kvp in _plugin.CurrentPartyList) {
-                    _currentPlayerMaps.Add(kvp.Value, new List<MPAMap>());
-                }
+            //setup players independent of Plugin's recent and current lists
+            _currentPlayerMaps = new Dictionary<MPAMember, List<MPAMap>>();
+            foreach(var kvp in _plugin.CurrentPartyList) {
+                _currentPlayerMaps.Add(kvp.Value, new List<MPAMap>());
+            }
 
-                _recentPlayerMaps = new Dictionary<MPAMember, List<MPAMap>>();
-                foreach(var kvp in _plugin.RecentPartyList) {
-                    _recentPlayerMaps.Add(kvp.Value, new List<MPAMap>());
-                }
+            _recentPlayerMaps = new Dictionary<MPAMember, List<MPAMap>>();
+            foreach(var kvp in _plugin.RecentPartyList) {
+                _recentPlayerMaps.Add(kvp.Value, new List<MPAMap>());
+            }
 
-                var maps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted && m.Owner != null).OrderBy(m => m.Time).ToList();
-                foreach(var map in maps) {
-                    if(_plugin.CurrentPartyList.ContainsKey(map.Owner!)) {
-                        _currentPlayerMaps[_plugin.CurrentPartyList[map.Owner!]].Add(map);
-                        _currentMapCount++;
-                        if(map.IsPortal) {
-                            _currentPortalCount++;
-                        }
-                    } else if(_plugin.RecentPartyList.ContainsKey(map.Owner!)) {
-                        _recentPlayerMaps[_plugin.RecentPartyList[map.Owner!]].Add(map);
-                        _recentMapCount++;
-                        if(map.IsPortal) {
-                            _recentPortalCount++;
-                        }
+            var maps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted && m.Owner != null).OrderBy(m => m.Time).ToList();
+            foreach(var map in maps) {
+                if(_plugin.CurrentPartyList.ContainsKey(map.Owner!)) {
+                    _currentPlayerMaps[_plugin.CurrentPartyList[map.Owner!]].Add(map);
+                    _currentMapCount++;
+                    if(map.IsPortal) {
+                        _currentPortalCount++;
+                    }
+                } else if(_plugin.RecentPartyList.ContainsKey(map.Owner!)) {
+                    _recentPlayerMaps[_plugin.RecentPartyList[map.Owner!]].Add(map);
+                    _recentMapCount++;
+                    if(map.IsPortal) {
+                        _recentPortalCount++;
                     }
                 }
-                _lastMapPlayer = maps.LastOrDefault()?.Owner;
-                _zoneCountWindow.Refresh();
-            } finally {
-                _refreshLock.Release();
             }
-        });
+            _lastMapPlayer = maps.LastOrDefault()?.Owner;
+            _zoneCountWindow.Refresh();
+        }));
     }
 
     public override void OnClose() {

@@ -58,11 +58,9 @@ namespace MapPartyAssist.Windows {
             }
         }
 
-        public Task Refresh() {
-            return Task.Run(async () => {
-                try {
-                    await _refreshLock.WaitAsync();
-                    if(_statRange == StatRange.Current) {
+        public void Refresh() {
+            _plugin.AddDataTask(new(() => {
+                if(_statRange == StatRange.Current) {
                         //_dutyResults = Plugin.DutyManager.GetRecentDutyResultsList(_dutyId);
                         _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted && dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
                     } else if(_statRange == StatRange.PastDay) {
@@ -113,11 +111,8 @@ namespace MapPartyAssist.Windows {
                             return allMatch;
                         }).ToList();
                     }
-                    await _viewImportsWindow.Refresh();
-                } finally {
-                    _refreshLock.Release();
-                }
-            });
+                    _viewImportsWindow.Refresh();
+            }));
         }
 
         public override void OnClose() {

@@ -54,49 +54,44 @@ namespace MapPartyAssist.Windows {
             }
         }
 
-        internal Task Refresh(int? pageIndex = null) {
-            return Task.Run(async () => {
-                try {
-                    await _refreshLock.WaitAsync();
-                    _collapseAll = true;
-                    //null index = stay on same page
-                    pageIndex ??= _currentPage;
-                    _currentPage = (int)pageIndex;
+        internal void Refresh(int? pageIndex = null) {
+            _plugin.AddDataTask(new(() => {
+                _collapseAll = true;
+                //null index = stay on same page
+                pageIndex ??= _currentPage;
+                _currentPage = (int)pageIndex;
 
-                    //better performance to filter on DB than use LINQ due to indexing
-                    _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map)
-                        .Where(dr => (_dutyRange != DutyRange.Current || (dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted))
-                        //&& (_dutyRange != DutyRange.PastDay || ((DateTime.Now - dr.Time).TotalHours < 24))
-                        //&& (_dutyRange != DutyRange.PastWeek || ((DateTime.Now - dr.Time).TotalDays < 7))
-                        && dr.Owner.Contains(_ownerFilter, StringComparison.OrdinalIgnoreCase)
-                        && (_dutyId == 0 || dr.DutyId == _dutyId)).OrderByDescending(dr => dr.Time).ToList();
+                //better performance to filter on DB than use LINQ due to indexing
+                _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map)
+                    .Where(dr => (_dutyRange != DutyRange.Current || (dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted))
+                    //&& (_dutyRange != DutyRange.PastDay || ((DateTime.Now - dr.Time).TotalHours < 24))
+                    //&& (_dutyRange != DutyRange.PastWeek || ((DateTime.Now - dr.Time).TotalDays < 7))
+                    && dr.Owner.Contains(_ownerFilter, StringComparison.OrdinalIgnoreCase)
+                    && (_dutyId == 0 || dr.DutyId == _dutyId)).OrderByDescending(dr => dr.Time).ToList();
 
-                    string[] partyMemberFilters = _partyMemberFilter.Split(",");
+                string[] partyMemberFilters = _partyMemberFilter.Split(",");
 
-                    //these expressions don't get converted to BSONExpressions properly so we'll use LINQ
-                    _dutyResults = _dutyResults.Where(dr => (_dutyRange != DutyRange.PastDay || ((DateTime.Now - dr.Time).TotalHours < 24))
-                        && (_dutyRange != DutyRange.PastWeek || ((DateTime.Now - dr.Time).TotalDays < 7))).Where(dr => {
-                            bool allMatch = true;
-                            foreach(string partyMemberFilter in partyMemberFilters) {
-                                bool matchFound = false;
-                                string partyMemberFilterTrimmed = partyMemberFilter.Trim();
-                                foreach(string partyMember in dr.Players) {
-                                    if(partyMember.Contains(partyMemberFilterTrimmed, StringComparison.OrdinalIgnoreCase)) {
-                                        matchFound = true;
-                                        break;
-                                    }
-                                }
-                                allMatch = allMatch && matchFound;
-                                if(!allMatch) {
-                                    return false;
+                //these expressions don't get converted to BSONExpressions properly so we'll use LINQ
+                _dutyResults = _dutyResults.Where(dr => (_dutyRange != DutyRange.PastDay || ((DateTime.Now - dr.Time).TotalHours < 24))
+                    && (_dutyRange != DutyRange.PastWeek || ((DateTime.Now - dr.Time).TotalDays < 7))).Where(dr => {
+                        bool allMatch = true;
+                        foreach(string partyMemberFilter in partyMemberFilters) {
+                            bool matchFound = false;
+                            string partyMemberFilterTrimmed = partyMemberFilter.Trim();
+                            foreach(string partyMember in dr.Players) {
+                                if(partyMember.Contains(partyMemberFilterTrimmed, StringComparison.OrdinalIgnoreCase)) {
+                                    matchFound = true;
+                                    break;
                                 }
                             }
-                            return allMatch;
-                        }).Skip(_currentPage * 100).Take(100).ToList();
-                } finally {
-                    _refreshLock.Release();
-                }
-            });
+                            allMatch = allMatch && matchFound;
+                            if(!allMatch) {
+                                return false;
+                            }
+                        }
+                        return allMatch;
+                    }).Skip(_currentPage * 100).Take(100).ToList();
+            }));
         }
 
         public override void OnClose() {

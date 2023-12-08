@@ -31,14 +31,16 @@ namespace MapPartyAssist.Services {
                 return;
             }
 
-            //check to see if already exists
-            if(_plugin.StorageManager.GetDutyResultsImports().Query().Where(i => i.Id == import.Id).FirstOrDefault() != null) {
-                //update
-                _plugin.StorageManager.UpdateDutyResultsImport(import);
-            } else {
-                //new
-                _plugin.StorageManager.AddDutyResultsImport(import);
-            }
+            _plugin.AddDataTask(new(() => {
+                //check to see if already exists
+                if(_plugin.StorageManager.GetDutyResultsImports().Query().Where(i => i.Id == import.Id).FirstOrDefault() != null) {
+                    //update
+                    _plugin.StorageManager.UpdateDutyResultsImport(import);
+                } else {
+                    //new
+                    _plugin.StorageManager.AddDutyResultsImport(import);
+                }
+            }));
         }
 
         //returns whether this is a valid import
