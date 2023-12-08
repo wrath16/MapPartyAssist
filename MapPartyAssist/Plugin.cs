@@ -19,6 +19,7 @@ using MapPartyAssist.Types;
 using MapPartyAssist.Windows;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -77,15 +78,16 @@ namespace MapPartyAssist {
 #if DEBUG
         private TestFunctionWindow TestFunctionWindow;
 #endif
-        public bool PrintAllMessages { get; set; } = false;
-        public bool PrintPayloads { get; set; } = false;
-
+        internal bool PrintAllMessages { get; set; } = false;
+        internal bool PrintPayloads { get; set; } = false;
 
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
         public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
         private int _lastPartySize = 0;
 
-        private SemaphoreSlim _saveLock = new SemaphoreSlim(1, 1);
+        //coordinates all data sequence-sensitive operations
+        internal ConcurrentQueue<Task> DataTaskQueue { get; init; } = new();
+        internal SemaphoreSlim DataLock { get; init; } = new SemaphoreSlim(1, 1);
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -176,8 +178,7 @@ namespace MapPartyAssist {
 
                 //build current and recent party lists
                 if(ClientState.IsLoggedIn) {
-                    BuildCurrentPartyList();
-                    BuildRecentPartyList();
+                    BuildPartyLists();
                 } else {
                     CurrentPartyList = new();
                     RecentPartyList = new();
@@ -271,9 +272,8 @@ namespace MapPartyAssist {
 
             if(!Condition[ConditionFlag.BetweenAreas] && playerJob != null && currentPartySize != _lastPartySize) {
                 Log.Verbose($"Party size has changed: {_lastPartySize} to {currentPartySize}");
-                BuildCurrentPartyList();
-                BuildRecentPartyList();
                 _lastPartySize = currentPartySize;
+                BuildPartyLists();
             }
         }
 
@@ -313,9 +313,7 @@ namespace MapPartyAssist {
         }
 
         private void OnLogin() {
-            BuildCurrentPartyList();
-            BuildRecentPartyList();
-            MapManager.CheckAndArchiveMaps();
+            BuildPartyLists().ContinueWith(t => MapManager.CheckAndArchiveMaps());
         }
 
         private void OnLogout() {
@@ -324,78 +322,88 @@ namespace MapPartyAssist {
             Save();
         }
 
-        //builds current party list from scratch
-        public void BuildCurrentPartyList() {
-            try {
-                _saveLock.Wait();
-                Log.Verbose("Rebuilding current party list.");
-                string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
-                string currentPlayerWorld = ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
-                string currentPlayerKey = GetCurrentPlayer();
-                CurrentPartyList = new();
-                var allPlayers = StorageManager.GetPlayers();
-                var currentPlayer = allPlayers.Query().Where(p => p.Key == currentPlayerKey).FirstOrDefault();
-                //enable for solo player
-                if(PartyList.Length <= 0) {
-                    //add yourself for initial setup
-                    if(currentPlayer == null) {
-                        var newPlayer = new MPAMember(currentPlayerName, currentPlayerWorld, true);
-                        CurrentPartyList.Add(currentPlayerKey, newPlayer);
-                        StorageManager.AddPlayer(newPlayer);
-                    } else {
-                        currentPlayer.LastJoined = DateTime.Now;
-                        CurrentPartyList.Add(currentPlayerKey, currentPlayer);
-                        StorageManager.UpdatePlayer(currentPlayer);
-                    }
-                } else {
-                    foreach(PartyMember p in PartyList) {
-                        string partyMemberName = p.Name.ToString();
-                        string partyMemberWorld = p.World.GameData!.Name.ToString();
-                        var key = $"{partyMemberName} {partyMemberWorld}";
-                        bool isCurrentPlayer = partyMemberName.Equals(currentPlayerName) && partyMemberWorld.Equals(currentPlayerWorld);
-                        var findPlayer = allPlayers.Query().Where(p => p.Key == key).FirstOrDefault();
-
-                        //new player!
-                        if(findPlayer == null) {
-                            var newPlayer = new MPAMember(partyMemberName, partyMemberWorld, isCurrentPlayer);
-                            CurrentPartyList.Add(key, newPlayer);
-                            StorageManager.AddPlayer(newPlayer);
-                        } else {
-                            //find existing player
-                            findPlayer.LastJoined = DateTime.Now;
-                            findPlayer.IsSelf = isCurrentPlayer;
-                            CurrentPartyList.Add(key, findPlayer);
-                            StorageManager.UpdatePlayer(findPlayer);
-                        }
-                    }
-                }
-            } finally {
-                _saveLock.Release();
-            }
-            Save();
+        internal Task BuildPartyLists() {
+            return Task.Run(async () => {
+                await BuildCurrentPartyList();
+                await BuildRecentPartyList();
+                //await Save();
+            });
         }
 
-        public void BuildRecentPartyList() {
-            try {
-                _saveLock.Wait();
-                Log.Verbose("Rebuilding recent party list.");
-                RecentPartyList = new();
-                var allPlayers = StorageManager.GetPlayers();
-                var currentMaps = StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted).ToList();
-                foreach(var player in allPlayers.Query().ToList()) {
-                    TimeSpan timeSpan = DateTime.Now - player.LastJoined;
-                    bool isRecent = timeSpan.TotalHours <= Configuration.ArchiveThresholdHours;
-                    bool hasMaps = currentMaps.Where(m => !m.Owner.IsNullOrEmpty() && m.Owner.Equals(player.Key)).Any();
-                    bool notCurrent = !CurrentPartyList.ContainsKey(player.Key);
-                    bool notSelf = !player.IsSelf;
-                    if(isRecent && hasMaps && notCurrent) {
-                        RecentPartyList.Add(player.Key, player);
+        //builds current party list from scratch
+        internal Task BuildCurrentPartyList() {
+            return Task.Run(async () => {
+                try {
+                    await DataLock.WaitAsync();
+                    Log.Verbose("Rebuilding current party list.");
+                    string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
+                    string currentPlayerWorld = ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
+                    string currentPlayerKey = GetCurrentPlayer();
+                    CurrentPartyList = new();
+                    var allPlayers = StorageManager.GetPlayers();
+                    var currentPlayer = allPlayers.Query().Where(p => p.Key == currentPlayerKey).FirstOrDefault();
+                    //enable for solo player
+                    if(PartyList.Length <= 0) {
+                        //add yourself for initial setup
+                        if(currentPlayer == null) {
+                            var newPlayer = new MPAMember(currentPlayerName, currentPlayerWorld, true);
+                            CurrentPartyList.Add(currentPlayerKey, newPlayer);
+                            await StorageManager.AddPlayer(newPlayer);
+                        } else {
+                            currentPlayer.LastJoined = DateTime.Now;
+                            CurrentPartyList.Add(currentPlayerKey, currentPlayer);
+                            await StorageManager.UpdatePlayer(currentPlayer);
+                        }
+                    } else {
+                        foreach(PartyMember p in PartyList) {
+                            string partyMemberName = p.Name.ToString();
+                            string partyMemberWorld = p.World.GameData!.Name.ToString();
+                            var key = $"{partyMemberName} {partyMemberWorld}";
+                            bool isCurrentPlayer = partyMemberName.Equals(currentPlayerName) && partyMemberWorld.Equals(currentPlayerWorld);
+                            var findPlayer = allPlayers.Query().Where(p => p.Key == key).FirstOrDefault();
+
+                            //new player!
+                            if(findPlayer == null) {
+                                var newPlayer = new MPAMember(partyMemberName, partyMemberWorld, isCurrentPlayer);
+                                CurrentPartyList.Add(key, newPlayer);
+                                await StorageManager.AddPlayer(newPlayer);
+                            } else {
+                                //find existing player
+                                findPlayer.LastJoined = DateTime.Now;
+                                findPlayer.IsSelf = isCurrentPlayer;
+                                CurrentPartyList.Add(key, findPlayer);
+                                await StorageManager.UpdatePlayer(findPlayer);
+                            }
+                        }
                     }
+                } finally {
+                    DataLock.Release();
                 }
-            } finally {
-                _saveLock.Release();
-            }
-            Save();
+            }).ContinueWith(t => Save());
+        }
+
+        internal Task BuildRecentPartyList() {
+            return Task.Run(async () => {
+                try {
+                    await DataLock.WaitAsync();
+                    Log.Verbose("Rebuilding recent party list.");
+                    RecentPartyList = new();
+                    var allPlayers = StorageManager.GetPlayers();
+                    var currentMaps = StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted).ToList();
+                    foreach(var player in allPlayers.Query().ToList()) {
+                        TimeSpan timeSpan = DateTime.Now - player.LastJoined;
+                        bool isRecent = timeSpan.TotalHours <= Configuration.ArchiveThresholdHours;
+                        bool hasMaps = currentMaps.Where(m => !m.Owner.IsNullOrEmpty() && m.Owner.Equals(player.Key)).Any();
+                        bool notCurrent = !CurrentPartyList.ContainsKey(player.Key);
+                        bool notSelf = !player.IsSelf;
+                        if(isRecent && hasMaps && notCurrent) {
+                            RecentPartyList.Add(player.Key, player);
+                        }
+                    }
+                } finally {
+                    DataLock.Release();
+                }
+            }).ContinueWith(t => Save());
         }
 
         public void OpenMapLink(MapLinkPayload mapLink) {
@@ -422,17 +430,36 @@ namespace MapPartyAssist {
         public Task Save() {
             Configuration.Save();
             //performance reasons...
-            return Task.Run(() => {
+            return Task.Run(async () => {
                 try {
-                    _saveLock.Wait();
+                    await DataLock.WaitAsync();
                     Task statsWindowTask = StatsWindow.Refresh();
                     Task mainWindowTask = MainWindow.Refresh();
                     Task dutyResultsWindowTask = DutyResultsWindow.Refresh();
                     Task.WaitAll(new[] { statsWindowTask, mainWindowTask, dutyResultsWindowTask });
                 } finally {
-                    _saveLock.Release();
+                    DataLock.Release();
                 }
             });
+        }
+
+        internal void AddTask(Task task) {
+            DataTaskQueue.Enqueue(task);
+            RunNextTask();
+        }
+
+        private async void RunNextTask() {
+            try {
+                await DataLock.WaitAsync();
+                if(DataTaskQueue.TryDequeue(out Task nextTask)) {
+                    nextTask.Start();
+                    await nextTask;
+                } else {
+                    Log.Warning($"Unable to dequeue next task. Tasks remaining: {DataTaskQueue.Count}");
+                }
+            } finally {
+                DataLock.Release();
+            }
         }
 
         public bool IsLanguageSupported(ClientLanguage? language = null) {

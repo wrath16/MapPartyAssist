@@ -32,9 +32,9 @@ namespace MapPartyAssist.Windows {
         }
 
         public Task Refresh(int? pageIndex = 0) {
-            return Task.Run(() => {
+            return Task.Run(async () => {
                 try {
-                    _refreshLock.Wait();
+                    await _refreshLock.WaitAsync();
                     //null index = stay on same page
                     pageIndex ??= _currentPage;
                     _currentPage = (int)pageIndex;

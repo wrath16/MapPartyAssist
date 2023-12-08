@@ -41,7 +41,7 @@ namespace MapPartyAssist.Windows {
         public TestFunctionWindow(Plugin plugin) : base("MPA Test Functions") {
             this.SizeConstraints = new WindowSizeConstraints {
                 MinimumSize = new Vector2(150, 50),
-                MaximumSize = new Vector2(1000, 500)
+                MaximumSize = new Vector2(1000, 1000)
             };
             this._plugin = plugin;
 

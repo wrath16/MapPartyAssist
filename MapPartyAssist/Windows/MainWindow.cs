@@ -51,9 +51,9 @@ internal class MainWindow : Window {
     }
 
     internal Task Refresh() {
-        return Task.Run(() => {
+        return Task.Run(async () => {
             try {
-                _refreshLock.Wait();
+                await _refreshLock.WaitAsync();
                 _currentMapCount = 0;
                 _recentMapCount = 0;
                 _currentPortalCount = 0;
@@ -132,9 +132,6 @@ internal class MainWindow : Window {
         if(ImGui.IsItemHovered()) {
             //check for double clicks
             if(ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)) {
-#if DEBUG
-                _plugin.Log.Debug($"'Clear All' has been double-clicked!");
-#endif
                 if(_plugin.Configuration.RequireDoubleClickOnClearAll) {
                     _plugin.MapManager.ClearAllMaps();
                 }

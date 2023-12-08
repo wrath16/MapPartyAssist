@@ -55,9 +55,9 @@ namespace MapPartyAssist.Windows {
         }
 
         internal Task Refresh(int? pageIndex = null) {
-            return Task.Run(() => {
+            return Task.Run(async () => {
                 try {
-                    _refreshLock.Wait();
+                    await _refreshLock.WaitAsync();
                     _collapseAll = true;
                     //null index = stay on same page
                     pageIndex ??= _currentPage;

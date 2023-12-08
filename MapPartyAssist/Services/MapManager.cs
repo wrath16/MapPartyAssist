@@ -127,117 +127,121 @@ namespace MapPartyAssist.Services {
             bool isPortal = false;
             string key = "";
             string mapType = "";
+            SeString messageUnRef = message;
+            SeString senderUnRef = sender;
             DateTime messageTime = DateTime.Now;
 
-            //refuse to process if not a supported language
-            //if(!Plugin.IsEnglishClient()) {
-            //    return;
-            //}
-
-            if((int)type == 2361) {
-                //party member opens portal while not blocked
-                if(EnterPortalRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
-                    if(_portalBlockUntil <= messageTime) {
-                        //thief's maps
-                        var playerPayload = (PlayerPayload)message.Payloads.First(p => p.Type == PayloadType.Player);
-                        key = $"{playerPayload.PlayerName} {playerPayload.World.Name}";
-                        newMapFound = true;
-                        isPortal = true;
-                    } else {
-                        //TODO compare to last map to verify ownership
-                    }
-                }
-            } else if((int)type == 2105 || (int)type == 2233) {
-                //self map detection
-                if(ConsumedMapRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
-                    newMapFound = true;
-                    mapType = MapNameRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString()).ToString();
-                    if(!mapType.IsNullOrEmpty()) {
-                        try {
-                            mapType = _plugin.TranslateDataTableEntry<EventItem>(mapType, "Singular", ClientLanguage.English);
-                        } catch {
-                            mapType = "";
-                        }
-                    }
-                    key = $"{_plugin.ClientState.LocalPlayer!.Name} {_plugin.ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
-                    //_lastMapTime = messageTime;
-                    //clear dig info just in case to prevent double-counting map if another player uses dig at the same time
-                    ResetDigStatus();
-                } else if(DiscoverCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
-                    //find (non-current PC) party member with the closest matching dig time and assume they are owner
-                    _lockedInDiggerKey = GetLikelyMapOwner(messageTime, _plugin.GetCurrentPlayer());
-                    if(_lockedInDiggerKey.IsNullOrEmpty() && !IsPlayerCandidateOwner(messageTime, _plugin.GetCurrentPlayer())) {
-                        _plugin.Log.Warning($"No eligible map owner detected for discovered coffer!");
-                        SetStatus("Unable to determine map owner, verify and add manually.", StatusLevel.ERROR);
-                    }
-                    //LogMessage: 3756, 9361, 9363
-                } else if(OpenCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
-                    //add delay because this message occurs before "crumbles into dust" to avoid double-counting with self-dig
-                    Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
-                        if(!_lockedInDiggerKey.IsNullOrEmpty()) {
-                            AddMap(_plugin.CurrentPartyList[_lockedInDiggerKey]);
-                            if(_candidateCount > 1) {
-                                _plugin.Log.Warning($"Multiple map owner candidates detected!");
-                                SetStatus("Multiple map owner candidates found, verify last map ownership.", StatusLevel.CAUTION);
+            Task.Run(() => {
+                try {
+                    _plugin.DataLock.WaitAsync();
+                    if((int)type == 2361) {
+                        //party member opens portal while not blocked
+                        if(EnterPortalRegex[_plugin.ClientState.ClientLanguage].IsMatch(messageUnRef.ToString())) {
+                            if(_portalBlockUntil <= messageTime) {
+                                //thief's maps
+                                var playerPayload = (PlayerPayload)messageUnRef.Payloads.First(p => p.Type == PayloadType.Player);
+                                key = $"{playerPayload.PlayerName} {playerPayload.World.Name}";
+                                newMapFound = true;
+                                isPortal = true;
+                            } else {
+                                //TODO compare to last map to verify ownership
                             }
-                        } else if((messageTime - _lastMapTime).TotalMilliseconds > _lastMapAddedThresholdMS) {
-                            //need this in case player used a false dig out of range
-                            _plugin.Log.Warning($"No eligible map owner detected on opened coffer!");
-                            SetStatus("Unable to determine map owner, verify and add manually.", StatusLevel.ERROR);
                         }
-                        //have to reset here in case you fail to defeat the treasure chest enemies -_-
-                        ResetDigStatus();
-                    });
-                    //LogMessage: 3765
-                } else if(DefeatAllRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
-                    ResetDigStatus();
-                    //block portals from adding maps for a brief period to avoid double counting
-                    //this can cause issues where someone opens a thief map immediately after, but whatever
-                    _portalBlockUntil = DateTime.Now.AddSeconds(_portalBlockSeconds);
-                }
-            } else if((int)type == 4139) {
-                //party member uses dig
-                if(PartyMemberDigRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
-                    var playerPayload = (PlayerPayload?)message.Payloads.FirstOrDefault(p => p.Type == PayloadType.Player);
-                    //no payload on Japanese self-dig or maybe other from same world...?
-                    var diggerKey = playerPayload != null ? $"{playerPayload.PlayerName} {playerPayload.World.Name}" : $"{_plugin.GetCurrentPlayer()}";
-                    if(_diggers.ContainsKey(diggerKey)) {
-                        _diggers[diggerKey] = messageTime;
-                    } else {
-                        _diggers.Add(diggerKey, messageTime);
-                    }
-                }
-            } else if((int)type == 2091) {
-                //need this to prevent warnings on own maps
-                if(SelfDigRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
-                    if(_diggers.ContainsKey(_plugin.GetCurrentPlayer())) {
-                        _diggers[_plugin.GetCurrentPlayer()] = messageTime;
-                    } else {
-                        _diggers.Add(_plugin.GetCurrentPlayer(), messageTime);
-                    }
-                }
-            } else if(type == XivChatType.Party || type == XivChatType.Say || type == XivChatType.Alliance) {
-                //getting map links
-                var mapPayload = (MapLinkPayload?)message.Payloads.FirstOrDefault(p => p.Type == PayloadType.MapLink);
-                var senderPayload = (PlayerPayload?)sender.Payloads.FirstOrDefault(p => p.Type == PayloadType.Player);
+                    } else if((int)type == 2105 || (int)type == 2233) {
+                        //self map detection
+                        if(ConsumedMapRegex[_plugin.ClientState.ClientLanguage].IsMatch(messageUnRef.ToString())) {
+                            newMapFound = true;
+                            mapType = MapNameRegex[_plugin.ClientState.ClientLanguage].Match(messageUnRef.ToString()).ToString();
+                            if(!mapType.IsNullOrEmpty()) {
+                                try {
+                                    mapType = _plugin.TranslateDataTableEntry<EventItem>(mapType, "Singular", ClientLanguage.English);
+                                } catch {
+                                    mapType = "";
+                                }
+                            }
+                            key = $"{_plugin.ClientState.LocalPlayer!.Name} {_plugin.ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
+                            //_lastMapTime = messageTime;
+                            //clear dig info just in case to prevent double-counting map if another player uses dig at the same time
+                            ResetDigStatus();
+                        } else if(DiscoverCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(messageUnRef.ToString())) {
+                            //find (non-current PC) party member with the closest matching dig time and assume they are owner
+                            _lockedInDiggerKey = GetLikelyMapOwner(messageTime, _plugin.GetCurrentPlayer());
+                            if(_lockedInDiggerKey.IsNullOrEmpty() && !IsPlayerCandidateOwner(messageTime, _plugin.GetCurrentPlayer())) {
+                                _plugin.Log.Warning($"No eligible map owner detected for discovered coffer!");
+                                SetStatus("Unable to determine map owner, verify and add manually.", StatusLevel.ERROR);
+                            }
+                            //LogMessage: 3756, 9361, 9363
+                        } else if(OpenCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(messageUnRef.ToString())) {
+                            //add delay because this message occurs before "crumbles into dust" to avoid double-counting with self-dig
+                            Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
+                                if(!_lockedInDiggerKey.IsNullOrEmpty()) {
+                                    AddMap(_plugin.CurrentPartyList[_lockedInDiggerKey]);
+                                    if(_candidateCount > 1) {
+                                        _plugin.Log.Warning($"Multiple map owner candidates detected!");
+                                        SetStatus("Multiple map owner candidates found, verify last map ownership.", StatusLevel.CAUTION);
+                                    }
+                                } else if((messageTime - _lastMapTime).TotalMilliseconds > _lastMapAddedThresholdMS) {
+                                    //need this in case player used a false dig out of range
+                                    _plugin.Log.Warning($"No eligible map owner detected on opened coffer!");
+                                    SetStatus("Unable to determine map owner, verify and add manually.", StatusLevel.ERROR);
+                                }
+                                //have to reset here in case you fail to defeat the treasure chest enemies -_-
+                                ResetDigStatus();
+                            });
+                            //LogMessage: 3765
+                        } else if(DefeatAllRegex[_plugin.ClientState.ClientLanguage].IsMatch(messageUnRef.ToString())) {
+                            ResetDigStatus();
+                            //block portals from adding maps for a brief period to avoid double counting
+                            //this can cause issues where someone opens a thief map immediately after, but whatever
+                            _portalBlockUntil = DateTime.Now.AddSeconds(_portalBlockSeconds);
+                        }
+                    } else if((int)type == 4139) {
+                        //party member uses dig
+                        if(PartyMemberDigRegex[_plugin.ClientState.ClientLanguage].IsMatch(messageUnRef.ToString())) {
+                            var playerPayload = (PlayerPayload?)messageUnRef.Payloads.FirstOrDefault(p => p.Type == PayloadType.Player);
+                            //no payload on Japanese self-dig or maybe other from same world...?
+                            var diggerKey = playerPayload != null ? $"{playerPayload.PlayerName} {playerPayload.World.Name}" : $"{_plugin.GetCurrentPlayer()}";
+                            if(_diggers.ContainsKey(diggerKey)) {
+                                _diggers[diggerKey] = messageTime;
+                            } else {
+                                _diggers.Add(diggerKey, messageTime);
+                            }
+                        }
+                    } else if((int)type == 2091) {
+                        //need this to prevent warnings on own maps
+                        if(SelfDigRegex[_plugin.ClientState.ClientLanguage].IsMatch(messageUnRef.ToString())) {
+                            if(_diggers.ContainsKey(_plugin.GetCurrentPlayer())) {
+                                _diggers[_plugin.GetCurrentPlayer()] = messageTime;
+                            } else {
+                                _diggers.Add(_plugin.GetCurrentPlayer(), messageTime);
+                            }
+                        }
+                    } else if(type == XivChatType.Party || type == XivChatType.Say || type == XivChatType.Alliance) {
+                        //getting map links
+                        var mapPayload = (MapLinkPayload?)messageUnRef.Payloads.FirstOrDefault(p => p.Type == PayloadType.MapLink);
+                        var senderPayload = (PlayerPayload?)senderUnRef.Payloads.FirstOrDefault(p => p.Type == PayloadType.Player);
 
-                if(senderPayload == null) {
-                    //from same world as player
-                    string matchName = Regex.Match(sender.TextValue, @"[A-Za-z-']*\s[A-Za-z-']*$").ToString();
-                    key = $"{matchName} {_plugin.ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
-                } else {
-                    key = $"{senderPayload.PlayerName} {senderPayload.World.Name}";
-                }
-                if(mapPayload != null && _plugin.CurrentPartyList.ContainsKey(key) && (_plugin.CurrentPartyList[key].MapLink == null || !_plugin.Configuration.NoOverwriteMapLink)) {
-                    _plugin.CurrentPartyList[key].MapLink = new MPAMapLink(mapPayload);
-                    _plugin.StorageManager.UpdatePlayer(_plugin.CurrentPartyList[key]);
-                    _plugin.Save();
-                }
-            }
+                        if(senderPayload == null) {
+                            //from same world as player
+                            string matchName = Regex.Match(senderUnRef.TextValue, @"[A-Za-z-']*\s[A-Za-z-']*$").ToString();
+                            key = $"{matchName} {_plugin.ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
+                        } else {
+                            key = $"{senderPayload.PlayerName} {senderPayload.World.Name}";
+                        }
+                        if(mapPayload != null && _plugin.CurrentPartyList.ContainsKey(key) && (_plugin.CurrentPartyList[key].MapLink == null || !_plugin.Configuration.NoOverwriteMapLink)) {
+                            _plugin.CurrentPartyList[key].MapLink = new MPAMapLink(mapPayload);
+                            _plugin.StorageManager.UpdatePlayer(_plugin.CurrentPartyList[key]);
+                            //_plugin.Save();
+                        }
+                    }
 
-            if(newMapFound && _plugin.CurrentPartyList.Count > 0) {
-                AddMap(_plugin.CurrentPartyList[key], null, mapType, false, isPortal);
-            }
+                    if(newMapFound && _plugin.CurrentPartyList.Count > 0) {
+                        AddMap(_plugin.CurrentPartyList[key], null, mapType, false, isPortal);
+                    }
+                } finally {
+                    _plugin.DataLock.Release();
+                }
+            });
         }
 
         public void AddMap(MPAMember player, string? zone = null, string? mapType = null, bool isManual = false, bool isPortal = false) {

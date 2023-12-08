@@ -178,18 +178,21 @@ namespace MapPartyAssist.Services {
 
         //all writes are asynchronous for performance reasons
         private Task AsyncWriteToDatabase(Func<object> action, bool toSave = true) {
-            Task task = new Task(() => {
+            Task task = new Task(async () => {
                 try {
-                    _dbLock.Wait();
+                    await _dbLock.WaitAsync();
                     action.Invoke();
-                    if(toSave) {
-                        _plugin.Save();
-                    }
+                    //if(toSave) {
+                    //    _plugin.Save();
+                    //}
                 } finally {
                     _dbLock.Release();
                 }
             });
             task.Start();
+            if(toSave) {
+                task.ContinueWith(t => _plugin.Save());
+            }
             //task.ContinueWith(HandleTaskExceptions, TaskContinuationOptions.OnlyOnFaulted);
             return task;
         }
