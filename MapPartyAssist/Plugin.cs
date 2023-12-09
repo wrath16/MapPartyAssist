@@ -330,7 +330,7 @@ namespace MapPartyAssist {
 
         //builds current party list from scratch
         internal void BuildCurrentPartyList() {
-            AddDataTask(new(async() => {
+            AddDataTask(new(async () => {
                 Log.Verbose("Rebuilding current party list.");
                 string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
                 string currentPlayerWorld = ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;

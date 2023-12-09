@@ -10,7 +10,6 @@ using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows {
 
@@ -61,57 +60,57 @@ namespace MapPartyAssist.Windows {
         public void Refresh() {
             _plugin.AddDataTask(new(() => {
                 if(_statRange == StatRange.Current) {
-                        //_dutyResults = Plugin.DutyManager.GetRecentDutyResultsList(_dutyId);
-                        _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted && dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
-                    } else if(_statRange == StatRange.PastDay) {
-                        _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToEnumerable().Where(dr => (DateTime.Now - dr.Time).TotalHours < 24).ToList();
-                    } else if(_statRange == StatRange.PastWeek) {
-                        _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToEnumerable().Where(dr => (DateTime.Now - dr.Time).TotalDays < 7).ToList();
-                    } else if(_statRange == StatRange.All) {
+                    //_dutyResults = Plugin.DutyManager.GetRecentDutyResultsList(_dutyId);
+                    _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted && dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+                } else if(_statRange == StatRange.PastDay) {
+                    _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToEnumerable().Where(dr => (DateTime.Now - dr.Time).TotalHours < 24).ToList();
+                } else if(_statRange == StatRange.PastWeek) {
+                    _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToEnumerable().Where(dr => (DateTime.Now - dr.Time).TotalDays < 7).ToList();
+                } else if(_statRange == StatRange.All) {
+                    _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+                } else if(_statRange == StatRange.AllLegacy) {
+                    _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
+                    _dutyResultsImports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted && i.DutyId == _dutyId).OrderBy(i => i.Time).ToList();
+                } else if(_statRange == StatRange.SinceLastClear) {
+                    var lastClear = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList().Where(dr => dr.CheckpointResults.Count == _plugin.DutyManager.Duties[_dutyId].Checkpoints!.Count && dr.CheckpointResults.Last().IsReached).LastOrDefault();
+                    if(lastClear != null) {
+                        _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId && dr.Time > lastClear.Time).OrderBy(dr => dr.Time).ToList();
+                    } else {
                         _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
-                    } else if(_statRange == StatRange.AllLegacy) {
-                        _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
-                        _dutyResultsImports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted && i.DutyId == _dutyId).OrderBy(i => i.Time).ToList();
-                    } else if(_statRange == StatRange.SinceLastClear) {
-                        var lastClear = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList().Where(dr => dr.CheckpointResults.Count == _plugin.DutyManager.Duties[_dutyId].Checkpoints!.Count && dr.CheckpointResults.Last().IsReached).LastOrDefault();
-                        if(lastClear != null) {
-                            _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId && dr.Time > lastClear.Time).OrderBy(dr => dr.Time).ToList();
-                        } else {
-                            _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
-                        }
                     }
+                }
 
-                    if(_plugin.Configuration.CurrentCharacterStatsOnly && !_plugin.GetCurrentPlayer().IsNullOrEmpty()) {
-                        _dutyResults = _dutyResults.Where(dr => dr.Players.Contains(_plugin.GetCurrentPlayer())).ToList();
-                    }
+                if(_plugin.Configuration.CurrentCharacterStatsOnly && !_plugin.GetCurrentPlayer().IsNullOrEmpty()) {
+                    _dutyResults = _dutyResults.Where(dr => dr.Players.Contains(_plugin.GetCurrentPlayer())).ToList();
+                }
 
-                    if(_plugin.Configuration.DutyConfigurations[_dutyId].OmitZeroCheckpoints) {
-                        _dutyResults = _dutyResults.Where(dr => dr.CheckpointResults.Count > 0).ToList();
-                    }
+                if(_plugin.Configuration.DutyConfigurations[_dutyId].OmitZeroCheckpoints) {
+                    _dutyResults = _dutyResults.Where(dr => dr.CheckpointResults.Count > 0).ToList();
+                }
 
-                    if(_plugin.Configuration.ShowAdvancedFilters) {
-                        //this is duplicated from DutyResultsWindow...
-                        string[] partyMemberFilters = _partyMemberFilter.Split(",");
-                        _dutyResults = _dutyResults.Where(dr => dr.Owner.Contains(_ownerFilter, StringComparison.OrdinalIgnoreCase)).Where(dr => {
-                            bool allMatch = true;
-                            foreach(string partyMemberFilter in partyMemberFilters) {
-                                bool matchFound = false;
-                                string partyMemberFilterTrimmed = partyMemberFilter.Trim();
-                                foreach(string partyMember in dr.Players) {
-                                    if(partyMember.Contains(partyMemberFilterTrimmed, StringComparison.OrdinalIgnoreCase)) {
-                                        matchFound = true;
-                                        break;
-                                    }
-                                }
-                                allMatch = allMatch && matchFound;
-                                if(!allMatch) {
-                                    return false;
+                if(_plugin.Configuration.ShowAdvancedFilters) {
+                    //this is duplicated from DutyResultsWindow...
+                    string[] partyMemberFilters = _partyMemberFilter.Split(",");
+                    _dutyResults = _dutyResults.Where(dr => dr.Owner.Contains(_ownerFilter, StringComparison.OrdinalIgnoreCase)).Where(dr => {
+                        bool allMatch = true;
+                        foreach(string partyMemberFilter in partyMemberFilters) {
+                            bool matchFound = false;
+                            string partyMemberFilterTrimmed = partyMemberFilter.Trim();
+                            foreach(string partyMember in dr.Players) {
+                                if(partyMember.Contains(partyMemberFilterTrimmed, StringComparison.OrdinalIgnoreCase)) {
+                                    matchFound = true;
+                                    break;
                                 }
                             }
-                            return allMatch;
-                        }).ToList();
-                    }
-                    _viewImportsWindow.Refresh();
+                            allMatch = allMatch && matchFound;
+                            if(!allMatch) {
+                                return false;
+                            }
+                        }
+                        return allMatch;
+                    }).ToList();
+                }
+                _viewImportsWindow.Refresh();
             }));
         }
 

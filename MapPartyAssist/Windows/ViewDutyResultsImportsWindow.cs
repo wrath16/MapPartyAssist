@@ -6,7 +6,6 @@ using MapPartyAssist.Types;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows {
     internal class ViewDutyResultsImportsWindow : Window {

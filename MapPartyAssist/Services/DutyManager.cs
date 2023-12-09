@@ -459,7 +459,7 @@ namespace MapPartyAssist.Services {
                 if(isChange) {
                     _plugin.StorageManager.UpdateDutyResults(CurrentDutyResults!);
                 }
-            })); 
+            }));
         }
 
         //return true if updates made
