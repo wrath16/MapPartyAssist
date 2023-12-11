@@ -422,9 +422,9 @@ namespace MapPartyAssist {
         public Task Save() {
             Configuration.Save();
             //performance reasons...
-            return Task.Run(() => {
+            return Task.Run(async() => {
                 try {
-                    _saveLock.Wait();
+                    await _saveLock.WaitAsync();
                     Task statsWindowTask = StatsWindow.Refresh();
                     Task mainWindowTask = MainWindow.Refresh();
                     Task dutyResultsWindowTask = DutyResultsWindow.Refresh();

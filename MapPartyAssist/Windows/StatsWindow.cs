@@ -61,7 +61,7 @@ namespace MapPartyAssist.Windows {
         public Task Refresh() {
             return Task.Run(async () => {
                 try {
-                    _refreshLock.Wait();
+                    await _refreshLock.WaitAsync();
                     if(_statRange == StatRange.Current) {
                         //_dutyResults = Plugin.DutyManager.GetRecentDutyResultsList(_dutyId);
                         _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.Map != null && !dr.Map.IsArchived && !dr.Map.IsDeleted && dr.IsComplete && dr.DutyId == _dutyId).OrderBy(dr => dr.Time).ToList();
