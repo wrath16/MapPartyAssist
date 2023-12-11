@@ -6,7 +6,7 @@
   "InternalName": "MapPartyAssist",
   "RepoUrl": "https://github.com/wrath16/MapPartyAssist",
   "ApplicableVersion": "any",
-  "Changelog": "-Performance improvements.",
+  "Changelog": "-Fix for loading screen crash.",
   "Tags": [
     "treasure maps",
     "maps",

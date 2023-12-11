@@ -324,12 +324,12 @@ namespace MapPartyAssist {
         }
 
         internal void BuildPartyLists() {
-            BuildCurrentPartyList();
+            BuildCurrentPartyList(PartyList.ToArray());
             BuildRecentPartyList();
         }
 
         //builds current party list from scratch
-        internal void BuildCurrentPartyList() {
+        internal void BuildCurrentPartyList(PartyMember[] partyMembers) {
             AddDataTask(new(async () => {
                 Log.Verbose("Rebuilding current party list.");
                 string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
@@ -339,7 +339,7 @@ namespace MapPartyAssist {
                 var allPlayers = StorageManager.GetPlayers();
                 var currentPlayer = allPlayers.Query().Where(p => p.Key == currentPlayerKey).FirstOrDefault();
                 //enable for solo player
-                if(PartyList.Length <= 0) {
+                if(partyMembers.Length <= 0) {
                     //add yourself for initial setup
                     if(currentPlayer == null) {
                         var newPlayer = new MPAMember(currentPlayerName, currentPlayerWorld, true);
@@ -351,7 +351,7 @@ namespace MapPartyAssist {
                         await StorageManager.UpdatePlayer(currentPlayer);
                     }
                 } else {
-                    foreach(PartyMember p in PartyList) {
+                    foreach(PartyMember p in partyMembers) {
                         string partyMemberName = p.Name.ToString();
                         string partyMemberWorld = p.World.GameData!.Name.ToString();
                         var key = $"{partyMemberName} {partyMemberWorld}";
