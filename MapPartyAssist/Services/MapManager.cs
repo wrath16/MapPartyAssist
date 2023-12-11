@@ -229,6 +229,7 @@ namespace MapPartyAssist.Services {
                     if(mapPayload != null && _plugin.CurrentPartyList.ContainsKey(key) && (_plugin.CurrentPartyList[key].MapLink == null || !_plugin.Configuration.NoOverwriteMapLink)) {
                         _plugin.CurrentPartyList[key].MapLink = new MPAMapLink(mapPayload);
                         _plugin.StorageManager.UpdatePlayer(_plugin.CurrentPartyList[key]);
+                        _plugin.Save();
                     }
                 }
 
@@ -269,6 +270,7 @@ namespace MapPartyAssist.Services {
                 //add to DB
                 _plugin.StorageManager.AddMap(newMap);
                 _plugin.StorageManager.UpdatePlayer(player);
+                _plugin.Save();
 
                 ClearStatus();
             }));
@@ -283,6 +285,7 @@ namespace MapPartyAssist.Services {
                     _plugin.BuildRecentPartyList();
                 });
                 ClearStatus();
+                _plugin.Save();
             }));
         }
 
@@ -293,6 +296,7 @@ namespace MapPartyAssist.Services {
                 _plugin.StorageManager.UpdateMaps(maps).ContinueWith(t => {
                     _plugin.BuildRecentPartyList();
                 });
+                _plugin.Save();
             }));
         }
 
@@ -303,6 +307,7 @@ namespace MapPartyAssist.Services {
                 _plugin.StorageManager.UpdateMaps(maps).ContinueWith(t => {
                     _plugin.BuildRecentPartyList();
                 });
+                _plugin.Save();
             }));
         }
 
@@ -318,6 +323,7 @@ namespace MapPartyAssist.Services {
                 _plugin.StorageManager.UpdateMaps(storageMaps).ContinueWith(t => {
                     _plugin.BuildRecentPartyList();
                 });
+                _plugin.Save();
             }));
         }
 
@@ -325,6 +331,7 @@ namespace MapPartyAssist.Services {
             _plugin.AddDataTask(new(() => {
                 player.MapLink = null;
                 _plugin.StorageManager.UpdatePlayer(player);
+                _plugin.Save();
             }));
         }
 
