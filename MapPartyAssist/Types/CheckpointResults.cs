@@ -1,6 +1,7 @@
 ﻿using LiteDB;
 using MapPartyAssist.Types.Attributes;
 using System;
+using System.Collections.Generic;
 
 namespace MapPartyAssist.Types {
     [ValidatedDataType]
@@ -13,6 +14,8 @@ namespace MapPartyAssist.Types {
         public Summon? SummonType { get; set; }
         public string? MonsterName { get; set; }
         public bool IsSaved { get; set; }
+
+        public List<LootResult>? LootResults { get; set; }
 
         [BsonCtor]
         public CheckpointResults() {

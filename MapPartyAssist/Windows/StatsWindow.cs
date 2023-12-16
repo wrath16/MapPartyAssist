@@ -27,6 +27,7 @@ namespace MapPartyAssist.Windows {
 
         private Plugin _plugin;
         private ViewDutyResultsImportsWindow _viewImportsWindow;
+        private LootResultsWindow _lootResultsWindow;
 
         private StatRange _statRange = StatRange.All;
         private readonly string[] _rangeCombo = { "Current", "Last Day", "Last Week", "Since last clear", "All-Time", "All-Time with imported data" };
@@ -50,6 +51,10 @@ namespace MapPartyAssist.Windows {
             _viewImportsWindow = new ViewDutyResultsImportsWindow(plugin, this);
             _viewImportsWindow.IsOpen = false;
             _plugin.WindowSystem.AddWindow(_viewImportsWindow);
+
+            _lootResultsWindow = new LootResultsWindow(plugin);
+            _lootResultsWindow.IsOpen = false;
+            _plugin.WindowSystem.AddWindow(_lootResultsWindow);
 
             //setup duty name combo
             _dutyNameCombo = new string[_dutyIdCombo.Length];
@@ -114,6 +119,7 @@ namespace MapPartyAssist.Windows {
                         }).ToList();
                     }
                     await _viewImportsWindow.Refresh();
+                    await _lootResultsWindow.Refresh(_dutyResults);
                 } finally {
                     _refreshLock.Release();
                 }
@@ -122,6 +128,7 @@ namespace MapPartyAssist.Windows {
 
         public override void OnClose() {
             _viewImportsWindow.IsOpen = false;
+            _lootResultsWindow.IsOpen = false;
             base.OnClose();
         }
 
@@ -160,6 +167,14 @@ namespace MapPartyAssist.Windows {
             ProgressTable(_dutyResults, _dutyId);
             if(_plugin.DutyManager.Duties[_dutyId].Structure == DutyStructure.Roulette) {
                 SummonTable(_dutyResults, _dutyId);
+            }
+
+            if(ImGui.Button("Loot")) {
+                if(!_lootResultsWindow.IsOpen) {
+                    _lootResultsWindow.Position = new Vector2(ImGui.GetWindowPos().X + 50f * ImGuiHelpers.GlobalScale, ImGui.GetWindowPos().Y + 50f * ImGuiHelpers.GlobalScale);
+                    _lootResultsWindow.IsOpen = true;
+                }
+                _lootResultsWindow.BringToFront();
             }
         }
 

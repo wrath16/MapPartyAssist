@@ -51,7 +51,7 @@ internal class MainWindow : Window {
     }
 
     internal Task Refresh() {
-        return Task.Run(async() => {
+        return Task.Run(async () => {
             try {
                 await _refreshLock.WaitAsync();
                 _currentMapCount = 0;

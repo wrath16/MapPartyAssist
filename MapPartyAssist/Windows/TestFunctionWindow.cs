@@ -196,6 +196,15 @@ namespace MapPartyAssist.Windows {
                         _plugin.Log.Debug($"{_plugin.MapManager.GetPlayerWithClosestMapLink(_plugin.CurrentPartyList.Values.ToList()).Key} has the closest map link");
                     }
 
+                    if(ImGui.Button("Last Map loot")) {
+                        var lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().Last();
+                        if(lastMap != null && lastMap.LootResults != null) {
+                            foreach(var lr in lastMap.LootResults) {
+                                _plugin.Log.Debug($"{lr.Quantity} {(lr.IsHQ ? "HQ" : "NQ")} {lr.ItemId} {lr.Recipient}");
+                            }
+                        }
+                    }
+
 
                     //if(ImGui.Button("Check map and member nullability")) {
                     //    //var map = Plugin.StorageManager.GetMaps().Query().First();
@@ -264,12 +273,14 @@ namespace MapPartyAssist.Windows {
                             //var method = typeof(Plugin).GetMethod("TranslateDataTableEntry");
                             //var genericMethod = method.MakeGenericMethod(_selectedDataType);
                             //var results = genericMethod.Invoke(_plugin, new object[] { _toTranslateText, _selectedProperty.Name, (ClientLanguage)_destinationLanguage, (ClientLanguage)_originLanguage });
-
-                            _translateResult = (string)typeof(Plugin).GetMethod("TranslateDataTableEntry").MakeGenericMethod(_selectedDataType)
+                            var rowId = (uint?)typeof(Plugin).GetMethod("GetRowId").MakeGenericMethod(_selectedDataType)
+                            .Invoke(_plugin, new object[] { _toTranslateText, _selectedProperty.Name, (ClientLanguage)_originLanguage });
+                            _translateResult = rowId != null ? rowId.ToString() : "";
+                            _translateResult += " " + (string)typeof(Plugin).GetMethod("TranslateDataTableEntry").MakeGenericMethod(_selectedDataType)
                             .Invoke(_plugin, new object[] { _toTranslateText, _selectedProperty.Name, (ClientLanguage)_destinationLanguage, (ClientLanguage)_originLanguage });
                         } catch(Exception e) {
                             _translateResult = "Translate error!";
-                            while(e.InnerException != null && e.GetType() != typeof(InvalidOperationException)) {
+                            while(e.InnerException != null && e.GetType() != typeof(ArgumentException)) {
                                 e = e.InnerException;
                             }
                             _translateResult += " " + e.Message;

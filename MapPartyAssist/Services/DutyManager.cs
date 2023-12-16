@@ -1,6 +1,7 @@
 ﻿using Dalamud;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Utility;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Types;
@@ -15,12 +16,16 @@ namespace MapPartyAssist.Services {
 
         private Plugin _plugin;
         private bool _firstTerritoryChange;
+        //this is because there might be no checkpoints yet -_-
+        private List<LootResult> _firstLootResults = new();
         internal DutyResults? CurrentDutyResults { get; private set; }
         internal Duty? CurrentDuty {
             get {
                 return IsDutyInProgress() ? Duties[CurrentDutyResults!.DutyId] : null;
             }
         }
+
+        internal CheckpointResults? LastCheckpoint => CurrentDutyResults?.CheckpointResults.Last();
 
         internal readonly Dictionary<int, Duty> Duties = new Dictionary<int, Duty>() {
             { 179 , new Duty(179, "the aquapolis", DutyStructure.Doors, 7, new() {
@@ -140,15 +145,44 @@ namespace MapPartyAssist.Services {
                 new string[] {"hippomenes", "phaethon", "narkissos" }) }
         };
 
-        private static readonly Dictionary<ClientLanguage, Regex> GilObtainedRegex = new() {
+        internal static readonly Dictionary<ClientLanguage, Regex> GilObtainedRegex = new() {
             { ClientLanguage.English, new Regex(@"(?<=You obtain )[\d,\.]+(?= gil)", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"(?<=Vous obtenez )[\d,\.\W]+(?= gils)", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"(?<=Du hast )[\d,\.\W]+(?= Gil erhalten)", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"[\d,\.\W]+(?=ギルを手に入れた)", RegexOptions.IgnoreCase) }
         };
 
+        internal static readonly Dictionary<ClientLanguage, Regex> LootListRegex = new() {
+            { ClientLanguage.English, new Regex(@"(the|an|a|[\.,\d]+)\b(?=.* been added to the loot list)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"", RegexOptions.IgnoreCase) }
+        };
+
+        internal static readonly Dictionary<ClientLanguage, Regex> SelfObtainedQuantityRegex = new() {
+            { ClientLanguage.English, new Regex(@"(?<=You obtain .?)(the|an|a|[\.,\d]+)\b", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"", RegexOptions.IgnoreCase) }
+        };
+
+        //EN note: does not work with items beginning with no indefinite article
+        internal static readonly Dictionary<ClientLanguage, Regex> SelfObtainedItemRegex = new() {
+            { ClientLanguage.English, new Regex(@"(?<=You obtain (an|a|[\.,\d])+\s)[\w\s]*", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"", RegexOptions.IgnoreCase) }
+        };
+
+        internal static readonly Dictionary<ClientLanguage, Regex> PartyMemberObtainedRegex = new() {
+            { ClientLanguage.English, new Regex(@"(?<=obtains .?)(the|an|a|[\.,\d]+)\b", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"", RegexOptions.IgnoreCase) }
+        };
+
         //LogMessage: 3777, 3800
-        private static readonly Dictionary<ClientLanguage, Regex> EmptyCagesRegex = new() {
+        internal static readonly Dictionary<ClientLanguage, Regex> EmptyCagesRegex = new() {
             { ClientLanguage.English, new Regex(@"The cages are empty", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"Vous avez vaincu tous les monstres!", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"(Die Gegner sind besiegt!|Du hast alle Gegner besiegt)", RegexOptions.IgnoreCase) },
@@ -156,42 +190,42 @@ namespace MapPartyAssist.Services {
         };
 
         //LogMessage: 6998, 9365
-        private static readonly Dictionary<ClientLanguage, Regex> SecondChamberRegex = new() {
+        internal static readonly Dictionary<ClientLanguage, Regex> SecondChamberRegex = new() {
             { ClientLanguage.English, new Regex(@"The gate to the 2nd chamber opens", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"Vous avez ouvert la porte menant (vers|à) la deuxième salle", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"Das Tor zur zweiten Kammer (öffnet sich|steht offen!)", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"「第二区画」への扉が開いた！", RegexOptions.IgnoreCase) }
         };
 
-        private static readonly Dictionary<ClientLanguage, Regex> ThirdChamberRegex = new() {
+        internal static readonly Dictionary<ClientLanguage, Regex> ThirdChamberRegex = new() {
             { ClientLanguage.English, new Regex(@"The gate to the 3rd chamber opens", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"Vous avez ouvert la porte menant (vers|à) la troisième salle", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"Das Tor zur dritten Kammer (öffnet sich|steht offen!)", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"「第三区画」への扉が開いた！", RegexOptions.IgnoreCase) }
         };
 
-        private static readonly Dictionary<ClientLanguage, Regex> FourthChamberRegex = new() {
+        internal static readonly Dictionary<ClientLanguage, Regex> FourthChamberRegex = new() {
             { ClientLanguage.English, new Regex(@"The gate to the 4th chamber opens", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"Vous avez ouvert la porte menant (vers|à) la quatrième salle", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"Das Tor zur vierten Kammer (öffnet sich|steht offen!)", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"「第四区画」への扉が開いた！", RegexOptions.IgnoreCase) }
         };
 
-        private static readonly Dictionary<ClientLanguage, Regex> FifthChamberRegex = new() {
+        internal static readonly Dictionary<ClientLanguage, Regex> FifthChamberRegex = new() {
             { ClientLanguage.English, new Regex(@"The gate to the 5th chamber opens", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"Vous avez ouvert la porte menant (vers|à) la cinquième salle", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"Das Tor zur fünften Kammer (öffnet sich|steht offen!)", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"「第五区画」への扉が開いた！", RegexOptions.IgnoreCase) }
         };
 
-        private static readonly Dictionary<ClientLanguage, Regex> SixthChamberRegex = new() {
+        internal static readonly Dictionary<ClientLanguage, Regex> SixthChamberRegex = new() {
             { ClientLanguage.English, new Regex(@"The gate to the 6th chamber opens", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"Vous avez ouvert la porte menant (vers|à) la sixième salle", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"Das Tor zur sechsten Kammer (öffnet sich|steht offen!)", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"「第六区画」への扉が開いた！", RegexOptions.IgnoreCase) }
         };
 
-        private static readonly Dictionary<ClientLanguage, Regex> FinalChamberRegex = new() {
+        internal static readonly Dictionary<ClientLanguage, Regex> FinalChamberRegex = new() {
             { ClientLanguage.English, new Regex(@"(The gate to Condemnation( is)? open(s)?|The gate to the final chamber opens)", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"Vous avez ouvert la porte menant (vers|à) la dernière salle", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"Das Tor zur (letzten|Verdammnis) Kammer (öffnet sich|steht offen!)", RegexOptions.IgnoreCase) },
@@ -199,7 +233,7 @@ namespace MapPartyAssist.Services {
         };
 
         //LogMessage: 9352
-        private static readonly Dictionary<ClientLanguage, Regex> IsSavedRegex = new() {
+        internal static readonly Dictionary<ClientLanguage, Regex> IsSavedRegex = new() {
             { ClientLanguage.English, new Regex(@"^An unknown force", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"n'est plus.*apparaît\!$", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"^Als .* fällt.*erscheint!$", RegexOptions.IgnoreCase) },
@@ -207,7 +241,7 @@ namespace MapPartyAssist.Services {
         };
 
         //LogMessage: 9360, 9366
-        private static readonly Dictionary<ClientLanguage, Regex> AbominationRegex = new() {
+        internal static readonly Dictionary<ClientLanguage, Regex> AbominationRegex = new() {
             { ClientLanguage.English, new Regex(@"^The .* retreats into the shadows", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"(Les ennemis se sont enfuis|L'avatar de l'observateur est parti)", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"(Ihr konntet nicht alle Wächter bezwingen|Ihr konntet nicht alle Beobachter bezwingen)", RegexOptions.IgnoreCase) },
@@ -215,7 +249,7 @@ namespace MapPartyAssist.Services {
         };
 
         //LogMessage: 9360, 9366
-        private static readonly Dictionary<ClientLanguage, Regex> SummonDefeatedRegex = new() {
+        internal static readonly Dictionary<ClientLanguage, Regex> SummonDefeatedRegex = new() {
             { ClientLanguage.English, new Regex(@"^(The summon is dispelled|The trial is passed)", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"Vous avez terrassé tous les ennemis", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"(Alle Wächter sind besiegt|Alle Beobachter sind besiegt)", RegexOptions.IgnoreCase) },
@@ -279,7 +313,7 @@ namespace MapPartyAssist.Services {
                     DutyId = dutyId,
                     DutyName = Duties[dutyId].Name,
                     Players = _plugin.CurrentPartyList.Keys.ToArray(),
-                    Owner = ""
+                    Owner = "",
                 };
                 //check last map, 10 min fallback for linking to most recent map
                 if((DateTime.Now - lastMap.Time).TotalMinutes < 10) {
@@ -425,9 +459,68 @@ namespace MapPartyAssist.Services {
                     Match m = GilObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
                     if(m.Success) {
                         string parsedGilString = m.Value.Replace(",", "").Replace(".", "").Replace(" ", "");
-                        CurrentDutyResults!.TotalGil += int.Parse(parsedGilString);
+                        int gil = int.Parse(parsedGilString);
+                        CurrentDutyResults!.TotalGil += gil;
+                        AddLootResults(1, false, gil, _plugin.GetCurrentPlayer());
                         isChange = true;
                     }
+                    //self loot obtained
+                } else if((int)type == 2110) {
+                    Match quantityMatch = SelfObtainedQuantityRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                    if(quantityMatch.Success) {
+                        //todo make this work for all languages...
+                        bool isNumber = Regex.IsMatch(quantityMatch.Value, @"\d+");
+                        int quantity = isNumber ? int.Parse(quantityMatch.Value.Replace(",", "").Replace(".", "")) : 1;
+                        var player = _plugin.GetCurrentPlayer();
+                        var item = (ItemPayload?)message.Payloads.FirstOrDefault(m => m is ItemPayload);
+                        if(item is not null) {
+                            AddLootResults(item.ItemId, item.IsHQ, quantity, player);
+                            isChange = true;
+                            _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", item.ItemId, item.IsHQ, quantity, player));
+                        } else {
+                            //tomestones...
+                            Match itemMatch = SelfObtainedItemRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                            if(itemMatch.Success) {
+                                var rowId = quantity != 1 ? _plugin.GetRowId<Item>(itemMatch.Value, "Plural") : _plugin.GetRowId<Item>(itemMatch.Value, "Singular");
+                                if(rowId is not null) {
+                                    AddLootResults((uint)rowId, false, quantity, player);
+                                    isChange = true;
+                                } else {
+                                    _plugin.Log.Warning($"Cannot find rowId for {itemMatch.Value}");
+                                }
+                            }
+                        }
+                    }
+                    //party member loot obtained
+                } else if((int)type == 8254) {
+                    Match m = PartyMemberObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                    if(m.Success) {
+                        //todo make this work for all languages...
+                        bool isNumber = Regex.IsMatch(m.Value, @"\d+");
+                        int quantity = isNumber ? int.Parse(m.Value.Replace(",", "").Replace(".", "")) : 1;
+                        var player = (PlayerPayload?)message.Payloads.FirstOrDefault(m => m is PlayerPayload);
+                        var playerKey = $"{player.PlayerName} {player.World.Name}";
+                        var item = (ItemPayload?)message.Payloads.FirstOrDefault(m => m is ItemPayload);
+                        if(item is not null) {
+                            AddLootResults(item.ItemId, item.IsHQ, quantity, playerKey);
+                            isChange = true;
+                            _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", item.ItemId, item.IsHQ, quantity, player));
+                        }
+                    }
+
+                    //check for loot list
+                } else if(type == XivChatType.SystemMessage) {
+                    Match m = LootListRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                    if(m.Success) {
+                        //todo make this work for all languages...
+                        bool isNumber = Regex.IsMatch(m.Value, @"\d+");
+                        int quantity = isNumber ? int.Parse(m.Value) : 1;
+                        var item = (ItemPayload?)message.Payloads.FirstOrDefault(m => m is ItemPayload);
+                        AddLootResults(item.ItemId, item.IsHQ, quantity);
+                        isChange = true;
+                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", item.ItemId, item.IsHQ, quantity));
+                    }
+
                     //check for failure
                 } else if(((int)type == 2233 || (int)type == 2105) && CurrentDuty!.FailureCheckpoint!.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
                     CurrentDutyResults!.IsComplete = true;
@@ -459,7 +552,16 @@ namespace MapPartyAssist.Services {
                 var nextCheckpoint = CurrentDuty!.Checkpoints![CurrentDutyResults!.CheckpointResults.Count];
                 if(((int)type == 2233 || (int)type == 2105) && nextCheckpoint.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
                     _plugin.Log.Information($"Adding new checkpoint: {nextCheckpoint.Name}");
-                    CurrentDutyResults.CheckpointResults.Add(new CheckpointResults(nextCheckpoint, true));
+                    CurrentDutyResults.CheckpointResults.Add(new() {
+                        Checkpoint = nextCheckpoint,
+                        IsReached = true,
+                        LootResults = new(),
+                    });
+                    if(CurrentDutyResults.CheckpointResults.Count > 0 && _firstLootResults.Count > 0) {
+                        LastCheckpoint!.LootResults = _firstLootResults;
+                        _firstLootResults = new();
+                    }
+
                     //if all checkpoints reached, set to duty complete
                     if(CurrentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == CurrentDuty.Checkpoints!.Count) {
                         CurrentDutyResults.IsComplete = true;
@@ -541,11 +643,36 @@ namespace MapPartyAssist.Services {
                 SummonType = summon,
                 MonsterName = monsterName,
                 IsSaved = isSaved,
-                IsReached = true
+                IsReached = true,
+                LootResults = new(),
             });
+            if(CurrentDutyResults.CheckpointResults.Count > 0 && _firstLootResults.Count > 0) {
+                LastCheckpoint!.LootResults = _firstLootResults;
+                _firstLootResults = new();
+            }
 
             //(CheckpointResults[size].Checkpoint as RouletteCheckpoint).SummonType = summon;
             //(CheckpointResults[size].Checkpoint as RouletteCheckpoint).Enemy = enemy;
+        }
+
+        private void AddLootResults(uint itemId, bool isHQ, int quantity, string? recipient = null) {
+            var matchingLootResults = CurrentDutyResults!.GetMatchingLootResult(itemId, isHQ, quantity);
+            if(matchingLootResults is null) {
+                LootResult lootResult = new() {
+                    Time = DateTime.Now,
+                    ItemId = itemId,
+                    IsHQ = isHQ,
+                    Quantity = quantity,
+                    Recipient = recipient,
+                };
+                if(LastCheckpoint is null) {
+                    _firstLootResults.Add(lootResult);
+                } else {
+                    LastCheckpoint.LootResults.Add(lootResult);
+                }
+            } else {
+                matchingLootResults.Recipient = recipient;
+            }
         }
 
         private void EndCurrentDuty() {
@@ -558,6 +685,7 @@ namespace MapPartyAssist.Services {
                 //check for malformed/missing data
                 ValidateUpdateDutyResults(CurrentDutyResults);
                 CurrentDutyResults = null;
+                _firstLootResults = new();
                 _plugin.Save();
             }
         }

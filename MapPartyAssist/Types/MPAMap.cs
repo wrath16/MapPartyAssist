@@ -1,8 +1,10 @@
 ﻿using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Utility;
 using LiteDB;
 using MapPartyAssist.Types.Attributes;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 
 namespace MapPartyAssist.Types {
     [ValidatedDataType]
@@ -28,6 +30,8 @@ namespace MapPartyAssist.Types {
         public bool IsArchived { get; set; }
         [BsonIgnore]
         public SeString? MapLink { get; set; }
+        public List<LootResult>? LootResults { get; set; }
+
         //this will cause a circular ref with DutyResults -_-
         //[BsonRef("dutyresults")]
         [JsonIgnore]
@@ -71,6 +75,22 @@ namespace MapPartyAssist.Types {
                 return Id.Equals(other.Id);
             }
         }
+
+        //finds the first loot result with no recipient yet for the given itemId
+        public LootResult? GetMatchingLootResult(uint itemId, bool isHQ, int quantity) {
+            if(LootResults is null) {
+                throw new InvalidOperationException("Loot results not initialized!");
+            }
+            foreach(var lootResult in LootResults) {
+                if(!lootResult.Recipient.IsNullOrEmpty()) {
+                    continue;
+                }
+                if(lootResult.ItemId == itemId && lootResult.IsHQ == isHQ && lootResult.Quantity == quantity) {
+                    return lootResult;
+                }
+            }
+            return null;
+        }
     }
 
     enum MapType {
@@ -85,10 +105,15 @@ namespace MapPartyAssist.Types {
         Dragonskin,
         Gaganaskin,
         Gazelleskin,
+        Thief,
+        SeeminglySpecial,
         Gliderskin,
         Zonureskin,
+        OstensiblySpecial,
         Saigaskin,
         Kumbhiraskin,
         Ophiotauroskin,
+        PotentiallySpecial,
+        ConceivablySpecial
     }
 }

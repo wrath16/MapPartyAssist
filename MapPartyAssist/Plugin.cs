@@ -13,6 +13,7 @@ using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
+using MapPartyAssist.Helper;
 using MapPartyAssist.Services;
 using MapPartyAssist.Settings;
 using MapPartyAssist.Types;
@@ -57,6 +58,7 @@ namespace MapPartyAssist {
         internal IChatGui ChatGui { get; init; }
         private IGameGui GameGui { get; init; }
         private IFramework Framework { get; init; }
+        internal IAddonLifecycle AddonLifecycle { get; init; }
         internal IPluginLog Log { get; init; }
 
         //Custom services
@@ -77,8 +79,8 @@ namespace MapPartyAssist {
 #if DEBUG
         private TestFunctionWindow TestFunctionWindow;
 #endif
-        public bool PrintAllMessages { get; set; } = false;
-        public bool PrintPayloads { get; set; } = false;
+        internal bool PrintAllMessages { get; set; } = false;
+        internal bool PrintPayloads { get; set; } = false;
 
 
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
@@ -98,6 +100,7 @@ namespace MapPartyAssist {
             [RequiredVersion("1.0")] IChatGui chatGui,
             [RequiredVersion("1.0")] IGameGui gameGui,
             [RequiredVersion("1.0")] IFramework framework,
+            [RequiredVersion("1.0")] IAddonLifecycle addonLifecycle,
             [RequiredVersion("1.0")] IPluginLog log) {
             try {
                 PluginInterface = pluginInterface;
@@ -110,7 +113,10 @@ namespace MapPartyAssist {
                 ChatGui = chatGui;
                 GameGui = gameGui;
                 Framework = framework;
+                AddonLifecycle = addonLifecycle;
                 Log = log;
+
+                AtkNodeHelper.Log = Log;
 
                 Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
@@ -422,7 +428,7 @@ namespace MapPartyAssist {
         public Task Save() {
             Configuration.Save();
             //performance reasons...
-            return Task.Run(async() => {
+            return Task.Run(async () => {
                 try {
                     await _saveLock.WaitAsync();
                     Task statsWindowTask = StatsWindow.Refresh();
@@ -451,13 +457,13 @@ namespace MapPartyAssist {
             bool isPlural = column.Equals("Plural", StringComparison.OrdinalIgnoreCase);
 
             if(!IsLanguageSupported(destinationLanguage) || !IsLanguageSupported(originLanguage)) {
-                throw new InvalidOperationException("Cannot translate to/from an unsupported client language.");
+                throw new ArgumentException("Cannot translate to/from an unsupported client language.");
             }
 
             //check to make sure column is string
-            var columnProperty = type.GetProperty(column) ?? throw new InvalidOperationException($"No property of name: {column} on type {type.FullName}");
+            var columnProperty = type.GetProperty(column) ?? throw new ArgumentException($"No property of name: {column} on type {type.FullName}");
             if(!columnProperty.PropertyType.IsAssignableTo(typeof(Lumina.Text.SeString))) {
-                throw new InvalidOperationException($"property {column} of type {columnProperty.PropertyType.FullName} on type {type.FullName} is not assignable to a SeString!");
+                throw new ArgumentException($"property {column} of type {columnProperty.PropertyType.FullName} on type {type.FullName} is not assignable to a SeString!");
             }
 
             //iterate over table to find rowId
@@ -477,11 +483,11 @@ namespace MapPartyAssist {
                 }
             }
 
-            rowId = rowId ?? throw new InvalidOperationException($"'{data}' not found in table: {type.Name} for language: {originLanguage}.");
+            rowId = rowId ?? throw new ArgumentException($"'{data}' not found in table: {type.Name} for language: {originLanguage}.");
 
             //get data from destinationLanguage
             var translatedRow = DataManager.GetExcelSheet<T>(destinationLanguage)!.Where(r => r.RowId == rowId).FirstOrDefault();
-            string? translatedString = columnProperty!.GetValue(translatedRow)?.ToString() ?? throw new InvalidOperationException($"row id {rowId} not found in table {type.Name} for language: {destinationLanguage}");
+            string? translatedString = columnProperty!.GetValue(translatedRow)?.ToString() ?? throw new ArgumentException($"row id {rowId} not found in table {type.Name} for language: {destinationLanguage}");
 
             //add German declensions. Assume nominative case
             if(destinationLanguage == ClientLanguage.German) {
@@ -497,7 +503,7 @@ namespace MapPartyAssist {
 
         //assumes nominative case
         //male = 0, female = 1, neuter = 2
-        private string ReplaceGermanDeclensionPlaceholders(string input, int gender, bool isPlural) {
+        private static string ReplaceGermanDeclensionPlaceholders(string input, int gender, bool isPlural) {
             if(isPlural) {
                 input = input.Replace("[a]", "e");
             }
@@ -516,6 +522,40 @@ namespace MapPartyAssist {
             //remove possessive placeholder
             input = input.Replace("[p]", "");
             return input;
+        }
+
+        public uint? GetRowId<T>(string data, string column, ClientLanguage? language = null) where T : ExcelRow {
+            language ??= ClientState.ClientLanguage;
+            Type type = typeof(T);
+            bool isPlural = column.Equals("Plural", StringComparison.OrdinalIgnoreCase);
+
+            if(!IsLanguageSupported(language)) {
+                throw new ArgumentException($"Unsupported language: {language}");
+            }
+
+            //check to make sure column is string
+            var columnProperty = type.GetProperty(column) ?? throw new ArgumentException($"No property of name: {column} on type {type.FullName}");
+            if(!columnProperty.PropertyType.IsAssignableTo(typeof(Lumina.Text.SeString))) {
+                throw new ArgumentException($"property {column} of type {columnProperty.PropertyType.FullName} on type {type.FullName} is not assignable to a SeString!");
+            }
+
+            //iterate over table to find rowId
+            foreach(var row in DataManager.GetExcelSheet<T>((ClientLanguage)language)!) {
+                var rowData = columnProperty!.GetValue(row)?.ToString();
+
+                //German declension placeholder replacement
+                if(language == ClientLanguage.German && rowData != null) {
+                    var pronounProperty = type.GetProperty("Pronoun");
+                    if(pronounProperty != null) {
+                        int pronoun = Convert.ToInt32(pronounProperty.GetValue(row))!;
+                        rowData = ReplaceGermanDeclensionPlaceholders(rowData, pronoun, isPlural);
+                    }
+                }
+                if(data.Equals(rowData, StringComparison.OrdinalIgnoreCase)) {
+                    return row.RowId;
+                }
+            }
+            return null;
         }
     }
 }

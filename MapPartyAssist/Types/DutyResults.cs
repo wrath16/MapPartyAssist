@@ -1,4 +1,5 @@
-﻿using LiteDB;
+﻿using Dalamud.Utility;
+using LiteDB;
 using MapPartyAssist.Types.Attributes;
 using Newtonsoft.Json;
 using System;
@@ -12,8 +13,8 @@ namespace MapPartyAssist.Types {
         [BsonId]
         [JsonIgnore]
         public ObjectId Id { get; set; }
+        //Version 2: loot results
         public int Version { get; set; } = 1;
-        //could replace these two properties with Duty object...
         public int DutyId { get; init; }
         public string DutyName { get; set; }
         public DateTime Time { get; init; }
@@ -46,6 +47,76 @@ namespace MapPartyAssist.Types {
             DutyId = dutyId;
             DutyName = dutyName.ToLower();
             Id = ObjectId.NewObjectId();
+        }
+
+        //finds the first loot result with no recipient yet for the given itemId
+        public LootResult? GetMatchingLootResult(uint itemId, bool isHQ, int quantity) {
+            //should all be chronologically 
+            foreach(var checkpointResult in CheckpointResults) {
+                if(checkpointResult.LootResults is not null) {
+                    foreach(var lootResult in checkpointResult.LootResults) {
+                        if(!lootResult.Recipient.IsNullOrEmpty()) {
+                            continue;
+                        }
+                        if(lootResult.ItemId == itemId && lootResult.IsHQ == isHQ && lootResult.Quantity == quantity) {
+                            return lootResult;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        public bool HasLootResults() {
+            foreach(var cpr in CheckpointResults) {
+                if(cpr.LootResults is not null) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public List<LootResult> GetSummarizeLootResults(bool separateHQ = false) {
+            if(separateHQ) {
+                return GetSummarizeLootResultsWithQuality().OrderByDescending(l => l.Quantity).ToList();
+            }
+
+            Dictionary<uint, LootResult> consolidatedResults = new();
+            foreach(var checkpointResult in CheckpointResults) {
+                if(checkpointResult.LootResults is not null) {
+                    foreach(var lr in checkpointResult.LootResults) {
+                        if(consolidatedResults.ContainsKey(lr.ItemId)) {
+                            consolidatedResults[lr.ItemId].Quantity += lr.Quantity;
+                        } else {
+                            consolidatedResults.Add(lr.ItemId, lr);
+                        }
+                    }
+                }
+            }
+            return consolidatedResults.Values.OrderByDescending(l => l.Quantity).ToList();
+        }
+
+        public List<LootResult> GetSummarizeLootResultsWithQuality() {
+            List<LootResult> summarizedResults = new();
+            foreach(var checkpointResult in CheckpointResults) {
+                if(checkpointResult.LootResults is not null) {
+                    foreach(var lootResult in checkpointResult.LootResults) {
+                        //find item with quality
+                        bool isFound = false;
+                        foreach(var summarizedResult in summarizedResults) {
+                            if(summarizedResult.ItemId == lootResult.ItemId && summarizedResult.IsHQ == lootResult.IsHQ) {
+                                summarizedResult.Quantity += lootResult.Quantity;
+                                isFound = true;
+                                break;
+                            }
+                        }
+                        if(!isFound) {
+                            summarizedResults.Add(lootResult);
+                        }
+                    }
+                }
+            }
+            return summarizedResults;
         }
     }
 }

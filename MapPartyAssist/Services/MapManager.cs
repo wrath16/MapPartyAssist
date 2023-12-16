@@ -1,9 +1,13 @@
 ﻿using Dalamud;
+using Dalamud.Game.Addon.Lifecycle;
+using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.GeneratedSheets;
+using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
@@ -17,6 +21,7 @@ namespace MapPartyAssist.Services {
     //internal service for managing treasure maps and map links
     internal class MapManager : IDisposable {
         public string LastMapPlayerKey { get; private set; } = "";
+        internal MPAMap? LastMap { get; private set; }
         public string StatusMessage { get; set; } = "";
         public StatusLevel Status { get; set; } = StatusLevel.OK;
 
@@ -40,6 +45,7 @@ namespace MapPartyAssist.Services {
         private int _candidateCount;
         private DateTime _lastMapTime = DateTime.UnixEpoch;
         private DateTime _portalBlockUntil = DateTime.UnixEpoch;
+        private bool _boundByMapDuty;
 
         //LogMessage: 3778
         private static readonly Dictionary<ClientLanguage, Regex> EnterPortalRegex = new() {
@@ -103,10 +109,21 @@ namespace MapPartyAssist.Services {
             { ClientLanguage.Japanese, new Regex(@"", RegexOptions.IgnoreCase) }
         };
 
+        //Addon: 2276, 8107
+        private static readonly Dictionary<ClientLanguage, Regex> TreasureHuntRegex = new() {
+            { ClientLanguage.English, new Regex(@"^Treasure Hunt$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"^Chasse aux trésors$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"^Schatz-suche$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"^トレジャーハント$", RegexOptions.IgnoreCase) }
+        };
+
         public MapManager(Plugin plugin) {
             _plugin = plugin;
             _plugin.ChatGui.ChatMessage += OnChatMessage;
             _plugin.ClientState.TerritoryChanged += OnTerritoryChanged;
+            _plugin.AddonLifecycle.RegisterListener(AddonEvent.PreUpdate, "_ToDoList", CheckForTreasureHunt);
+
+
             ResetDigStatus();
         }
 
@@ -116,13 +133,41 @@ namespace MapPartyAssist.Services {
 #endif
             _plugin.ChatGui.ChatMessage -= OnChatMessage;
             _plugin.ClientState.TerritoryChanged -= OnTerritoryChanged;
+            _plugin.AddonLifecycle.UnregisterListener(CheckForTreasureHunt);
         }
 
         private void OnTerritoryChanged(ushort territoryId) {
             ResetDigStatus();
         }
 
+        private DateTime _lastChecked;
+        private unsafe void CheckForTreasureHunt(AddonEvent type, AddonArgs args) {
+            //_plugin.Log.Debug("pre refresh todolist!");
+            var addon = (AtkUnitBase*)args.Addon;
+            var dutyTimerNode = AtkNodeHelper.GetNodeByIDChain(addon, new uint[] { 1, 4, 5 });
+            var dutyNameNode = AtkNodeHelper.GetNodeByIDChain(addon, new uint[] { 1, 4, 3 });
+            var baseNode = addon->GetNodeById(4);
+            var dutyName = dutyNameNode->GetAsAtkTextNode()->NodeText.ToString();
+            //var rowId = _plugin.GetRowId<Addon>(dutyNameNode->GetAsAtkTextNode()->NodeText.ToString(), "Text");
+
+            if(baseNode->IsVisible && TreasureHuntRegex[_plugin.ClientState.ClientLanguage].IsMatch(dutyName)) {
+                if(!_boundByMapDuty) {
+                    _plugin.Log.Verbose($"Bound by map duty!");
+                }
+                _boundByMapDuty = true;
+            } else if(_boundByMapDuty) {
+                _plugin.Log.Verbose($"No longer bound by map duty!");
+                _boundByMapDuty = false;
+            }
+
+            if((DateTime.Now - _lastChecked).TotalSeconds > 10) {
+                _lastChecked = DateTime.Now;
+                //_plugin.Log.Debug($"visible: {baseNode->IsVisible} dutyName: {dutyNameNode->GetAsAtkTextNode()->NodeText.ToString()} rowId: {rowId}");
+            }
+        }
+
         private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled) {
+            bool isChange = false;
             bool newMapFound = false;
             bool isPortal = false;
             string key = "";
@@ -159,7 +204,7 @@ namespace MapPartyAssist.Services {
                             mapType = "";
                         }
                     }
-                    key = $"{_plugin.ClientState.LocalPlayer!.Name} {_plugin.ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
+                    key = _plugin.GetCurrentPlayer();
                     //_lastMapTime = messageTime;
                     //clear dig info just in case to prevent double-counting map if another player uses dig at the same time
                     ResetDigStatus();
@@ -233,6 +278,77 @@ namespace MapPartyAssist.Services {
                     _plugin.StorageManager.UpdatePlayer(_plugin.CurrentPartyList[key]);
                     _plugin.Save();
                 }
+            } else if(_boundByMapDuty) {
+                //gil
+                if((int)type == 62) {
+                    Match m = DutyManager.GilObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                    if(m.Success) {
+                        string parsedGilString = m.Value.Replace(",", "").Replace(".", "").Replace(" ", "");
+                        int gil = int.Parse(parsedGilString);
+                        AddLootResults(1, false, gil, _plugin.GetCurrentPlayer());
+                        isChange = true;
+                    }
+                    //self loot obtained
+                } else if((int)type == 2110) {
+                    Match quantityMatch = DutyManager.SelfObtainedQuantityRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                    if(quantityMatch.Success) {
+                        //todo make this work for all languages...
+                        bool isNumber = Regex.IsMatch(quantityMatch.Value, @"\d+");
+                        int quantity = isNumber ? int.Parse(quantityMatch.Value.Replace(",", "").Replace(".", "")) : 1;
+                        var player = _plugin.GetCurrentPlayer();
+                        var item = (ItemPayload?)message.Payloads.FirstOrDefault(m => m is ItemPayload);
+                        if(item is not null) {
+                            AddLootResults(item.ItemId, item.IsHQ, quantity, player);
+                            isChange = true;
+                            _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", item.ItemId, item.IsHQ, quantity, player));
+                        } else {
+                            //tomestones...
+                            Match itemMatch = DutyManager.SelfObtainedItemRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                            if(itemMatch.Success) {
+                                var rowId = quantity != 1 ? _plugin.GetRowId<Item>(itemMatch.Value, "Plural") : _plugin.GetRowId<Item>(itemMatch.Value, "Singular");
+                                if(rowId is not null) {
+                                    AddLootResults((uint)rowId, false, quantity, player);
+                                    isChange = true;
+                                } else {
+                                    _plugin.Log.Warning($"Cannot find rowId for {itemMatch.Value}");
+                                }
+                            }
+                        }
+                    }
+                    //party member loot obtained
+                } else if((int)type == 8254) {
+                    Match m = DutyManager.PartyMemberObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                    if(m.Success) {
+                        //todo make this work for all languages...
+                        bool isNumber = Regex.IsMatch(m.Value, @"\d+");
+                        int quantity = isNumber ? int.Parse(m.Value.Replace(",", "").Replace(".", "")) : 1;
+                        var player = (PlayerPayload?)message.Payloads.FirstOrDefault(m => m is PlayerPayload);
+                        var playerKey = $"{player.PlayerName} {player.World.Name}";
+                        var item = (ItemPayload?)message.Payloads.FirstOrDefault(m => m is ItemPayload);
+                        if(item is not null) {
+                            AddLootResults(item.ItemId, item.IsHQ, quantity, playerKey);
+                            isChange = true;
+                            _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", item.ItemId, item.IsHQ, quantity, player));
+                        }
+                    }
+
+                    //check for loot list
+                } else if(type == XivChatType.SystemMessage) {
+                    Match m = DutyManager.LootListRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                    if(m.Success) {
+                        //todo make this work for all languages...
+                        bool isNumber = Regex.IsMatch(m.Value, @"\d+");
+                        int quantity = isNumber ? int.Parse(m.Value) : 1;
+                        var item = (ItemPayload?)message.Payloads.FirstOrDefault(m => m is ItemPayload);
+                        AddLootResults(item.ItemId, item.IsHQ, quantity);
+                        isChange = true;
+                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", item.ItemId, item.IsHQ, quantity));
+                    }
+                }
+                if(isChange && LastMap != null) {
+                    //very first map...?
+                    _plugin.StorageManager.UpdateMap(LastMap);
+                }
             }
 
             if(newMapFound && _plugin.CurrentPartyList.Count > 0) {
@@ -261,7 +377,8 @@ namespace MapPartyAssist.Services {
                 Owner = player.Key,
                 Zone = zone,
                 IsManual = isManual,
-                IsPortal = isPortal
+                IsPortal = isPortal,
+                LootResults = new(),
             };
             player.MapLink = null;
             LastMapPlayerKey = player.Key;
@@ -270,6 +387,7 @@ namespace MapPartyAssist.Services {
             //add to DB
             _plugin.StorageManager.AddMap(newMap);
             _plugin.StorageManager.UpdatePlayer(player);
+            LastMap = newMap;
             //Plugin.Save();
 
             ClearStatus();
@@ -442,6 +560,40 @@ namespace MapPartyAssist.Services {
 
         private void ClearStatus() {
             SetStatus("", StatusLevel.OK);
+        }
+
+        private void AddLootResults(uint itemId, bool isHQ, int quantity, string? recipient = null) {
+            //this is bad
+            if(LastMap is null) {
+                var lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().Last();
+                if(lastMap is null) {
+                    return;
+                }
+                LastMap = lastMap;
+            }
+
+            if(LastMap.LootResults is null) {
+                throw new InvalidOperationException("Unable to add loot result to map!");
+                //20 minute fallback
+            } else if((DateTime.Now - LastMap.Time).TotalMinutes > 20) {
+                //throw new InvalidOperationException("");
+                _plugin.Log.Warning("Last map time exceeded loot threshold window.");
+                return;
+            }
+
+            var matchingLootResults = LastMap.GetMatchingLootResult(itemId, isHQ, quantity);
+            if(matchingLootResults is null) {
+                LootResult lootResult = new() {
+                    Time = DateTime.Now,
+                    ItemId = itemId,
+                    IsHQ = isHQ,
+                    Quantity = quantity,
+                    Recipient = recipient,
+                };
+                LastMap.LootResults.Add(lootResult);
+            } else {
+                matchingLootResults.Recipient = recipient;
+            }
         }
     }
 }

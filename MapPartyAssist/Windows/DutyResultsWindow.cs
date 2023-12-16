@@ -5,6 +5,7 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
 using LiteDB;
+using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
@@ -26,6 +27,7 @@ namespace MapPartyAssist.Windows {
 
         private Plugin _plugin;
         private List<DutyResults> _dutyResults = new();
+        private Dictionary<ObjectId, List<LootResult>> _lootResults = new();
         private int _currentPage = 0;
         private bool _collapseAll = false;
         private DutyRange _dutyRange = DutyRange.All;
@@ -55,13 +57,14 @@ namespace MapPartyAssist.Windows {
         }
 
         internal Task Refresh(int? pageIndex = null) {
-            return Task.Run(async() => {
+            return Task.Run(async () => {
                 try {
                     await _refreshLock.WaitAsync();
                     _collapseAll = true;
                     //null index = stay on same page
                     pageIndex ??= _currentPage;
                     _currentPage = (int)pageIndex;
+                    _lootResults = new();
 
                     //better performance to filter on DB than use LINQ due to indexing
                     _dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map)
@@ -93,6 +96,21 @@ namespace MapPartyAssist.Windows {
                             }
                             return allMatch;
                         }).Skip(_currentPage * 100).Take(100).ToList();
+
+                    //calculate loot results
+                    foreach(var dr in _dutyResults) {
+                        _lootResults.Add(dr.Id, dr.GetSummarizeLootResults());
+                    }
+                    //set item names. this is an expensive operation!
+                    foreach(var lootresultList in _lootResults.Values) {
+                        foreach(var lr in lootresultList) {
+                            var row = _plugin.DataManager.GetExcelSheet<Item>()?.First(r => r.RowId == lr.ItemId);
+                            bool isPlural = lr.Quantity > 1;
+                            if(row is not null) {
+                                lr.ItemName = isPlural ? row.Plural : row.Singular;
+                            }
+                        }
+                    }
                 } finally {
                     _refreshLock.Release();
                 }
@@ -254,6 +272,24 @@ namespace MapPartyAssist.Windows {
                             summonCheckpoints[i].SummonType = (Summon)summonIndex;
                         }
                     }
+                }
+
+                if(dutyResults.HasLootResults()) {
+                    ImGui.BeginTable($"##{dutyResults.Id}--Loot", 2, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip);
+                    ImGui.TableSetupColumn($"quantity", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
+                    ImGui.TableSetupColumn("item", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 158f);
+                    ImGui.TableNextRow();
+
+                    foreach(var lr in _lootResults[dutyResults.Id]) {
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{lr.Quantity}");
+                        ImGui.TableNextColumn();
+                        bool isPlural = lr.Quantity > 1;
+                        //var row = _plugin.DataManager.GetExcelSheet<Item>().First(r => r.RowId == lr.ItemId);
+                        //ImGui.Text($"{(isPlural ? row.Plural : row.Singular)}");
+                        ImGui.Text($"{lr.ItemName}");
+                    }
+                    ImGui.EndTable();
                 }
             }
         }
