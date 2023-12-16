@@ -6,8 +6,7 @@ Tool for automatically keeping track of treasure maps opened by players in your 
 
 ## Installation
 
-1. Add "https://raw.githubusercontent.com/wrath16/DalamudPluginRepo/main/pluginmaster.json" to your Custom Plugin Repositories under Settings -> Experimental, then save.
-2. Plugin should now appear in the available plugins list and be installable.
+1. Now available in the main Dalamud repository. No extra action needed!
 
 ## Usage instructions 
 
@@ -27,10 +26,10 @@ Tool for automatically keeping track of treasure maps opened by players in your 
 * The "Current" filter only includes duties resulting from maps currently recorded on the main window.
 
 ### Important notes:
-* Only works with the client language set to English.
+* Only works with the international client languages (EN/JP/FR/DE).
 * The plugin primarily works by parsing system chat messages. Sometimes it isn't always possible to know exactly who owns a map and the tracker can make mistakes (known cases are listed below), so stay vigilant and correct mistakes as necessary.
-* You can use '/mpartydutyresults' to amend the results of a dungeon in the case of a mistake by the tracker or you miss a checkpoint due to a disconnect. Do so at your own risk!
-* Use imports to add alternatively-recorded stats when the plugin is unavailable!
+* You can use '/mpartydutyresults' to amend the results of a dungeon in the case of a mistake by the tracker or you miss a checkpoint due to a disconnect. Do so at your own risk of creating inaccurate data!
+* Use imports to add stats that were recorded when the plugin is unavailable!
 
 ## Known issues:
 
