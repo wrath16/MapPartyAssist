@@ -66,6 +66,7 @@ namespace MapPartyAssist {
         internal MapManager MapManager { get; init; }
         internal StorageManager StorageManager { get; init; }
         internal ImportManager ImportManager { get; init; }
+        internal DataQueueService DataQueue { get; init; }
 
         public Configuration Configuration { get; init; }
         internal GameFunctions Functions { get; init; }
@@ -131,6 +132,7 @@ namespace MapPartyAssist {
                 DutyManager = new DutyManager(this);
                 MapManager = new MapManager(this);
                 ImportManager = new ImportManager(this);
+                DataQueue = new();
 
                 //needs DutyManager to be initialized first
                 Configuration.Initialize(this);

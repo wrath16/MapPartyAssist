@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 
 namespace MapPartyAssist.Helper {
-    internal class AtkNodeHelper {
+    internal static class AtkNodeHelper {
         internal static IPluginLog? Log;
 
         internal static unsafe AtkResNode* GetNodeByIDChain(string addon, params uint[] ids) {

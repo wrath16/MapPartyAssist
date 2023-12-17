@@ -2,8 +2,11 @@
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using ImGuiNET;
+using MapPartyAssist.Helper;
 using MapPartyAssist.Settings;
 using MapPartyAssist.Types;
+using MapPartyAssist.Windows.Filter;
+using MapPartyAssist.Windows.Summary;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -40,12 +43,15 @@ namespace MapPartyAssist.Windows {
         private string _partyMemberFilter = "";
         private string _ownerFilter = "";
 
+        private LootSummary _lootSummary;
+        private List<DataFilter> _filters = new();
+
         private SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
 
-        internal StatsWindow(Plugin plugin) : base("Treasure Dungeon Stats") {
+        internal StatsWindow(Plugin plugin) : base("Treasure Map Statistics") {
             SizeConstraints = new WindowSizeConstraints {
-                MinimumSize = new Vector2(300, 50),
-                MaximumSize = new Vector2(600, 1000)
+                MinimumSize = new Vector2(300, 400),
+                MaximumSize = new Vector2(800, 1000)
             };
             _plugin = plugin;
             _viewImportsWindow = new ViewDutyResultsImportsWindow(plugin, this);
@@ -61,6 +67,19 @@ namespace MapPartyAssist.Windows {
             for(int i = 0; i < _dutyIdCombo.Length; i++) {
                 _dutyNameCombo[i] = _plugin.DutyManager.Duties[_dutyIdCombo[i]].GetDisplayName();
             }
+
+            _filters.Add(new MapFilter(plugin, Refresh2));
+            _filters.Add(new DutyFilter(plugin, Refresh2));
+            _filters.Add(new TimeFilter(plugin, Refresh2));
+            _filters.Add(new OwnerFilter(plugin, Refresh2));
+            _filters.Add(new PartyMemberFilter(plugin, Refresh2));
+            _lootSummary = new(plugin);
+            //_lootSummary.Refresh(_dutyResults);
+            _plugin.DataQueue.QueueDataOperation(Refresh2);
+        }
+
+        public void Refresh2() {
+            _lootSummary.Refresh(_filters);
         }
 
         public Task Refresh() {
@@ -120,6 +139,7 @@ namespace MapPartyAssist.Windows {
                     }
                     await _viewImportsWindow.Refresh();
                     await _lootResultsWindow.Refresh(_dutyResults);
+                    _lootSummary.Refresh(_filters);
                 } finally {
                     _refreshLock.Release();
                 }
@@ -133,49 +153,101 @@ namespace MapPartyAssist.Windows {
         }
 
         public override void Draw() {
-            if(ImGui.Combo($"Duty##DutyCombo", ref _selectedDuty, _dutyNameCombo, _dutyNameCombo.Length)) {
-                _dutyId = _dutyIdCombo[_selectedDuty];
-                //UpdateDutyResults();
-                _plugin.Save();
-            }
-            int statRangeToInt = (int)_statRange;
-            if(ImGui.Combo($"Data Range##includesCombo", ref statRangeToInt, _rangeCombo, _rangeCombo.Length)) {
-                _statRange = (StatRange)statRangeToInt;
-                //UpdateDutyResults();
-                _plugin.Save();
-            }
-            if(_plugin.Configuration.ShowAdvancedFilters) {
-                if(ImGui.InputText($"Map Owner", ref _ownerFilter, 50)) {
-                    _plugin.Save();
-                }
-                if(ImGui.InputText($"Party Members", ref _partyMemberFilter, 100)) {
-                    _plugin.Save();
-                }
-            }
+            //draw filters
+            //ImGui.BeginChild($"filterChild##{GetHashCode()}", new Vector2(ImGui.GetWindowPos().X, 150f * ImGuiHelpers.GlobalScale));
+            //if(ImGui.BeginChild($"filterChild##{GetHashCode()}", new Vector2(ImGui.GetWindowPos().X, 150f * ImGuiHelpers.GlobalScale))) {
 
-            if(_statRange == StatRange.AllLegacy) {
-                if(ImGui.Button("Manage Imports")) {
-                    if(!_viewImportsWindow.IsOpen) {
-                        _viewImportsWindow.Position = new Vector2(ImGui.GetWindowPos().X + 50f * ImGuiHelpers.GlobalScale, ImGui.GetWindowPos().Y + 50f * ImGuiHelpers.GlobalScale);
-                        _viewImportsWindow.IsOpen = true;
+            //    ImGui.EndChild();
+            //}
+
+            ImGui.BeginChild("FilterChild", new Vector2(ImGui.GetContentRegionAvail().X,  float.Max(180, ImGui.GetWindowHeight() / 3.2f)), true, ImGuiWindowFlags.AlwaysAutoResize);
+
+            if(ImGui.BeginTable("FilterTable", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.BordersInnerH)) {
+                ImGui.BeginTable("FilterTable", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.BordersInner);
+                ImGui.TableSetupColumn("filterName", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 110f);
+                ImGui.TableSetupColumn($"filters", ImGuiTableColumnFlags.WidthStretch);
+                //ImGui.TableNextRow();
+
+                foreach(var filter in _filters) {
+                    ImGui.TableNextColumn();
+
+                    if(filter.HelpMessage != null) {
+                        ImGui.AlignTextToFramePadding();
+                        ImGuiHelper.HelpMarker(filter.HelpMessage);
+                        ImGui.SameLine();
                     }
-                    _viewImportsWindow.BringToFront();
+                    //ImGui.GetStyle().FramePadding.X = ImGui.GetStyle().FramePadding.X - 2f;
+                    string nameText = $"{filter.Name}:";
+                    ImGuiHelper.RightAlignCursor(nameText);
+                    ImGui.AlignTextToFramePadding();
+                    ImGui.Text($"   {nameText}");
+                    //ImGui.GetStyle().FramePadding.X = ImGui.GetStyle().FramePadding.X + 2f;
+                    ImGui.TableNextColumn();
+                    filter.Draw();
                 }
+                ImGui.EndTable();
+            }
+            ImGui.EndChild();
+
+            if(ImGui.BeginTabBar("TabBar", ImGuiTabBarFlags.None)) {
+                if(ImGui.BeginTabItem("Treasure Dungeon Summary")) {
+                    if(ImGui.Combo($"Duty##DutyCombo", ref _selectedDuty, _dutyNameCombo, _dutyNameCombo.Length)) {
+                        _dutyId = _dutyIdCombo[_selectedDuty];
+                        //UpdateDutyResults();
+                        _plugin.Save();
+                    }
+                    int statRangeToInt = (int)_statRange;
+                    if(ImGui.Combo($"Data Range##includesCombo", ref statRangeToInt, _rangeCombo, _rangeCombo.Length)) {
+                        _statRange = (StatRange)statRangeToInt;
+                        //UpdateDutyResults();
+                        _plugin.Save();
+                    }
+                    if(_plugin.Configuration.ShowAdvancedFilters) {
+                        if(ImGui.InputText($"Map Owner", ref _ownerFilter, 50)) {
+                            _plugin.Save();
+                        }
+                        if(ImGui.InputText($"Party Members", ref _partyMemberFilter, 100)) {
+                            _plugin.Save();
+                        }
+                    }
+
+                    if(_statRange == StatRange.AllLegacy) {
+                        if(ImGui.Button("Manage Imports")) {
+                            if(!_viewImportsWindow.IsOpen) {
+                                _viewImportsWindow.Position = new Vector2(ImGui.GetWindowPos().X + 50f * ImGuiHelpers.GlobalScale, ImGui.GetWindowPos().Y + 50f * ImGuiHelpers.GlobalScale);
+                                _viewImportsWindow.IsOpen = true;
+                            }
+                            _viewImportsWindow.BringToFront();
+                        }
+                    }
+
+                    //todo these calculations should happen in same thread as refresh
+                    ProgressTable(_dutyResults, _dutyId);
+                    if(_plugin.DutyManager.Duties[_dutyId].Structure == DutyStructure.Roulette) {
+                        SummonTable(_dutyResults, _dutyId);
+                    }
+
+                    if(ImGui.Button("Loot")) {
+                        if(!_lootResultsWindow.IsOpen) {
+                            _lootResultsWindow.Position = new Vector2(ImGui.GetWindowPos().X + 50f * ImGuiHelpers.GlobalScale, ImGui.GetWindowPos().Y + 50f * ImGuiHelpers.GlobalScale);
+                            _lootResultsWindow.IsOpen = true;
+                        }
+                        _lootResultsWindow.BringToFront();
+                    }
+                    ImGui.EndTabItem();
+                }
+
+                if(ImGui.BeginTabItem("Loot Results")) {
+                    if(ImGui.BeginChild("LootResultsChild")) {
+                        _lootSummary.Draw();
+                        ImGui.EndChild();
+                    }
+                    ImGui.EndTabItem();
+                }
+
+                ImGui.EndTabBar();
             }
 
-            //todo these calculations should happen in same thread as refresh
-            ProgressTable(_dutyResults, _dutyId);
-            if(_plugin.DutyManager.Duties[_dutyId].Structure == DutyStructure.Roulette) {
-                SummonTable(_dutyResults, _dutyId);
-            }
-
-            if(ImGui.Button("Loot")) {
-                if(!_lootResultsWindow.IsOpen) {
-                    _lootResultsWindow.Position = new Vector2(ImGui.GetWindowPos().X + 50f * ImGuiHelpers.GlobalScale, ImGui.GetWindowPos().Y + 50f * ImGuiHelpers.GlobalScale);
-                    _lootResultsWindow.IsOpen = true;
-                }
-                _lootResultsWindow.BringToFront();
-            }
         }
 
         public override void PreDraw() {

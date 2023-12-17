@@ -379,6 +379,7 @@ namespace MapPartyAssist.Services {
                 IsManual = isManual,
                 IsPortal = isPortal,
                 LootResults = new(),
+                Players = _plugin.CurrentPartyList.Keys.ToArray(),
             };
             player.MapLink = null;
             LastMapPlayerKey = player.Key;

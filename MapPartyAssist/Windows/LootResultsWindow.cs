@@ -60,7 +60,6 @@ namespace MapPartyAssist.Windows {
         }
 
         public Task Refresh(List<DutyResults> dutyResults) {
-
             return Task.Run(async () => {
                 try {
                     await _refreshLock.WaitAsync();
