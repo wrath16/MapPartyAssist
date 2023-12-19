@@ -5,6 +5,7 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using ImGuiNET;
+using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using System;
 using System.Numerics;
@@ -214,7 +215,7 @@ namespace MapPartyAssist.Windows {
                         }
                     }
                     ImGui.TableNextColumn();
-                    ImGui.Text($"{StatsWindow.AddOrdinal(i + 1)} clear");
+                    ImGui.Text($"{StringHelper.AddOrdinal(i + 1)} clear");
                     ImGui.TableNextColumn();
                 }
 

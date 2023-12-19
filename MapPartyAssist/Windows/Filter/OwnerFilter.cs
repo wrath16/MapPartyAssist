@@ -2,12 +2,18 @@
 using System;
 
 namespace MapPartyAssist.Windows.Filter {
-    internal class OwnerFilter : DataFilter {
+    public class OwnerFilter : DataFilter {
         public override string Name => "Map Owner";
-        internal string Owner { get; private set; } = "";
+        public string Owner { get; set; } = "";
         private string _lastValue = "";
 
-        internal OwnerFilter(Plugin plugin, Action action) : base(plugin, action) {
+        public OwnerFilter() { }
+
+        internal OwnerFilter(Plugin plugin, Action action, OwnerFilter? filter = null) : base(plugin, action) {
+            if(filter is not null) {
+                Owner = filter.Owner;
+                _lastValue = Owner;
+            }
         }
 
         internal override void Draw() {

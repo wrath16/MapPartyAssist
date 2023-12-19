@@ -41,6 +41,7 @@ namespace MapPartyAssist.Settings {
         public bool EnableWhileSolo { get; set; } = true;
         public bool CurrentCharacterStatsOnly { get; set; } = false;
         public Dictionary<int, DutyConfiguration> DutyConfigurations { get; set; } = new();
+        public FilterConfiguration StatsWindowFilters { get; set; } = new();
         [Obsolete]
         public Dictionary<string, MPAMember> RecentPartyList { get; set; } = new();
         [Obsolete]

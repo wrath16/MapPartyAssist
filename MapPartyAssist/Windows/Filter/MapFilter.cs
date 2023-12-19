@@ -1,16 +1,19 @@
 ﻿using ImGuiNET;
-using MapPartyAssist.Types;
 using System;
-using static Lumina.Data.BaseFileHandle;
 
 namespace MapPartyAssist.Windows.Filter {
-    internal class MapFilter : DataFilter {
+    public class MapFilter : DataFilter {
         public override string Name => "Map";
 
-        internal bool IncludeMaps { get; private set; }
+        public bool IncludeMaps { get; set; }
 
-        internal MapFilter(Plugin plugin, Action action) : base(plugin, action) {
+        public MapFilter() { }
+
+        internal MapFilter(Plugin plugin, Action action, MapFilter? filter = null) : base(plugin, action) {
             IncludeMaps = true;
+            if(filter is not null) {
+                IncludeMaps = filter.IncludeMaps;
+            }
         }
 
         internal override void Draw() {

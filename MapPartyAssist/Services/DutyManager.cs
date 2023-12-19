@@ -389,6 +389,17 @@ namespace MapPartyAssist.Services {
             return null;
         }
 
+        internal string[] GetDutyNames(bool includeNone = false) {
+            List<string> dutyNames = new();
+            if(includeNone) {
+                dutyNames.Add("");
+            }
+            foreach(var duty in _plugin.DutyManager.Duties) {
+                dutyNames.Add(duty.Value.GetDisplayName());
+            }
+            return dutyNames.ToArray();
+        }
+
         //validate duty results and fill in missing data if possible
         private bool ValidateUpdateDutyResults(DutyResults dutyResults) {
             //check for no players

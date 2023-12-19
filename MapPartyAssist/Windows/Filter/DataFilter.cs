@@ -1,12 +1,19 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 
 namespace MapPartyAssist.Windows.Filter {
-    internal abstract class DataFilter {
+    public abstract class DataFilter {
 
-        protected Plugin _plugin;
-        public virtual string Name { get; }
+        protected Plugin? _plugin;
+        [JsonIgnore]
+        public virtual string Name => "";
+        [JsonIgnore]
         public virtual string? HelpMessage { get; }
-        private Action RefreshData { get; init; }
+        private Action? RefreshData { get; init; }
+
+        [JsonConstructor]
+        public DataFilter() {
+        }
 
         protected DataFilter(Plugin plugin, Action action) {
             _plugin = plugin;
@@ -15,6 +22,9 @@ namespace MapPartyAssist.Windows.Filter {
 
         internal void Refresh() {
             //_plugin.DataQueue.QueueDataOperation(() => RefreshData());
+            if(RefreshData is null) {
+                throw new InvalidOperationException("No refresh action initialized!");
+            }
             RefreshData();
         }
 

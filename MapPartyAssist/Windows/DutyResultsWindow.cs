@@ -6,6 +6,7 @@ using Dalamud.Interface.Windowing;
 using ImGuiNET;
 using LiteDB;
 using Lumina.Excel.GeneratedSheets;
+using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
@@ -267,7 +268,7 @@ namespace MapPartyAssist.Windows {
                     var summonCheckpoints = dutyResults.CheckpointResults.Where(cr => cr.Checkpoint.Name.StartsWith("Complete")).ToList();
                     for(int i = 0; i < summonCheckpoints.Count(); i++) {
                         int summonIndex = (int?)summonCheckpoints[i].SummonType ?? 3;
-                        if(ImGui.Combo($"{StatsWindow.AddOrdinal(i + 1)} Summon##{summonCheckpoints[i].GetHashCode()}-Summon", ref summonIndex, summons, summons.Length)) {
+                        if(ImGui.Combo($"{StringHelper.AddOrdinal(i + 1)} Summon##{summonCheckpoints[i].GetHashCode()}-Summon", ref summonIndex, summons, summons.Length)) {
                             dutyResults.IsEdited = true;
                             summonCheckpoints[i].SummonType = (Summon)summonIndex;
                         }

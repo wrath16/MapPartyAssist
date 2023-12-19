@@ -433,10 +433,10 @@ namespace MapPartyAssist {
             return Task.Run(async () => {
                 try {
                     await _saveLock.WaitAsync();
-                    Task statsWindowTask = StatsWindow.Refresh();
+                    StatsWindow.Refresh();
                     Task mainWindowTask = MainWindow.Refresh();
                     Task dutyResultsWindowTask = DutyResultsWindow.Refresh();
-                    Task.WaitAll(new[] { statsWindowTask, mainWindowTask, dutyResultsWindowTask });
+                    Task.WaitAll(new[] { mainWindowTask, dutyResultsWindowTask });
                 } finally {
                     _saveLock.Release();
                 }

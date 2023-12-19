@@ -1,22 +1,24 @@
 ﻿using ImGuiNET;
-using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
-using static Lumina.Data.BaseFileHandle;
 
 namespace MapPartyAssist.Windows.Filter {
-    internal partial class DutyFilter : DataFilter {
+    public class DutyFilter : DataFilter {
 
         public override string Name => "Duty";
 
-        internal Dictionary<int, bool> FilterState = new();
+        public Dictionary<int, bool> FilterState { get; set; } = new();
         internal bool AllSelected { get; private set; } = false;
 
-        //partial void Refresh();
+        internal DutyFilter() { }
 
-        internal DutyFilter(Plugin plugin, Action action) : base(plugin, action) {
+        internal DutyFilter(Plugin plugin, Action action, DutyFilter? filter = null) : base(plugin, action) {
+            _plugin = plugin;
             foreach(var duty in _plugin.DutyManager.Duties) {
                 FilterState.Add(duty.Key, true);
+                if(filter is not null && filter.FilterState.ContainsKey(duty.Key)) {
+                    FilterState[duty.Key] = filter.FilterState[duty.Key];
+                }
             }
             UpdateAllSelected();
         }
