@@ -37,8 +37,9 @@ namespace MapPartyAssist.Windows {
         internal StatsWindow(Plugin plugin) : base("Treasure Map Statistics") {
             SizeConstraints = new WindowSizeConstraints {
                 MinimumSize = new Vector2(300, 400),
-                MaximumSize = new Vector2(800, 1080)
+                MaximumSize = new Vector2(2000, 1080)
             };
+            Flags |= ImGuiWindowFlags.MenuBar;
             _plugin = plugin;
             _viewImportsWindow = new ViewDutyResultsImportsWindow(plugin, this);
             _viewImportsWindow.IsOpen = false;
@@ -182,6 +183,7 @@ namespace MapPartyAssist.Windows {
                 }
                 _lootSummary.Refresh(dutyResults, maps);
                 _dutySummary.Refresh(dutyResults, imports);
+                _viewImportsWindow.Refresh();
                 _plugin.Configuration.Save();
             } finally {
                 RefreshLock.Release();
@@ -200,6 +202,30 @@ namespace MapPartyAssist.Windows {
 
             //    ImGui.EndChild();
             //}
+            if(!ImGui.Begin(WindowName)) {
+                ImGui.End();
+                return;
+            }
+            ImGui.Begin(WindowName);
+
+            if(ImGui.BeginMenuBar()) {
+                if(ImGui.BeginMenu("Windows")) {
+                    if(ImGui.MenuItem("Map Tracker", null, _plugin.MainWindow.IsOpen)) {
+                        OpenMapWindow();
+                    }
+                    ImGui.EndMenu();
+                }
+                if(ImGui.BeginMenu("Options")) {
+                    if(ImGui.MenuItem("Manage Imports")) {
+                        OpenImportsWindow();
+                    }
+                    if(ImGui.MenuItem("Settings")) {
+                        OpenConfigWindow();
+                    }
+                    ImGui.EndMenu();
+                }
+                ImGui.EndMenuBar();
+            }
 
             ImGui.BeginChild("FilterChild", new Vector2(ImGui.GetContentRegionAvail().X, float.Max(ImGuiHelpers.GlobalScale * 150, ImGui.GetWindowHeight() / 4f)), true, ImGuiWindowFlags.AlwaysAutoResize);
 
@@ -210,6 +236,7 @@ namespace MapPartyAssist.Windows {
                 //ImGui.TableNextRow();
 
                 foreach(var filter in Filters) {
+                    //ImGui.PushStyleVar(ImGuiStyleVar.CellPadding, 4);
                     ImGui.TableNextColumn();
 
                     if(filter.HelpMessage != null) {
@@ -221,7 +248,9 @@ namespace MapPartyAssist.Windows {
                     string nameText = $"{filter.Name}:";
                     ImGuiHelper.RightAlignCursor(nameText);
                     ImGui.AlignTextToFramePadding();
-                    ImGui.Text($"   {nameText}");
+                    ImGui.SetCursorPosX(ImGui.GetCursorPosX() + float.Max(0, 16f - 4f * ImGuiHelpers.GlobalScale));
+                    ImGui.Text($"{nameText}");
+                    //ImGui.PopStyleVar();
                     //ImGui.GetStyle().FramePadding.X = ImGui.GetStyle().FramePadding.X + 2f;
                     ImGui.TableNextColumn();
                     if(filter.GetType() == typeof(TimeFilter)) {
@@ -260,6 +289,22 @@ namespace MapPartyAssist.Windows {
                 _viewImportsWindow.IsOpen = true;
             }
             _viewImportsWindow.BringToFront();
+        }
+
+        internal void OpenConfigWindow() {
+            if(!_plugin.ConfigWindow.IsOpen) {
+                _plugin.ConfigWindow.Position = new Vector2(ImGui.GetWindowPos().X + 50f * ImGuiHelpers.GlobalScale, ImGui.GetWindowPos().Y + 50f * ImGuiHelpers.GlobalScale);
+                _plugin.ConfigWindow.IsOpen = true;
+            }
+            _plugin.ConfigWindow.BringToFront();
+        }
+
+        internal void OpenMapWindow() {
+            if(!_plugin.MainWindow.IsOpen) {
+                _plugin.MainWindow.Position = new Vector2(ImGui.GetWindowPos().X + 50f * ImGuiHelpers.GlobalScale, ImGui.GetWindowPos().Y + 50f * ImGuiHelpers.GlobalScale);
+                _plugin.MainWindow.IsOpen = true;
+            }
+            _plugin.MainWindow.BringToFront();
         }
     }
 }

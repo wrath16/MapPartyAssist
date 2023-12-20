@@ -1,4 +1,5 @@
-﻿using ImGuiNET;
+﻿using Dalamud.Interface.Utility;
+using ImGuiNET;
 using System;
 using System.Collections.Generic;
 
@@ -43,8 +44,8 @@ namespace MapPartyAssist.Windows.Filter {
             }
 
             ImGui.BeginTable("dutyFilterTable", 2);
-            ImGui.TableSetupColumn($"c1", ImGuiTableColumnFlags.WidthStretch);
-            ImGui.TableSetupColumn($"c2", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn($"c1", ImGuiTableColumnFlags.WidthFixed, float.Min(ImGui.GetContentRegionAvail().X / 2, ImGuiHelpers.GlobalScale * 400f));
+            ImGui.TableSetupColumn($"c2", ImGuiTableColumnFlags.WidthFixed, float.Min(ImGui.GetContentRegionAvail().X / 2, ImGuiHelpers.GlobalScale * 400f));
             ImGui.TableNextRow();
 
             foreach(var duty in FilterState) {

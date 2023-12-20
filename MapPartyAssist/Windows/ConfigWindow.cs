@@ -16,6 +16,7 @@ namespace MapPartyAssist.Windows {
                 MinimumSize = new Vector2(300, 50),
                 MaximumSize = new Vector2(400, 800)
             };
+            PositionCondition = ImGuiCond.Appearing;
             _plugin = plugin;
         }
 

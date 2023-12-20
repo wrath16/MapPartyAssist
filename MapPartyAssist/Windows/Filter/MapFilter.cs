@@ -4,6 +4,7 @@ using System;
 namespace MapPartyAssist.Windows.Filter {
     public class MapFilter : DataFilter {
         public override string Name => "Map";
+        public override string HelpMessage => "It isn't always possible to tell what kind of map that has been used by a party member, \n so maps are grouped by zone/expansion.";
 
         public bool IncludeMaps { get; set; }
 

@@ -73,12 +73,12 @@ namespace MapPartyAssist {
 
         //UI
         internal WindowSystem WindowSystem = new("Map Party Assist");
-        private MainWindow MainWindow;
-        private StatsWindow StatsWindow;
-        private ConfigWindow ConfigWindow;
-        private DutyResultsWindow DutyResultsWindow;
+        internal MainWindow MainWindow;
+        internal StatsWindow StatsWindow;
+        internal ConfigWindow ConfigWindow;
+        internal DutyResultsWindow DutyResultsWindow;
 #if DEBUG
-        private TestFunctionWindow TestFunctionWindow;
+        internal TestFunctionWindow TestFunctionWindow;
 #endif
         internal bool PrintAllMessages { get; set; } = false;
         internal bool PrintPayloads { get; set; } = false;

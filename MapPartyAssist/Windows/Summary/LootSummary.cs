@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows.Summary {
     internal class LootSummary {
@@ -56,6 +57,7 @@ namespace MapPartyAssist.Windows.Summary {
         private Dictionary<LootResultKey, LootResultValue> _lootResults = new();
         private SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
         private bool _firstDraw;
+        public string LootCSV { get; private set; }
 
         internal LootSummary(Plugin plugin, StatsWindow statsWindow) {
             _plugin = plugin;
@@ -66,6 +68,7 @@ namespace MapPartyAssist.Windows.Summary {
             Dictionary<LootResultKey, LootResultValue> newLootResults = new();
             int newLootEligibleRuns = 0;
             int newLootEligibleMaps = 0;
+            string newLootCSV = "Category,Quality,Name,Dropped,Obtained\n";
 
             List<string> selfPlayers = new();
             _plugin.StorageManager.GetPlayers().Query().Where(p => p.IsSelf).ToList().ForEach(p => {
@@ -111,13 +114,14 @@ namespace MapPartyAssist.Windows.Summary {
                 }
             }
 
-            //set names and check for changes
+            //set names, set CSV and check for changes
             bool hasChange = newLootResults.Count != _lootResults.Count;
             foreach(var lootResult in newLootResults) {
                 bool isPlural = lootResult.Value.DroppedQuantity != 1;
                 var row = _plugin.DataManager.GetExcelSheet<Item>()?.First(r => r.RowId == lootResult.Key.ItemId);
                 //lootResult.Value.ItemName = row is null ? "" : (isPlural ? row.Plural : row.Singular);
                 lootResult.Value.ItemName = row is null ? "" : row.Name;
+                newLootCSV += $"{lootResult.Value.Category},{(lootResult.Key.IsHQ ? "HQ" : "")},{lootResult.Value.ItemName},{lootResult.Value.DroppedQuantity},{lootResult.Value.ObtainedQuantity}\n";
 
                 if(!_lootResults.ContainsKey(lootResult.Key)) {
                     hasChange = true;
@@ -132,11 +136,18 @@ namespace MapPartyAssist.Windows.Summary {
                 _lootResults = newLootResults;
                 _lootEligibleRuns = newLootEligibleRuns;
                 _lootEligibleMaps = newLootEligibleMaps;
+                LootCSV = newLootCSV;
                 _firstDraw = true;
             }
         }
 
         public void Draw() {
+            if(ImGui.Button("Copy CSV")) {
+                Task.Run(() => {
+                    ImGui.SetClipboardText(LootCSV);
+                });
+            }
+            ImGui.SameLine();
             ImGui.Text($"Eligible maps: {_lootEligibleMaps} Eligible duties: {_lootEligibleRuns}");
             //ImGuiComponents.HelpMarker("");
             ImGui.SameLine();
