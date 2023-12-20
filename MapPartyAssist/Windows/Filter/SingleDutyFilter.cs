@@ -9,7 +9,6 @@ namespace MapPartyAssist.Windows.Filter {
         public override string Name => "Duty";
         public int DutyId { get; set; }
         private Dictionary<int, string> _dutyNames = new();
-        private int _dutyIndex;
 
         internal SingleDutyFilter() { }
 

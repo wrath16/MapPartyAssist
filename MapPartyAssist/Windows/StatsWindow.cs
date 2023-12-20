@@ -11,7 +11,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows {
 
@@ -33,7 +32,7 @@ namespace MapPartyAssist.Windows {
         private DutyProgressSummary _dutySummary;
         internal List<DataFilter> Filters { get; private set; } = new();
 
-        private SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
+        internal SemaphoreSlim RefreshLock { get; init; } = new SemaphoreSlim(1, 1);
 
         internal StatsWindow(Plugin plugin) : base("Treasure Map Statistics") {
             SizeConstraints = new WindowSizeConstraints {
@@ -50,161 +49,143 @@ namespace MapPartyAssist.Windows {
             Filters.Add(new TimeFilter(plugin, Refresh, _plugin.Configuration.StatsWindowFilters.TimeFilter));
             Filters.Add(new OwnerFilter(plugin, Refresh, _plugin.Configuration.StatsWindowFilters.OwnerFilter));
             Filters.Add(new PartyMemberFilter(plugin, Refresh, _plugin.Configuration.StatsWindowFilters.PartyMemberFilter));
-            _lootSummary = new(plugin);
+            _lootSummary = new(plugin, this);
             _dutySummary = new(_plugin, this);
             //_lootSummary.Refresh(_dutyResults);
             _plugin.DataQueue.QueueDataOperation(Refresh);
         }
 
         public void Refresh() {
-            var dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.IsComplete).OrderBy(dr => dr.Time).ToList();
-            var maps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList();
+            try {
+                RefreshLock.Wait();
+                var dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.IsComplete).OrderBy(dr => dr.Time).ToList();
+                var maps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList();
+                var imports = new List<DutyResultsImport>();
 
-            if(_plugin.Configuration.CurrentCharacterStatsOnly && !_plugin.GetCurrentPlayer().IsNullOrEmpty()) {
-                dutyResults = dutyResults.Where(dr => dr.Players.Contains(_plugin.GetCurrentPlayer())).ToList();
-            }
-
-            //apply filters
-            foreach(var filter in Filters) {
-                switch(filter.GetType()) {
-                    case Type _ when filter.GetType() == typeof(DutyFilter):
-                        var dutyFilter = (DutyFilter)filter;
-                        dutyResults = dutyResults.Where(dr => dutyFilter.FilterState[dr.DutyId]).ToList();
-                        //apply omit zero checkpoints
-                        dutyResults = dutyResults.Where(dr => !_plugin.Configuration.DutyConfigurations[dr.DutyId].OmitZeroCheckpoints || dr.CheckpointResults.Count > 0).ToList();
-                        _plugin.Configuration.StatsWindowFilters.DutyFilter = dutyFilter;
-                        break;
-                    case Type _ when filter.GetType() == typeof(MapFilter):
-                        var mapFilter = (MapFilter)filter;
-                        if(!mapFilter.IncludeMaps) {
-                            maps = new();
-                        }
-                        _plugin.Configuration.StatsWindowFilters.MapFilter = mapFilter;
-                        break;
-                    case Type _ when filter.GetType() == typeof(OwnerFilter):
-                        var ownerFilter = (OwnerFilter)filter;
-                        string trimmedOwner = ownerFilter.Owner.Trim();
-                        dutyResults = dutyResults.Where(dr => dr.Owner.Contains(trimmedOwner, StringComparison.OrdinalIgnoreCase)).ToList();
-                        maps = maps.Where(m => m.Owner is not null && m.Owner.Contains(trimmedOwner, StringComparison.OrdinalIgnoreCase)).ToList();
-                        _plugin.Configuration.StatsWindowFilters.OwnerFilter = ownerFilter;
-                        break;
-                    case Type _ when filter.GetType() == typeof(PartyMemberFilter):
-                        var partyMemberFilter = (PartyMemberFilter)filter;
-                        if(partyMemberFilter.PartyMembers.Length <= 0) {
-                            break;
-                        }
-#if DEBUG
-                        foreach(var pm in partyMemberFilter.PartyMembers) {
-                            _plugin.Log.Debug($"party member filter:|{pm}|");
-                        }
-#endif
-                        dutyResults = dutyResults.Where(dr => {
-                            bool allMatch = true;
-                            foreach(string partyMemberFilter in partyMemberFilter.PartyMembers) {
-                                bool matchFound = false;
-                                string partyMemberFilterTrimmed = partyMemberFilter.Trim();
-                                foreach(string partyMember in dr.Players) {
-                                    if(partyMember.Contains(partyMemberFilterTrimmed, StringComparison.OrdinalIgnoreCase)) {
-                                        matchFound = true;
-                                        break;
-                                    }
-                                }
-                                allMatch = allMatch && matchFound;
-                                if(!allMatch) {
-                                    return false;
-                                }
-                            }
-                            return allMatch;
-                        }).ToList();
-                        maps = maps.Where(m => {
-                            if(m.Players is null) {
-                                return false;
-                            }
-                            bool allMatch = true;
-                            foreach(string partyMemberFilter in partyMemberFilter.PartyMembers) {
-                                bool matchFound = false;
-                                string partyMemberFilterTrimmed = partyMemberFilter.Trim();
-                                foreach(string partyMember in m.Players) {
-                                    if(partyMember.Contains(partyMemberFilterTrimmed, StringComparison.OrdinalIgnoreCase)) {
-                                        matchFound = true;
-                                        break;
-                                    }
-                                }
-                                allMatch = allMatch && matchFound;
-                                if(!allMatch) {
-                                    return false;
-                                }
-                            }
-                            return allMatch;
-                        }).ToList();
-                        _plugin.Configuration.StatsWindowFilters.PartyMemberFilter = partyMemberFilter;
-                        break;
-                    case Type _ when filter.GetType() == typeof(TimeFilter):
-                        var timeFilter = (TimeFilter)filter;
-                        switch(timeFilter.StatRange) {
-                            case StatRange.Current:
-                                dutyResults = dutyResults.Where(dr => dr.Map != null && !dr.Map.IsArchived).ToList();
-                                maps = maps.Where(m => !m.IsArchived).ToList();
-                                break;
-                            case StatRange.PastDay:
-                                dutyResults = dutyResults.Where(dr => (DateTime.Now - dr.Time).TotalHours < 24).ToList();
-                                maps = maps.Where(m => (DateTime.Now - m.Time).TotalHours < 24).ToList();
-                                break;
-                            case StatRange.PastWeek:
-                                dutyResults = dutyResults.Where(dr => (DateTime.Now - dr.Time).TotalDays < 7).ToList();
-                                maps = maps.Where(m => (DateTime.Now - m.Time).TotalDays < 7).ToList();
-                                break;
-                            case StatRange.SinceLastClear:
-                                var dutyFilter2 = (DutyFilter)Filters.Where(f => f.GetType() == typeof(DutyFilter)).First();
-                                var lastClear = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete).OrderBy(dr => dr.Time).ToList()
-                                    .Where(dr => dutyFilter2.FilterState[dr.DutyId] && dr.CheckpointResults.Count == _plugin.DutyManager.Duties[dr.DutyId].Checkpoints!.Count && dr.CheckpointResults.Last().IsReached).LastOrDefault();
-                                if(lastClear != null) {
-                                    dutyResults = dutyResults.Where(dr => dr.Time > lastClear.Time).ToList();
-                                    maps = maps.Where(m => m.Time > lastClear.Time).ToList();
-                                }
-                                break;
-                            case StatRange.AllLegacy:
-                            case StatRange.All:
-                            default:
-                                break;
-                        }
-                        _plugin.Configuration.StatsWindowFilters.TimeFilter = timeFilter;
-                        break;
-                    default:
-                        break;
+                if(_plugin.Configuration.CurrentCharacterStatsOnly && !_plugin.GetCurrentPlayer().IsNullOrEmpty()) {
+                    dutyResults = dutyResults.Where(dr => dr.Players.Contains(_plugin.GetCurrentPlayer())).ToList();
                 }
-            }
 
-            _lootSummary.Refresh(dutyResults, maps);
-            _dutySummary.Refresh(dutyResults);
-            //set configuration filters
-            //foreach(var filter in Filters) {
-            //    switch(filter.GetType()) {
-            //        case Type _ when filter.GetType() == typeof(DutyFilter):
-            //            var dutyFilter = (DutyFilter)filter;
-            //            _plugin.Configuration.StatsWindowFilters.DutyFilter = dutyFilter;
-            //            break;
-            //        case Type _ when filter.GetType() == typeof(MapFilter):
-            //            var mapFilter = (MapFilter)filter;
-            //            _plugin.Configuration.StatsWindowFilters.MapFilter = mapFilter;
-            //            break;
-            //        case Type _ when filter.GetType() == typeof(OwnerFilter):
-            //            var ownerFilter = (OwnerFilter)filter;
-            //            _plugin.Configuration.StatsWindowFilters.OwnerFilter = ownerFilter;
-            //            break;
-            //        case Type _ when filter.GetType() == typeof(PartyMemberFilter):
-            //            var pmFilter = (PartyMemberFilter)filter;
-            //            _plugin.Configuration.StatsWindowFilters.PartyMemberFilter = pmFilter;
-            //            break;
-            //        case Type _ when filter.GetType() == typeof(TimeFilter):
-            //            var timeFilter = (TimeFilter)filter;
-            //            _plugin.Configuration.StatsWindowFilters.TimeFilter = timeFilter;
-            //            break;
-            //        default:
-            //            break;
-            //    }
-            //}
-            _plugin.Configuration.Save();
+                //apply filters
+                var dutyFilter = (DutyFilter)Filters.Where(f => f.GetType() == typeof(DutyFilter)).First();
+                foreach(var filter in Filters) {
+                    switch(filter.GetType()) {
+                        case Type _ when filter.GetType() == typeof(DutyFilter):
+                            //var dutyFilter = (DutyFilter)filter;
+                            dutyResults = dutyResults.Where(dr => dutyFilter.FilterState[dr.DutyId]).ToList();
+                            //apply omit zero checkpoints
+                            dutyResults = dutyResults.Where(dr => !_plugin.Configuration.DutyConfigurations[dr.DutyId].OmitZeroCheckpoints || dr.CheckpointResults.Count > 0).ToList();
+                            _plugin.Configuration.StatsWindowFilters.DutyFilter = dutyFilter;
+                            break;
+                        case Type _ when filter.GetType() == typeof(MapFilter):
+                            var mapFilter = (MapFilter)filter;
+                            if(!mapFilter.IncludeMaps) {
+                                maps = new();
+                            }
+                            _plugin.Configuration.StatsWindowFilters.MapFilter = mapFilter;
+                            break;
+                        case Type _ when filter.GetType() == typeof(OwnerFilter):
+                            var ownerFilter = (OwnerFilter)filter;
+                            string trimmedOwner = ownerFilter.Owner.Trim();
+                            dutyResults = dutyResults.Where(dr => dr.Owner.Contains(trimmedOwner, StringComparison.OrdinalIgnoreCase)).ToList();
+                            maps = maps.Where(m => m.Owner is not null && m.Owner.Contains(trimmedOwner, StringComparison.OrdinalIgnoreCase)).ToList();
+                            _plugin.Configuration.StatsWindowFilters.OwnerFilter = ownerFilter;
+                            break;
+                        case Type _ when filter.GetType() == typeof(PartyMemberFilter):
+                            var partyMemberFilter = (PartyMemberFilter)filter;
+                            if(partyMemberFilter.PartyMembers.Length <= 0) {
+                                break;
+                            }
+#if DEBUG
+                            foreach(var pm in partyMemberFilter.PartyMembers) {
+                                _plugin.Log.Debug($"party member filter:|{pm}|");
+                            }
+#endif
+                            dutyResults = dutyResults.Where(dr => {
+                                bool allMatch = true;
+                                foreach(string partyMemberFilter in partyMemberFilter.PartyMembers) {
+                                    bool matchFound = false;
+                                    string partyMemberFilterTrimmed = partyMemberFilter.Trim();
+                                    foreach(string partyMember in dr.Players) {
+                                        if(partyMember.Contains(partyMemberFilterTrimmed, StringComparison.OrdinalIgnoreCase)) {
+                                            matchFound = true;
+                                            break;
+                                        }
+                                    }
+                                    allMatch = allMatch && matchFound;
+                                    if(!allMatch) {
+                                        return false;
+                                    }
+                                }
+                                return allMatch;
+                            }).ToList();
+                            maps = maps.Where(m => {
+                                if(m.Players is null) {
+                                    return false;
+                                }
+                                bool allMatch = true;
+                                foreach(string partyMemberFilter in partyMemberFilter.PartyMembers) {
+                                    bool matchFound = false;
+                                    string partyMemberFilterTrimmed = partyMemberFilter.Trim();
+                                    foreach(string partyMember in m.Players) {
+                                        if(partyMember.Contains(partyMemberFilterTrimmed, StringComparison.OrdinalIgnoreCase)) {
+                                            matchFound = true;
+                                            break;
+                                        }
+                                    }
+                                    allMatch = allMatch && matchFound;
+                                    if(!allMatch) {
+                                        return false;
+                                    }
+                                }
+                                return allMatch;
+                            }).ToList();
+                            _plugin.Configuration.StatsWindowFilters.PartyMemberFilter = partyMemberFilter;
+                            break;
+                        case Type _ when filter.GetType() == typeof(TimeFilter):
+                            var timeFilter = (TimeFilter)filter;
+                            switch(timeFilter.StatRange) {
+                                case StatRange.Current:
+                                    dutyResults = dutyResults.Where(dr => dr.Map != null && !dr.Map.IsArchived).ToList();
+                                    maps = maps.Where(m => !m.IsArchived).ToList();
+                                    break;
+                                case StatRange.PastDay:
+                                    dutyResults = dutyResults.Where(dr => (DateTime.Now - dr.Time).TotalHours < 24).ToList();
+                                    maps = maps.Where(m => (DateTime.Now - m.Time).TotalHours < 24).ToList();
+                                    break;
+                                case StatRange.PastWeek:
+                                    dutyResults = dutyResults.Where(dr => (DateTime.Now - dr.Time).TotalDays < 7).ToList();
+                                    maps = maps.Where(m => (DateTime.Now - m.Time).TotalDays < 7).ToList();
+                                    break;
+                                case StatRange.SinceLastClear:
+
+                                    var lastClear = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete).OrderBy(dr => dr.Time).ToList()
+                                        .Where(dr => dutyFilter.FilterState[dr.DutyId] && dr.CheckpointResults.Count == _plugin.DutyManager.Duties[dr.DutyId].Checkpoints!.Count && dr.CheckpointResults.Last().IsReached).LastOrDefault();
+                                    if(lastClear != null) {
+                                        dutyResults = dutyResults.Where(dr => dr.Time > lastClear.Time).ToList();
+                                        maps = maps.Where(m => m.Time > lastClear.Time).ToList();
+                                    }
+                                    break;
+                                case StatRange.AllLegacy:
+                                    imports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted).OrderBy(i => i.Time).ToList().Where(i => dutyFilter.FilterState[i.DutyId]).ToList();
+                                    break;
+
+                                case StatRange.All:
+                                default:
+                                    break;
+                            }
+                            _plugin.Configuration.StatsWindowFilters.TimeFilter = timeFilter;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                _lootSummary.Refresh(dutyResults, maps);
+                _dutySummary.Refresh(dutyResults, imports);
+                _plugin.Configuration.Save();
+            } finally {
+                RefreshLock.Release();
+            }
         }
 
         public override void OnClose() {
@@ -271,7 +252,14 @@ namespace MapPartyAssist.Windows {
 
                 ImGui.EndTabBar();
             }
+        }
 
+        internal void OpenImportsWindow() {
+            if(!_viewImportsWindow.IsOpen) {
+                _viewImportsWindow.Position = new Vector2(ImGui.GetWindowPos().X + 50f * ImGuiHelpers.GlobalScale, ImGui.GetWindowPos().Y + 50f * ImGuiHelpers.GlobalScale);
+                _viewImportsWindow.IsOpen = true;
+            }
+            _viewImportsWindow.BringToFront();
         }
     }
 }

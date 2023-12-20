@@ -4,7 +4,6 @@ using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
-using MapPartyAssist.Windows.Filter;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -51,22 +50,19 @@ namespace MapPartyAssist.Windows.Summary {
         }
 
         private Plugin _plugin;
+        private StatsWindow _statsWindow;
         private int _lootEligibleRuns = 0;
         private int _lootEligibleMaps = 0;
         private Dictionary<LootResultKey, LootResultValue> _lootResults = new();
         private SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
         private bool _firstDraw;
 
-        internal LootSummary(Plugin plugin) {
+        internal LootSummary(Plugin plugin, StatsWindow statsWindow) {
             _plugin = plugin;
+            _statsWindow = statsWindow;
         }
 
         public void Refresh(List<DutyResults> dutyResults, List<MPAMap> maps) {
-            //            List<string> selfPlayers = new();
-            //            _plugin.StorageManager.GetPlayers().Query().Where(p => p.IsSelf).ToList().ForEach(p => {
-            //                selfPlayers.Add(p.Key);
-            //            });
-            //            //_lootResults = new();
             Dictionary<LootResultKey, LootResultValue> newLootResults = new();
             int newLootEligibleRuns = 0;
             int newLootEligibleMaps = 0;
@@ -75,113 +71,6 @@ namespace MapPartyAssist.Windows.Summary {
             _plugin.StorageManager.GetPlayers().Query().Where(p => p.IsSelf).ToList().ForEach(p => {
                 selfPlayers.Add(p.Key);
             });
-
-            //            var dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.IsComplete).OrderBy(dr => dr.Time).ToList();
-            //            var maps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList();
-
-            //            //apply filters
-            //            foreach(var filter in filters) {
-            //                switch(filter.GetType()) {
-            //                    case Type _ when filter.GetType() == typeof(DutyFilter):
-            //                        var dutyFilter = (DutyFilter)filter;
-            //                        dutyResults = dutyResults.Where(dr => dutyFilter.FilterState[dr.DutyId]).ToList();
-            //                        break;
-            //                    case Type _ when filter.GetType() == typeof(MapFilter):
-            //                        var mapFilter = (MapFilter)filter;
-            //                        if(!mapFilter.IncludeMaps) {
-            //                            maps = new();
-            //                        }
-            //                        break;
-            //                    case Type _ when filter.GetType() == typeof(OwnerFilter):
-            //                        var ownerFilter = (OwnerFilter)filter;
-            //                        string trimmedOwner = ownerFilter.Owner.Trim();
-            //                        dutyResults = dutyResults.Where(dr => dr.Owner.Contains(trimmedOwner, StringComparison.OrdinalIgnoreCase)).ToList();
-            //                        maps = maps.Where(m => m.Owner.Contains(trimmedOwner, StringComparison.OrdinalIgnoreCase)).ToList();
-            //                        break;
-            //                    case Type _ when filter.GetType() == typeof(PartyMemberFilter):
-            //                        var partyMemberFilter = (PartyMemberFilter)filter;
-            //                        if(partyMemberFilter.PartyMembers.Length <= 0) {
-            //                            break;
-            //                        }
-            //#if DEBUG
-            //                        foreach(var pm in partyMemberFilter.PartyMembers) {
-            //                            _plugin.Log.Debug($"party member filter:|{pm}|");
-            //                        }
-            //#endif
-            //                        dutyResults = dutyResults.Where(dr => {
-            //                            bool allMatch = true;
-            //                            foreach(string partyMemberFilter in partyMemberFilter.PartyMembers) {
-            //                                bool matchFound = false;
-            //                                string partyMemberFilterTrimmed = partyMemberFilter.Trim();
-            //                                foreach(string partyMember in dr.Players) {
-            //                                    if(partyMember.Contains(partyMemberFilterTrimmed, StringComparison.OrdinalIgnoreCase)) {
-            //                                        matchFound = true;
-            //                                        break;
-            //                                    }
-            //                                }
-            //                                allMatch = allMatch && matchFound;
-            //                                if(!allMatch) {
-            //                                    return false;
-            //                                }
-            //                            }
-            //                            return allMatch;
-            //                        }).ToList();
-            //                        maps = maps.Where(m => {
-            //                            if(m.Players is null) {
-            //                                return false;
-            //                            }
-            //                            bool allMatch = true;
-            //                            foreach(string partyMemberFilter in partyMemberFilter.PartyMembers) {
-            //                                bool matchFound = false;
-            //                                string partyMemberFilterTrimmed = partyMemberFilter.Trim();
-            //                                foreach(string partyMember in m.Players) {
-            //                                    if(partyMember.Contains(partyMemberFilterTrimmed, StringComparison.OrdinalIgnoreCase)) {
-            //                                        matchFound = true;
-            //                                        break;
-            //                                    }
-            //                                }
-            //                                allMatch = allMatch && matchFound;
-            //                                if(!allMatch) {
-            //                                    return false;
-            //                                }
-            //                            }
-            //                            return allMatch;
-            //                        }).ToList();
-            //                        break;
-            //                    case Type _ when filter.GetType() == typeof(TimeFilter):
-            //                        var timeFilter = (TimeFilter)filter;
-            //                        switch(timeFilter.StatRange) {
-            //                            case StatRange.Current:
-            //                                dutyResults = dutyResults.Where(dr => dr.Map != null && !dr.Map.IsArchived).ToList();
-            //                                maps = maps.Where(m => !m.IsArchived).ToList();
-            //                                break;
-            //                            case StatRange.PastDay:
-            //                                dutyResults = dutyResults.Where(dr => (DateTime.Now - dr.Time).TotalHours < 24).ToList();
-            //                                maps = maps.Where(m => (DateTime.Now - m.Time).TotalHours < 24).ToList();
-            //                                break;
-            //                            case StatRange.PastWeek:
-            //                                dutyResults = dutyResults.Where(dr => (DateTime.Now - dr.Time).TotalDays < 7).ToList();
-            //                                maps = maps.Where(m => (DateTime.Now - m.Time).TotalDays < 7).ToList();
-            //                                break;
-            //                            case StatRange.SinceLastClear:
-            //                                var dutyFilter2 = (DutyFilter)filters.Where(f => f.GetType() == typeof(DutyFilter)).First();
-            //                                var lastClear = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete).OrderBy(dr => dr.Time).ToList()
-            //                                    .Where(dr => dutyFilter2.FilterState[dr.DutyId] && dr.CheckpointResults.Count == _plugin.DutyManager.Duties[dr.DutyId].Checkpoints!.Count && dr.CheckpointResults.Last().IsReached).LastOrDefault();
-            //                                if(lastClear != null) {
-            //                                    dutyResults = dutyResults.Where(dr => dr.Time > lastClear.Time).ToList();
-            //                                    maps = maps.Where(m => m.Time > lastClear.Time).ToList();
-            //                                }
-            //                                break;
-            //                            case StatRange.AllLegacy:
-            //                            case StatRange.All:
-            //                            default:
-            //                                break;
-            //                        }
-            //                        break;
-            //                    default:
-            //                        break;
-            //                }
-            //            }
 
             var addLootResult = (LootResult lootResult) => {
                 var key = new LootResultKey { ItemId = lootResult.ItemId, IsHQ = lootResult.IsHQ };
