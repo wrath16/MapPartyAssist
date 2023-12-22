@@ -94,8 +94,13 @@ namespace MapPartyAssist.Windows {
                             break;
                         case Type _ when filter.GetType() == typeof(PartyMemberFilter):
                             var partyMemberFilter = (PartyMemberFilter)filter;
-                            if(partyMemberFilter.PartyMembers.Length <= 0) {
-                                break;
+                            //if(partyMemberFilter.PartyMembers.Length <= 0) {
+                            //    break;
+                            //}
+
+                            if(partyMemberFilter.OnlySolo) {
+                                dutyResults = dutyResults.Where(dr => dr.Players.Length == 1).ToList();
+                                maps = maps.Where(m => m.Players != null && m.Players.Length == 1).ToList();
                             }
 #if DEBUG
                             foreach(var pm in partyMemberFilter.PartyMembers) {

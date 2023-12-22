@@ -12,8 +12,8 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows.Summary {
-    internal class LootSummary {
-        private class LootResultKey : IEquatable<LootResultKey> {
+    public class LootSummary {
+        public class LootResultKey : IEquatable<LootResultKey> {
             public uint ItemId;
             public bool IsHQ;
 
@@ -29,7 +29,7 @@ namespace MapPartyAssist.Windows.Summary {
             }
         }
 
-        private class LootResultValue : IEquatable<LootResultValue> {
+        public class LootResultValue : IEquatable<LootResultValue> {
             public int DroppedQuantity, ObtainedQuantity, Rarity;
             public string ItemName = "", Category = "";
 
@@ -55,6 +55,7 @@ namespace MapPartyAssist.Windows.Summary {
         private int _lootEligibleRuns = 0;
         private int _lootEligibleMaps = 0;
         private Dictionary<LootResultKey, LootResultValue> _lootResults = new();
+        //private List<LootResultKey> _pins = new();
         private SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
         private bool _firstDraw;
         public string LootCSV { get; private set; }
@@ -148,13 +149,19 @@ namespace MapPartyAssist.Windows.Summary {
                 });
             }
             ImGui.SameLine();
+            if(ImGui.Button("Unpin All")) {
+                //only unpin visible?
+                _plugin.Configuration.LootPins = new();
+                _plugin.Configuration.Save();
+                //SortByColumn((SortableColumn)sortSpecs.Specs.ColumnUserID, sortSpecs.Specs.SortDirection);
+            }
             ImGui.Text($"Eligible maps: {_lootEligibleMaps} Eligible duties: {_lootEligibleRuns}");
             //ImGuiComponents.HelpMarker("");
             ImGui.SameLine();
             ImGuiHelper.HelpMarker("Loot tracking introduced in version 1.0.3.0.");
 
             ImGui.BeginTable($"loottable", 5, ImGuiTableFlags.Sortable | ImGuiTableFlags.Hideable | ImGuiTableFlags.Reorderable | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable
-                | ImGuiTableFlags.ScrollY, new Vector2(ImGui.GetContentRegionAvail().X, float.Max(ImGuiHelpers.GlobalScale * 400f, ImGui.GetContentRegionAvail().Y)));
+                | ImGuiTableFlags.ScrollY, new Vector2(ImGui.GetContentRegionAvail().X, float.Max(ImGuiHelpers.GlobalScale * 400f, ImGui.GetContentRegionAvail().Y - ImGuiHelpers.GlobalScale)));
             ImGui.TableSetupColumn("Category", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f, (uint)SortableColumn.Category);
             ImGui.TableSetupColumn("Quality", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f, (uint)SortableColumn.IsHQ);
             ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 200f, (uint)SortableColumn.Name);
@@ -175,7 +182,11 @@ namespace MapPartyAssist.Windows.Summary {
 
             ImGui.TableNextRow();
             foreach(var lootResult in _lootResults) {
+                bool isPinned = _plugin.Configuration.LootPins.Contains(lootResult.Key);
                 ImGui.TableNextColumn();
+                if(isPinned) {
+                    ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(ImGuiColors.DalamudYellow - new Vector4(0f, 0f, 0f, 0.7f)));
+                }
                 ImGui.Text($"{lootResult.Value.Category}");
                 ImGui.TableNextColumn();
                 //ImGui.AlignTextToFramePadding();
@@ -197,7 +208,25 @@ namespace MapPartyAssist.Windows.Summary {
                     case 7: //pink
                         textColor = ImGuiColors.ParsedPink; break;
                 }
-                ImGui.TextColored(textColor, $"{lootResult.Value.ItemName}");
+                ImGui.TextColored(textColor, $"{lootResult.Value.ItemName.PadRight(20)}");
+                if(ImGui.BeginPopupContextItem($"##{lootResult.Key.ItemId}{lootResult.Key.IsHQ}--ContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
+                    if(ImGui.MenuItem($"Pin item##{lootResult.Key.ItemId}{lootResult.Key.IsHQ}", null, isPinned)) {
+                        if(!isPinned) {
+                            _plugin.Log.Verbose($"pinning: {lootResult.Value.ItemName}");
+                            //_pins.Add(lootResult.Key);
+                            _plugin.Configuration.LootPins.Add(lootResult.Key);
+                            _plugin.Configuration.Save();
+                        } else {
+                            //_pins.Remove(lootResult.Key);
+                            _plugin.Configuration.LootPins.Remove(lootResult.Key);
+                            _plugin.Configuration.Save();
+                        }
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            SortByColumn((SortableColumn)sortSpecs.Specs.ColumnUserID, sortSpecs.Specs.SortDirection);
+                        });
+                    }
+                    ImGui.EndPopup();
+                }
                 ImGui.TableNextColumn();
                 ImGui.Text($"{lootResult.Value.DroppedQuantity}");
                 ImGui.TableNextColumn();
@@ -208,6 +237,7 @@ namespace MapPartyAssist.Windows.Summary {
         }
 
         private void SortByColumn(SortableColumn column, ImGuiSortDirection direction) {
+            Func<KeyValuePair<LootResultKey, LootResultValue>, bool> pinComparator = (r) => _plugin.Configuration.LootPins.Contains(r.Key);
             Func<KeyValuePair<LootResultKey, LootResultValue>, object> comparator = (r) => 0;
 
             switch(column) {
@@ -231,7 +261,13 @@ namespace MapPartyAssist.Windows.Summary {
                     break;
             }
 
-            var sortedList = direction == ImGuiSortDirection.Ascending ? _lootResults.OrderBy(comparator) : _lootResults.OrderByDescending(comparator);
+            Func<KeyValuePair<LootResultKey, LootResultValue>, object> x = (r) => pinComparator(r) ? 1 : comparator(r);
+
+            var pinnedList = _lootResults.Where(lr => _plugin.Configuration.LootPins.Contains(lr.Key));
+            pinnedList = direction == ImGuiSortDirection.Ascending ? pinnedList.OrderBy(comparator) : pinnedList.OrderByDescending(comparator);
+            var nonPinnedList = _lootResults.Where(lr => !_plugin.Configuration.LootPins.Contains(lr.Key));
+            nonPinnedList = direction == ImGuiSortDirection.Ascending ? nonPinnedList.OrderBy(comparator) : nonPinnedList.OrderByDescending(comparator);
+            var sortedList = pinnedList.Concat(nonPinnedList);
             _lootResults = sortedList.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
     }

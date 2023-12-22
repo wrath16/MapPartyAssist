@@ -6,6 +6,7 @@ namespace MapPartyAssist.Windows.Filter {
         public override string Name => "P. Members";
         public override string HelpMessage => "Comma-separate multiple party members.";
         public string PartyMembersRaw { get; set; } = "";
+        public bool OnlySolo { get; set; }
         internal string[] PartyMembers { get; private set; } = new string[0];
         private string _lastValue = "";
 
@@ -25,18 +26,26 @@ namespace MapPartyAssist.Windows.Filter {
 
         internal override void Draw() {
             string partyMembers = PartyMembersRaw;
+            bool onlySolo = OnlySolo;
+
             ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
             if(ImGui.InputText($"##partyMemberFilter", ref partyMembers, 50, ImGuiInputTextFlags.None)) {
                 if(partyMembers != _lastValue) {
                     _lastValue = partyMembers;
-                    _plugin.DataQueue.QueueDataOperation(() => {
+                    _plugin!.DataQueue.QueueDataOperation(() => {
                         PartyMembersRaw = partyMembers;
                         SetPartyMemberArray(partyMembers);
                         Refresh();
                     });
                 }
             }
-            //ImGuiComponents.HelpMarker("Comma-separate party members.");
+
+            if(ImGui.Checkbox("Solo-only", ref onlySolo)) {
+                _plugin!.DataQueue.QueueDataOperation(() => {
+                    OnlySolo = onlySolo;
+                    Refresh();
+                });
+            }
         }
     }
 }

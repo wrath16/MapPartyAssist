@@ -282,7 +282,7 @@ namespace MapPartyAssist.Windows.Summary {
                         }
                     }
 
-                    foreach(var result in dutyResults) {
+                    foreach(var result in onlyDutyResults) {
                         foreach(var checkpoint in result.CheckpointResults.Where(c => c.IsReached)) {
                             if(checkpoint.SummonType is null) {
                                 continue;

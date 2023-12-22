@@ -144,9 +144,15 @@ namespace MapPartyAssist.Services {
         private unsafe void CheckForTreasureHunt(AddonEvent type, AddonArgs args) {
             //_plugin.Log.Debug("pre refresh todolist!");
             var addon = (AtkUnitBase*)args.Addon;
+            if(addon == null) {
+                return;
+            }
             var dutyTimerNode = AtkNodeHelper.GetNodeByIDChain(addon, new uint[] { 1, 4, 5 });
             var dutyNameNode = AtkNodeHelper.GetNodeByIDChain(addon, new uint[] { 1, 4, 3 });
             var baseNode = addon->GetNodeById(4);
+            if(dutyNameNode == null || baseNode == null) {
+                return;
+            }
             var dutyName = dutyNameNode->GetAsAtkTextNode()->NodeText.ToString();
             //var rowId = _plugin.GetRowId<Addon>(dutyNameNode->GetAsAtkTextNode()->NodeText.ToString(), "Text");
 

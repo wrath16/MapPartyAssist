@@ -74,6 +74,12 @@ namespace MapPartyAssist.Windows {
                         }
                     }
 
+                    if(ImGui.Button("Show all Zones")) {
+                        foreach(var zone in _plugin.DataManager.GetExcelSheet<TerritoryType>()) {
+                            _plugin.Log.Debug($"id: {zone.RowId} name: {zone.PlaceName.Value.Name}");
+                        }
+                    }
+
                     if(ImGui.Button("Maps Table")) {
                         ShowMapsTable();
                     }

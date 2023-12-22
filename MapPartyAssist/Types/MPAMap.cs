@@ -32,6 +32,7 @@ namespace MapPartyAssist.Types {
         public SeString? MapLink { get; set; }
         public List<LootResult>? LootResults { get; set; }
         public string[]? Players { get; set; }
+        public int? TerritoryId { get; set; }
 
         //this will cause a circular ref with DutyResults -_-
         //[BsonRef("dutyresults")]

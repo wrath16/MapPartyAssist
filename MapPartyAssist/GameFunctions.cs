@@ -36,6 +36,9 @@ internal unsafe class GameFunctions {
     }
 
     internal int GetCurrentDutyId() {
+        if(GameMain.Instance() == null) {
+            return 0;
+        }
         return GameMain.Instance()->CurrentContentFinderConditionId;
     }
 }

@@ -43,7 +43,13 @@ namespace MapPartyAssist.Helper {
                     return GetNodeByIDChain(childNode, newList.ToArray());
                 } else if((int)node->Type >= 1000) {
                     var componentNode = node->GetAsAtkComponentNode();
+                    if(componentNode == null) {
+                        return null;
+                    }
                     var component = componentNode->Component;
+                    if(component == null) {
+                        return null;
+                    }
                     var uldManager = component->UldManager;
                     childNode = uldManager.NodeList[0];
                     if(childNode == null) {

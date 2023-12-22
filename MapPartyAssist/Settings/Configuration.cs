@@ -3,6 +3,7 @@ using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using static MapPartyAssist.Windows.Summary.LootSummary;
 
 namespace MapPartyAssist.Settings {
 
@@ -42,6 +43,7 @@ namespace MapPartyAssist.Settings {
         public bool CurrentCharacterStatsOnly { get; set; } = false;
         public Dictionary<int, DutyConfiguration> DutyConfigurations { get; set; } = new();
         public FilterConfiguration StatsWindowFilters { get; set; } = new();
+        public List<LootResultKey> LootPins { get; set; } = new();
         [Obsolete]
         public Dictionary<string, MPAMember> RecentPartyList { get; set; } = new();
         [Obsolete]
