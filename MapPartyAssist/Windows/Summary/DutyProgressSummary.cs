@@ -1,7 +1,6 @@
 ﻿using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
 using ImGuiNET;
-using ImGuiScene;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Settings;
 using MapPartyAssist.Types;
@@ -357,47 +356,47 @@ namespace MapPartyAssist.Windows.Summary {
             //    return;
             //}
             //try {
-                _statsWindow.SizeConstraints = new WindowSizeConstraints {
-                    MinimumSize = new Vector2(_dutyStats.Count > 1 ? 575: 300, _statsWindow.SizeConstraints!.Value.MinimumSize.Y),
-                    MaximumSize = _statsWindow.SizeConstraints!.Value.MaximumSize,
-                };
-                if(_dutyStats.Count == 0) {
-                    ImGui.TextDisabled("No duty results for given filters.");
+            _statsWindow.SizeConstraints = new WindowSizeConstraints {
+                MinimumSize = new Vector2(_dutyStats.Count > 1 ? 575 : 300, _statsWindow.SizeConstraints!.Value.MinimumSize.Y),
+                MaximumSize = _statsWindow.SizeConstraints!.Value.MaximumSize,
+            };
+            if(_dutyStats.Count == 0) {
+                ImGui.TextDisabled("No duty results for given filters.");
+            }
+            ImGui.BeginTable("statsTable", 2, ImGuiTableFlags.NoClip | ImGuiTableFlags.NoKeepColumnsVisible);
+            for(int i = 0; i < _dutyStats.Count; i++) {
+                var duty = _dutyStats.ElementAt(i);
+                ImGui.TableNextColumn();
+                if(i > 1) {
+                    ImGui.Separator();
                 }
-                ImGui.BeginTable("statsTable", 2, ImGuiTableFlags.NoClip | ImGuiTableFlags.NoKeepColumnsVisible);
-                for(int i = 0; i < _dutyStats.Count; i++) {
-                    var duty = _dutyStats.ElementAt(i);
-                    ImGui.TableNextColumn();
-                    if(i > 1) {
-                        ImGui.Separator();
-                    }
-                    ImGui.TextColored(ImGuiColors.DalamudViolet, _plugin.DutyManager.Duties[duty.Key].GetDisplayName());
-                    //ImGui.TextColored(ImGuiColors.DalamudWhite, TimeFilter.RangeToString(_timeFilter.StatRange).ToUpper());
-                    ProgressTable(duty.Key);
-                    if(_plugin.DutyManager.Duties[duty.Key].Structure == DutyStructure.Roulette) {
-                        SummonTable(duty.Key);
-                    }
+                ImGui.TextColored(ImGuiColors.DalamudViolet, _plugin.DutyManager.Duties[duty.Key].GetDisplayName());
+                //ImGui.TextColored(ImGuiColors.DalamudWhite, TimeFilter.RangeToString(_timeFilter.StatRange).ToUpper());
+                ProgressTable(duty.Key);
+                if(_plugin.DutyManager.Duties[duty.Key].Structure == DutyStructure.Roulette) {
+                    SummonTable(duty.Key);
                 }
+            }
 
-                //foreach(var duty in _dutyStats) {
-                //    ImGui.TableNextColumn();
-                //    ImGui.Separator();
-                //    ImGui.TextColored(ImGuiColors.ParsedPink, _plugin.DutyManager.Duties[duty.Key].GetDisplayName());
-                //    //ImGui.Separator();
-                //    ProgressTable(duty.Key);
-                //    if(_plugin.DutyManager.Duties[duty.Key].Structure == DutyStructure.Roulette) {
-                //        SummonTable(duty.Key);
-                //    }
-                //    //ImGui.Separator();
-                //}
-                ImGui.EndTable();
-                //if(_dutyId != 0 && !_isUpdating) {
-                //    //todo these calculations should happen in same thread as refresh
-                //    ProgressTable(_dutyResults, _dutyId);
-                //    if(_plugin.DutyManager.Duties[_dutyId].Structure == DutyStructure.Roulette) {
-                //        SummonTable(_dutyResults, _dutyId);
-                //    }
-                //}
+            //foreach(var duty in _dutyStats) {
+            //    ImGui.TableNextColumn();
+            //    ImGui.Separator();
+            //    ImGui.TextColored(ImGuiColors.ParsedPink, _plugin.DutyManager.Duties[duty.Key].GetDisplayName());
+            //    //ImGui.Separator();
+            //    ProgressTable(duty.Key);
+            //    if(_plugin.DutyManager.Duties[duty.Key].Structure == DutyStructure.Roulette) {
+            //        SummonTable(duty.Key);
+            //    }
+            //    //ImGui.Separator();
+            //}
+            ImGui.EndTable();
+            //if(_dutyId != 0 && !_isUpdating) {
+            //    //todo these calculations should happen in same thread as refresh
+            //    ProgressTable(_dutyResults, _dutyId);
+            //    if(_plugin.DutyManager.Duties[_dutyId].Structure == DutyStructure.Roulette) {
+            //        SummonTable(_dutyResults, _dutyId);
+            //    }
+            //}
             //} finally {
             //    _statsWindow.RefreshLock.Release();
             //}

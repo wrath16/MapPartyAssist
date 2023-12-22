@@ -46,6 +46,7 @@ namespace MapPartyAssist {
         private const string StatsCommandName = "/mpartystats";
         private const string DutyResultsCommandName = "/mpartydutyresults";
         private const string TestCommandName = "/mpartytest";
+        private const string EditCommandName = "/mpartyedit";
 
         //Dalamud services
         internal DalamudPluginInterface PluginInterface { get; init; }
@@ -80,8 +81,10 @@ namespace MapPartyAssist {
 #if DEBUG
         internal TestFunctionWindow TestFunctionWindow;
 #endif
+        //non-persistent configuration options
         internal bool PrintAllMessages { get; set; } = false;
         internal bool PrintPayloads { get; set; } = false;
+        internal bool AllowEdit { get; set; } = false;
 
 
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
@@ -155,19 +158,24 @@ namespace MapPartyAssist {
                     HelpMessage = "Open settings window."
                 });
 
+#if DEBUG
                 DutyResultsWindow = new DutyResultsWindow(this);
                 WindowSystem.AddWindow(DutyResultsWindow);
                 CommandManager.AddHandler(DutyResultsCommandName, new CommandInfo(OnDutyResultsCommand) {
                     HelpMessage = "Edit duty results (Advanced)."
                 });
 
-#if DEBUG
                 TestFunctionWindow = new TestFunctionWindow(this);
                 WindowSystem.AddWindow(TestFunctionWindow);
                 CommandManager.AddHandler(TestCommandName, new CommandInfo(OnTestCommand) {
                     HelpMessage = "Opens test functions window. (Debug)"
                 });
 #endif
+
+                CommandManager.AddHandler(EditCommandName, new CommandInfo(OnEditCommand) {
+                    HelpMessage = "Toggle editing of maps/duty results."
+                });
+
 
                 PluginInterface.UiBuilder.Draw += DrawUI;
                 PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
@@ -222,8 +230,10 @@ namespace MapPartyAssist {
             CommandManager.RemoveHandler(CommandName);
             CommandManager.RemoveHandler(ConfigCommandName);
             CommandManager.RemoveHandler(StatsCommandName);
-            CommandManager.RemoveHandler(DutyResultsCommandName);
+            CommandManager.RemoveHandler(EditCommandName);
+
 #if DEBUG
+            CommandManager.RemoveHandler(DutyResultsCommandName);
             CommandManager.RemoveHandler(TestCommandName);
 #endif
 
@@ -264,6 +274,11 @@ namespace MapPartyAssist {
             TestFunctionWindow.IsOpen = true;
         }
 #endif
+
+        private void OnEditCommand(string command, string args) {
+            AllowEdit = !AllowEdit;
+            ChatGui.Print($"Map Party Assist Edit Mode: {(AllowEdit ? "ON" : "OFF")}");
+        }
 
         private void DrawUI() {
             WindowSystem.Draw();

@@ -325,6 +325,11 @@ namespace MapPartyAssist.Windows {
                         _plugin.PrintPayloads = printPayloads;
                         _plugin.Save();
                     }
+                    bool editMode = _plugin.AllowEdit;
+                    if(ImGui.Checkbox("Edit Mode", ref editMode)) {
+                        _plugin.AllowEdit = editMode;
+                        _plugin.Save();
+                    }
                 }
             }
         }

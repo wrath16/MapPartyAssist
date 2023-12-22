@@ -58,12 +58,30 @@ namespace MapPartyAssist.Windows.Summary {
         //private List<LootResultKey> _pins = new();
         private SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
         private bool _firstDraw;
-        public string LootCSV { get; private set; }
+        public string LootCSV { get; private set; } = "";
 
         internal LootSummary(Plugin plugin, StatsWindow statsWindow) {
             _plugin = plugin;
             _statsWindow = statsWindow;
         }
+
+        //public static void AddLootResult(Dictionary<LootResultKey, LootResultValue> lootDictionary, LootResult lootResult) {
+        //    var key = new LootResultKey { ItemId = lootResult.ItemId, IsHQ = lootResult.IsHQ };
+        //    bool selfObtained = lootResult.Recipient is not null && selfPlayers.Contains(lootResult.Recipient);
+        //    int obtainedQuantity = selfObtained ? lootResult.Quantity : 0;
+        //    if(newLootResults.ContainsKey(key)) {
+        //        newLootResults[key].ObtainedQuantity += obtainedQuantity;
+        //        newLootResults[key].DroppedQuantity += lootResult.Quantity;
+        //    } else {
+        //        var row = _plugin.DataManager.GetExcelSheet<Item>().GetRow(lootResult.ItemId);
+        //        newLootResults.Add(key, new LootResultValue {
+        //            DroppedQuantity = lootResult.Quantity,
+        //            ObtainedQuantity = obtainedQuantity,
+        //            Rarity = row.Rarity,
+        //            Category = row.ItemUICategory.Value.Name,
+        //        });
+        //    }
+        //}
 
         public void Refresh(List<DutyResults> dutyResults, List<MPAMap> maps) {
             Dictionary<LootResultKey, LootResultValue> newLootResults = new();

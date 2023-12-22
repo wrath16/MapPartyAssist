@@ -19,7 +19,7 @@ namespace MapPartyAssist.Windows.Filter {
                 StatRange.All => "All-Time",
                 StatRange.AllLegacy => "All-Time with Imports",
                 _ => "???",
-                };
+            };
         }
 
         public TimeFilter() { }

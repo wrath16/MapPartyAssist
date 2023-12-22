@@ -30,6 +30,7 @@ namespace MapPartyAssist.Windows {
 
         private LootSummary _lootSummary;
         private DutyProgressSummary _dutySummary;
+        private DutyResultsListView _dutyResultsList;
         internal List<DataFilter> Filters { get; private set; } = new();
 
         internal SemaphoreSlim RefreshLock { get; init; } = new SemaphoreSlim(1, 1);
@@ -37,7 +38,7 @@ namespace MapPartyAssist.Windows {
         internal StatsWindow(Plugin plugin) : base("Treasure Map Statistics") {
             SizeConstraints = new WindowSizeConstraints {
                 MinimumSize = new Vector2(300, 400),
-                MaximumSize = new Vector2(2000, 1080)
+                MaximumSize = new Vector2(1500, 1080)
             };
             Flags |= ImGuiWindowFlags.MenuBar;
             _plugin = plugin;
@@ -50,8 +51,10 @@ namespace MapPartyAssist.Windows {
             Filters.Add(new TimeFilter(plugin, Refresh, _plugin.Configuration.StatsWindowFilters.TimeFilter));
             Filters.Add(new OwnerFilter(plugin, Refresh, _plugin.Configuration.StatsWindowFilters.OwnerFilter));
             Filters.Add(new PartyMemberFilter(plugin, Refresh, _plugin.Configuration.StatsWindowFilters.PartyMemberFilter));
+            Filters.Add(new ProgressFilter(plugin, Refresh, _plugin.Configuration.StatsWindowFilters.ProgressFilter));
             _lootSummary = new(plugin, this);
-            _dutySummary = new(_plugin, this);
+            _dutySummary = new(plugin, this);
+            _dutyResultsList = new(plugin, this);
             //_lootSummary.Refresh(_dutyResults);
             _plugin.DataQueue.QueueDataOperation(Refresh);
         }
@@ -182,12 +185,20 @@ namespace MapPartyAssist.Windows {
                             }
                             _plugin.Configuration.StatsWindowFilters.TimeFilter = timeFilter;
                             break;
+                        case Type _ when filter.GetType() == typeof(ProgressFilter):
+                            var progressFilter = (ProgressFilter)filter;
+                            if(progressFilter.OnlyClears) {
+                                dutyResults = dutyResults.Where(dr => dr.CheckpointResults.Count == _plugin.DutyManager.Duties[dr.DutyId].Checkpoints!.Count && dr.CheckpointResults.Last().IsReached).ToList();
+                            }
+                            _plugin.Configuration.StatsWindowFilters.ProgressFilter = progressFilter;
+                            break;
                         default:
                             break;
                     }
                 }
                 _lootSummary.Refresh(dutyResults, maps);
                 _dutySummary.Refresh(dutyResults, imports);
+                _dutyResultsList.Refresh(dutyResults);
                 _viewImportsWindow.Refresh();
                 _plugin.Configuration.Save();
             } finally {
@@ -269,16 +280,31 @@ namespace MapPartyAssist.Windows {
 
             if(ImGui.BeginTabBar("TabBar", ImGuiTabBarFlags.None)) {
                 if(ImGui.BeginTabItem("Treasure Dungeon Summary")) {
-                    if(ImGui.BeginChild("DutyResultsChild")) {
+                    if(ImGui.BeginChild("DungeonSummaryChild")) {
                         _dutySummary.Draw();
                         ImGui.EndChild();
                     }
                     ImGui.EndTabItem();
                 }
 
-                if(ImGui.BeginTabItem("Loot Results")) {
+                if(ImGui.BeginTabItem("Loot")) {
                     if(ImGui.BeginChild("LootResultsChild")) {
                         _lootSummary.Draw();
+                        ImGui.EndChild();
+                    }
+                    ImGui.EndTabItem();
+                }
+
+                if(ImGui.BeginTabItem("Maps")) {
+                    if(ImGui.BeginChild("Maps")) {
+                        ImGui.EndChild();
+                    }
+                    ImGui.EndTabItem();
+                }
+
+                if(ImGui.BeginTabItem("Duties")) {
+                    if(ImGui.BeginChild("DutyResultsChild")) {
+                        _dutyResultsList.Draw();
                         ImGui.EndChild();
                     }
                     ImGui.EndTabItem();
