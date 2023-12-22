@@ -90,7 +90,6 @@ namespace MapPartyAssist.Windows.Summary {
         }
 
         public void Draw() {
-
             if(_plugin.AllowEdit) {
                 ImGui.PushFont(UiBuilder.IconFont);
                 ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
@@ -150,7 +149,18 @@ namespace MapPartyAssist.Windows.Summary {
                     ImGui.SetNextItemOpen(false);
                 }
 
-                if(ImGui.CollapsingHeader(string.Format("{0:-23}     {1:-40}      {2:-25}", results.Time.ToString(), _plugin.DutyManager.Duties[results.DutyId].GetDisplayName(), results.Id.ToString()))) {
+                float targetWidth1 = 150f * ImGuiHelpers.GlobalScale;
+                float targetWidth2 = 215f * ImGuiHelpers.GlobalScale;
+                var text1 = results.Time.ToString();
+                var text2 = _plugin.DutyManager.Duties[results.DutyId].GetDisplayName();
+                while(ImGui.CalcTextSize(text1).X < targetWidth1) {
+                    text1 += " ";
+                }
+                while(ImGui.CalcTextSize(text2).X < targetWidth2) {
+                    text2 += " ";
+                }
+
+                if(ImGui.CollapsingHeader(string.Format("{0:-23} {1:-40} {2:-25}", text1, text2, results.Id.ToString()))) {
                     if(!_statsWindow.RefreshLock.Wait(0)) {
                         return;
                     }

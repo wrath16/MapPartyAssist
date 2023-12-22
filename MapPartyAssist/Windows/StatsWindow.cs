@@ -279,7 +279,7 @@ namespace MapPartyAssist.Windows {
             ImGui.EndChild();
 
             if(ImGui.BeginTabBar("TabBar", ImGuiTabBarFlags.None)) {
-                if(ImGui.BeginTabItem("Treasure Dungeon Summary")) {
+                if(ImGui.BeginTabItem("Duty Progress Summary")) {
                     if(ImGui.BeginChild("DungeonSummaryChild")) {
                         _dutySummary.Draw();
                         ImGui.EndChild();
