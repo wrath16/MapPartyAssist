@@ -33,7 +33,7 @@ namespace MapPartyAssist.Windows.Filter {
 
         internal override void Draw() {
             bool allSelected = AllSelected;
-            if(ImGui.Checkbox("Select All", ref allSelected)) {
+            if(ImGui.Checkbox($"Select All##{GetHashCode()}", ref allSelected)) {
                 _plugin.DataQueue.QueueDataOperation(() => {
                     foreach(var duty in FilterState) {
                         FilterState[duty.Key] = allSelected;

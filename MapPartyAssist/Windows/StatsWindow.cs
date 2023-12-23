@@ -86,9 +86,20 @@ namespace MapPartyAssist.Windows {
                             break;
                         case Type _ when filter.GetType() == typeof(MapFilter):
                             var mapFilter = (MapFilter)filter;
-                            if(!mapFilter.IncludeMaps) {
-                                maps = new();
-                            }
+                            //if(!mapFilter.AllSelected) {
+                            //    maps = new();
+                            //}
+
+                            maps = maps.Where(m => {
+                                if(m.TerritoryId == null && mapFilter.FilterState[TreasureMapCategory.Unknown]) {
+                                    return true;
+                                } else if(m.TerritoryId != null && mapFilter.FilterState[MapHelper.GetCategory((int)m.TerritoryId)]) {
+                                    return true;
+                                }
+                                return false;
+                            }).ToList();
+
+
                             _plugin.Configuration.StatsWindowFilters.MapFilter = mapFilter;
                             break;
                         case Type _ when filter.GetType() == typeof(OwnerFilter):
@@ -174,12 +185,14 @@ namespace MapPartyAssist.Windows {
                                     maps = maps.Where(m => (DateTime.Now - m.Time).TotalDays < 7).ToList();
                                     break;
                                 case StatRange.SinceLastClear:
-
-                                    var lastClear = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete).OrderBy(dr => dr.Time).ToList()
-                                        .Where(dr => dutyFilter.FilterState[dr.DutyId] && dr.CheckpointResults.Count == _plugin.DutyManager.Duties[dr.DutyId].Checkpoints!.Count && dr.CheckpointResults.Last().IsReached).LastOrDefault();
-                                    if(lastClear != null) {
-                                        dutyResults = dutyResults.Where(dr => dr.Time > lastClear.Time).ToList();
-                                        maps = maps.Where(m => m.Time > lastClear.Time).ToList();
+                                    foreach(var duty in _plugin.DutyManager.Duties.Where(d => dutyFilter.FilterState[d.Key])) {
+                                        var lastClear = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.IsComplete && dr.DutyId == duty.Key).OrderBy(dr => dr.Time).ToList()
+                                            .Where(dr => dr.CheckpointResults.Count == _plugin.DutyManager.Duties[dr.DutyId].Checkpoints!.Count && dr.CheckpointResults.Last().IsReached).LastOrDefault();
+                                        if(lastClear != null) {
+                                            dutyResults = dutyResults.Where(dr => dr.DutyId != duty.Key || dr.Time > lastClear.Time).ToList();
+                                            //this will default to the latest clear...
+                                            maps = maps.Where(m => m.Time > lastClear.Time).ToList();
+                                        }
                                     }
                                     break;
                                 case StatRange.AllLegacy:
@@ -321,7 +334,6 @@ namespace MapPartyAssist.Windows {
                     }
                     ImGui.EndTabItem();
                 }
-
                 if(ImGui.BeginTabItem("Duties")) {
                     if(ImGui.BeginChild("DutyResultsChild")) {
                         _dutyResultsList.Draw();
@@ -329,7 +341,6 @@ namespace MapPartyAssist.Windows {
                     }
                     ImGui.EndTabItem();
                 }
-
                 ImGui.EndTabBar();
             }
         }

@@ -321,6 +321,7 @@ namespace MapPartyAssist.Services {
                     CurrentDutyResults.Owner = lastMap.Owner!;
                     lastMap.IsPortal = true;
                     lastMap.DutyName = Duties[dutyId].GetDisplayName();
+                    lastMap.DutyId = dutyId;
                     _plugin.StorageManager.UpdateMap(lastMap);
                 } else {
                     CurrentDutyResults.Map = null;

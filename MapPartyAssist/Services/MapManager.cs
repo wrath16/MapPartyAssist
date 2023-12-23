@@ -362,7 +362,7 @@ namespace MapPartyAssist.Services {
             }
         }
 
-        public void AddMap(MPAMember player, string? zone = null, string? mapType = null, bool isManual = false, bool isPortal = false) {
+        public void AddMap(MPAMember player, string? zone = null, string? mapName = null, bool isManual = false, bool isPortal = false) {
             _plugin.Log.Information(string.Format("Adding new{0} map for {1}", isManual ? " manual" : "", player.Key));
             DateTime currentTime = DateTime.Now;
 
@@ -374,11 +374,21 @@ namespace MapPartyAssist.Services {
                 zone ??= "";
             }
 
-            mapType ??= "";
-            mapType = _textInfo.ToTitleCase(mapType);
+            //attempt to find map type
+            TreasureMap mapType = TreasureMap.Unknown;
+            uint? rowId = null;
+            if(mapName != null && !isManual) {
+                rowId = _plugin.GetRowId<EventItem>(mapName, "Singular", ClientLanguage.English);
+                if(rowId != null && MapHelper.IdToMapTypeMap.ContainsKey((uint)rowId)) {
+                    mapType = MapHelper.IdToMapTypeMap[(uint)rowId];
+                }
+            }
+
+            mapName ??= "";
+            mapName = _textInfo.ToTitleCase(mapName);
 
             MPAMap newMap = new() {
-                Name = mapType,
+                Name = mapName,
                 Time = currentTime,
                 Owner = player.Key,
                 Zone = zone,
@@ -386,6 +396,9 @@ namespace MapPartyAssist.Services {
                 IsPortal = isPortal,
                 LootResults = new(),
                 Players = _plugin.CurrentPartyList.Keys.ToArray(),
+                TerritoryId = _plugin.ClientState.TerritoryType,
+                MapType = mapType,
+                EventItemId = rowId
             };
             player.MapLink = null;
             LastMapPlayerKey = player.Key;

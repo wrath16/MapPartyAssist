@@ -143,7 +143,7 @@ namespace MapPartyAssist {
                 MainWindow = new MainWindow(this);
                 WindowSystem.AddWindow(MainWindow);
                 CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand) {
-                    HelpMessage = "Opens map party assist."
+                    HelpMessage = "Opens map tracker console."
                 });
 
                 StatsWindow = new StatsWindow(this);

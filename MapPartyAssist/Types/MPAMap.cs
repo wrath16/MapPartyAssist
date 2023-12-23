@@ -34,7 +34,8 @@ namespace MapPartyAssist.Types {
         public string[]? Players { get; set; }
         public int? TerritoryId { get; set; }
         public bool IsEdited { get; set; }
-        public MapType? MapType { get; set; }
+        public uint? EventItemId { get; set; }
+        public TreasureMap? MapType { get; set; }
         public bool IsInferred { get; set; }
         public int? DutyId { get; set; }
 
@@ -100,12 +101,14 @@ namespace MapPartyAssist.Types {
         }
     }
 
-    public enum MapType {
+    public enum TreasureMap {
+        Unknown,
         Leather,
         Goatskin,
         Toadskin,
         Boarskin,
         Peisteskin,
+        Alexandrite,
         Unhidden,
         Archaeoskin,
         Wyvernskin,
@@ -122,5 +125,15 @@ namespace MapPartyAssist.Types {
         Ophiotauroskin,
         PotentiallySpecial,
         ConceivablySpecial
+    }
+
+    public enum TreasureMapCategory {
+        Unknown,
+        ARealmReborn,
+        Heavensward,
+        Stormblood,
+        Shadowbringers,
+        Endwalker,
+        Elpis
     }
 }

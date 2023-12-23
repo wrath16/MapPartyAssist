@@ -204,7 +204,7 @@ internal class MainWindow : Window {
                 }
                 if(ImGui.BeginPopupContextItem($"##{playerMaps.Key.GetHashCode()}--NameContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
                     if(ImGui.MenuItem($"Add map manually##{playerMaps.Key.GetHashCode()}--NameAddMap")) {
-                        _plugin.MapManager.AddMap(playerMaps.Key, "", "Manually-added map", true);
+                        _plugin.MapManager.AddMap(playerMaps.Key, null, "Manually-added map", true);
                     } else if(ImGui.MenuItem($"Clear map link##{playerMaps.Key.GetHashCode()}--ClearMapLink")) {
                         _plugin.MapManager.ClearMapLink(playerMaps.Key);
                     }

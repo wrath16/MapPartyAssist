@@ -21,6 +21,7 @@ namespace MapPartyAssist.Windows.Summary {
         private List<MPAMap> _maps = new();
         private List<MPAMap> _mapsPage = new();
         private Dictionary<ObjectId, Dictionary<LootResultKey, LootResultValue>> _lootResults = new();
+        private int _portalCount;
 
         private int _currentPage = 0;
         private bool _collapseAll = false;
@@ -36,6 +37,7 @@ namespace MapPartyAssist.Windows.Summary {
             _maps = maps;
 
             _lootResults = new();
+            _portalCount = 0;
             //calculate loot results (this is largely duplicated from lootsummary)
             List<string> selfPlayers = new();
             _plugin.StorageManager.GetPlayers().Query().Where(p => p.IsSelf).ToList().ForEach(p => {
@@ -43,6 +45,9 @@ namespace MapPartyAssist.Windows.Summary {
             });
 
             foreach(var m in _maps) {
+                if(m.IsPortal) {
+                    _portalCount++;
+                }
                 if(m.LootResults == null) {
                     continue;
                 }
@@ -141,6 +146,9 @@ namespace MapPartyAssist.Windows.Summary {
                     });
                 }
             }
+
+            ImGui.Text($"Total maps: {_maps.Count} Total portals: {_portalCount}");
+
             ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true);
             foreach(var map in _mapsPage) {
                 if(_collapseAll) {
@@ -159,24 +167,18 @@ namespace MapPartyAssist.Windows.Summary {
                 }
 
                 if(ImGui.CollapsingHeader(string.Format("{0:-23} {1:-40} {2:-25}", text1, text2, map.Id.ToString()))) {
-                    if(_plugin.AllowEdit) {
-                        DrawMapEditable(map);
-                    } else {
-                        DrawMap(map);
+                    if(!_statsWindow.RefreshLock.Wait(0)) {
+                        continue;
                     }
-                    //if(!_statsWindow.RefreshLock.Wait(0)) {
-                    //    return;
-                    //}
-                    //try {
-
-                    //    if(_plugin.AllowEdit) {
-                    //        DrawMapEditable(map);
-                    //    } else {
-                    //        DrawMap(map);
-                    //    }
-                    //} finally {
-                    //    _statsWindow.RefreshLock.Release();
-                    //}
+                    try {
+                        if(_plugin.AllowEdit) {
+                            DrawMapEditable(map);
+                        } else {
+                            DrawMap(map);
+                        }
+                    } finally {
+                        _statsWindow.RefreshLock.Release();
+                    }
                 }
             }
             ImGui.EndChild();
@@ -209,6 +211,13 @@ namespace MapPartyAssist.Windows.Summary {
                     ImGui.TextColored(ImGuiColors.DalamudGrey, "Owner: ");
                     ImGui.TableNextColumn();
                     ImGui.Text($"{map.Owner}");
+
+                    ImGui.TableNextColumn();
+                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Type: ");
+                    ImGui.TableNextColumn();
+                    if(map.MapType != null) {
+                        ImGui.Text($"{MapHelper.GetMapName((TreasureMap)map.MapType)}");
+                    }
 
                     ImGui.TableNextColumn();
                     ImGui.TextColored(ImGuiColors.DalamudGrey, "Portal: ");

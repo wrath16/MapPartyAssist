@@ -162,10 +162,9 @@ namespace MapPartyAssist.Windows.Summary {
 
                 if(ImGui.CollapsingHeader(string.Format("{0:-23} {1:-40} {2:-25}", text1, text2, results.Id.ToString()))) {
                     if(!_statsWindow.RefreshLock.Wait(0)) {
-                        return;
+                        continue;
                     }
                     try {
-
                         if(_plugin.AllowEdit) {
                             DrawDutyResultsEditable(results);
                         } else {

@@ -21,7 +21,7 @@ namespace MapPartyAssist.Windows {
         }
 
         public override void Draw() {
-            ImGui.TextColored(ImGuiColors.DalamudViolet, "Map Window");
+            ImGui.TextColored(ImGuiColors.DalamudViolet, "Map Tracker");
             ImGui.Separator();
 
             bool requireDoubleTap = _plugin.Configuration.RequireDoubleClickOnClearAll;
@@ -58,7 +58,7 @@ namespace MapPartyAssist.Windows {
             ImGui.Spacing();
             ImGui.Spacing();
 
-            ImGui.TextColored(ImGuiColors.DalamudViolet, "Stats Window");
+            ImGui.TextColored(ImGuiColors.DalamudViolet, "Duty Progress Summary");
             ImGui.Separator();
 
             bool showTooltips = _plugin.Configuration.ShowStatsWindowTooltips;
