@@ -31,6 +31,7 @@ namespace MapPartyAssist.Windows {
         private LootSummary _lootSummary;
         private DutyProgressSummary _dutySummary;
         private DutyResultsListView _dutyResultsList;
+        private MapListView _mapList;
         internal List<DataFilter> Filters { get; private set; } = new();
 
         internal SemaphoreSlim RefreshLock { get; init; } = new SemaphoreSlim(1, 1);
@@ -52,9 +53,11 @@ namespace MapPartyAssist.Windows {
             Filters.Add(new OwnerFilter(plugin, Refresh, _plugin.Configuration.StatsWindowFilters.OwnerFilter));
             Filters.Add(new PartyMemberFilter(plugin, Refresh, _plugin.Configuration.StatsWindowFilters.PartyMemberFilter));
             Filters.Add(new ProgressFilter(plugin, Refresh, _plugin.Configuration.StatsWindowFilters.ProgressFilter));
+            Filters.Add(new MiscFilter(plugin, Refresh, _plugin.Configuration.StatsWindowFilters.MiscFilter));
             _lootSummary = new(plugin, this);
             _dutySummary = new(plugin, this);
             _dutyResultsList = new(plugin, this);
+            _mapList = new(plugin, this);
             //_lootSummary.Refresh(_dutyResults);
             _plugin.DataQueue.QueueDataOperation(Refresh);
         }
@@ -63,7 +66,7 @@ namespace MapPartyAssist.Windows {
             try {
                 RefreshLock.Wait();
                 var dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.IsComplete).OrderBy(dr => dr.Time).ToList();
-                var maps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList();
+                var maps = _plugin.StorageManager.GetMaps().Query().OrderBy(m => m.Time).ToList();
                 var imports = new List<DutyResultsImport>();
 
                 if(_plugin.Configuration.CurrentCharacterStatsOnly && !_plugin.GetCurrentPlayer().IsNullOrEmpty()) {
@@ -104,6 +107,10 @@ namespace MapPartyAssist.Windows {
                             if(partyMemberFilter.OnlySolo) {
                                 dutyResults = dutyResults.Where(dr => dr.Players.Length == 1).ToList();
                                 maps = maps.Where(m => m.Players != null && m.Players.Length == 1).ToList();
+                            }
+
+                            if(partyMemberFilter.PartyMembers.Length <= 0) {
+                                break;
                             }
 #if DEBUG
                             foreach(var pm in partyMemberFilter.PartyMembers) {
@@ -192,6 +199,17 @@ namespace MapPartyAssist.Windows {
                             }
                             _plugin.Configuration.StatsWindowFilters.ProgressFilter = progressFilter;
                             break;
+                        case Type _ when filter.GetType() == typeof(MiscFilter):
+                            var miscFilter = (MiscFilter)filter;
+                            if(!miscFilter.ShowDeleted) {
+                                maps = maps.Where(m => !m.IsDeleted).ToList();
+                            }
+                            if(miscFilter.LootOnly) {
+                                maps = maps.Where(m => m.LootResults != null && m.LootResults.Count > 0).ToList();
+                                dutyResults = dutyResults.Where(dr => dr.HasLootResults()).ToList();
+                            }
+                            _plugin.Configuration.StatsWindowFilters.MiscFilter = miscFilter;
+                            break;
                         default:
                             break;
                     }
@@ -199,6 +217,7 @@ namespace MapPartyAssist.Windows {
                 _lootSummary.Refresh(dutyResults, maps);
                 _dutySummary.Refresh(dutyResults, imports);
                 _dutyResultsList.Refresh(dutyResults);
+                _mapList.Refresh(maps);
                 _viewImportsWindow.Refresh();
                 _plugin.Configuration.Save();
             } finally {
@@ -297,6 +316,7 @@ namespace MapPartyAssist.Windows {
 
                 if(ImGui.BeginTabItem("Maps")) {
                     if(ImGui.BeginChild("Maps")) {
+                        _mapList.Draw();
                         ImGui.EndChild();
                     }
                     ImGui.EndTabItem();

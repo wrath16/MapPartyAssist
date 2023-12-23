@@ -33,6 +33,11 @@ namespace MapPartyAssist.Types {
         public List<LootResult>? LootResults { get; set; }
         public string[]? Players { get; set; }
         public int? TerritoryId { get; set; }
+        public bool IsEdited { get; set; }
+        public MapType? MapType { get; set; }
+        public bool IsInferred { get; set; }
+        public int? DutyId { get; set; }
+
 
         //this will cause a circular ref with DutyResults -_-
         //[BsonRef("dutyresults")]
@@ -95,7 +100,7 @@ namespace MapPartyAssist.Types {
         }
     }
 
-    enum MapType {
+    public enum MapType {
         Leather,
         Goatskin,
         Toadskin,

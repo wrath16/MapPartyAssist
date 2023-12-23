@@ -513,6 +513,10 @@ namespace MapPartyAssist.Services {
             return topCandidateMap;
         }
 
+        public DutyResults? FindDutyResultsForMap(MPAMap map) {
+            return _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.Map != null && dr.Map.Id == map.Id).FirstOrDefault();
+        }
+
         private void ResetDigStatus() {
             _diggers = new();
             _lockedInDiggerKey = "";
