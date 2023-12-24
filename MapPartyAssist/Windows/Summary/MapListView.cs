@@ -34,9 +34,7 @@ namespace MapPartyAssist.Windows.Summary {
         }
 
         public void Refresh(List<MPAMap> maps) {
-            _maps = maps;
-
-            _lootResults = new();
+            Dictionary<ObjectId, Dictionary<LootResultKey, LootResultValue>> lootResults = new();
             _portalCount = 0;
             //calculate loot results (this is largely duplicated from lootsummary)
             List<string> selfPlayers = new();
@@ -44,7 +42,7 @@ namespace MapPartyAssist.Windows.Summary {
                 selfPlayers.Add(p.Key);
             });
 
-            foreach(var m in _maps) {
+            foreach(var m in maps) {
                 if(m.IsPortal) {
                     _portalCount++;
                 }
@@ -71,8 +69,10 @@ namespace MapPartyAssist.Windows.Summary {
                     }
                 }
                 newLootResults = newLootResults.OrderByDescending(lr => lr.Value.DroppedQuantity).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                _lootResults.Add(m.Id, newLootResults);
+                lootResults.Add(m.Id, newLootResults);
             }
+            _maps = maps;
+            _lootResults = lootResults;
             GoToPage();
         }
 
@@ -108,7 +108,7 @@ namespace MapPartyAssist.Windows.Summary {
             if(_plugin.AllowEdit && ImGui.Button("Save")) {
                 _plugin.DataQueue.QueueDataOperation(() => {
                     _plugin.StorageManager.UpdateMaps(_mapsPage.Where(m => m.IsEdited));
-                    _plugin.Save();
+                    //_plugin.Save();
                 });
             }
 
@@ -156,29 +156,40 @@ namespace MapPartyAssist.Windows.Summary {
                 }
 
                 float targetWidth1 = 150f * ImGuiHelpers.GlobalScale;
-                float targetWidth2 = 215f * ImGuiHelpers.GlobalScale;
+                float targetWidth2 = 200f * ImGuiHelpers.GlobalScale;
+                float targetWidth3 = 215f * ImGuiHelpers.GlobalScale;
                 var text1 = map.Time.ToString();
                 var text2 = map.Zone;
+                var text3 = map.DutyName ?? "";
                 while(ImGui.CalcTextSize(text1).X < targetWidth1) {
                     text1 += " ";
                 }
                 while(ImGui.CalcTextSize(text2).X < targetWidth2) {
                     text2 += " ";
                 }
+                while(ImGui.CalcTextSize(text3).X < targetWidth3) {
+                    text3 += " ";
+                }
 
-                if(ImGui.CollapsingHeader(string.Format("{0:-23} {1:-40} {2:-25}", text1, text2, map.Id.ToString()))) {
-                    if(!_statsWindow.RefreshLock.Wait(0)) {
-                        continue;
+                if(ImGui.CollapsingHeader(string.Format("{0} {1} {2} {3}", text1, text2, text3, map.Id.ToString()))) {
+
+                    if(_plugin.AllowEdit) {
+                        DrawMapEditable(map);
+                    } else {
+                        DrawMap(map);
                     }
-                    try {
-                        if(_plugin.AllowEdit) {
-                            DrawMapEditable(map);
-                        } else {
-                            DrawMap(map);
-                        }
-                    } finally {
-                        _statsWindow.RefreshLock.Release();
-                    }
+                    //if(!_statsWindow.RefreshLock.Wait(0)) {
+                    //    continue;
+                    //}
+                    //try {
+                    //    if(_plugin.AllowEdit) {
+                    //        DrawMapEditable(map);
+                    //    } else {
+                    //        DrawMap(map);
+                    //    }
+                    //} finally {
+                    //    _statsWindow.RefreshLock.Release();
+                    //}
                 }
             }
             ImGui.EndChild();

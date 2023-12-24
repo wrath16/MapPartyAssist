@@ -103,66 +103,66 @@ namespace MapPartyAssist.Services {
         }
 #pragma warning restore 612, 618
 
-        internal Task AddMap(MPAMap map) {
-            return AsyncWriteToDatabase(() => GetMaps().Insert(map));
+        internal void AddMap(MPAMap map, bool toSave = true) {
+            WriteToDatabase(() => GetMaps().Insert(map), toSave);
         }
 
-        internal Task AddMaps(IEnumerable<MPAMap> maps) {
-            return AsyncWriteToDatabase(() => GetMaps().Insert(maps));
+        internal void AddMaps(IEnumerable<MPAMap> maps, bool toSave = true) {
+            WriteToDatabase(() => GetMaps().Insert(maps), toSave);
         }
 
-        internal Task UpdateMap(MPAMap map) {
-            return AsyncWriteToDatabase(() => GetMaps().Update(map));
+        internal void UpdateMap(MPAMap map, bool toSave = true) {
+            WriteToDatabase(() => GetMaps().Update(map), toSave);
         }
 
-        internal Task UpdateMaps(IEnumerable<MPAMap> maps) {
-            return AsyncWriteToDatabase(() => GetMaps().Update(maps.Where(m => m.Id != null)));
+        internal void UpdateMaps(IEnumerable<MPAMap> maps, bool toSave = true) {
+            WriteToDatabase(() => GetMaps().Update(maps.Where(m => m.Id != null)), toSave);
         }
 
         internal ILiteCollection<MPAMap> GetMaps() {
             return Database.GetCollection<MPAMap>(MapTable);
         }
 
-        internal Task AddPlayer(MPAMember player) {
-            return AsyncWriteToDatabase(() => GetPlayers().Insert(player), false);
+        internal void AddPlayer(MPAMember player) {
+            WriteToDatabase(() => GetPlayers().Insert(player), false);
         }
 
-        internal Task UpdatePlayer(MPAMember player) {
-            return AsyncWriteToDatabase(() => GetPlayers().Update(player), false);
+        internal void UpdatePlayer(MPAMember player) {
+            WriteToDatabase(() => GetPlayers().Update(player), false);
         }
 
         internal ILiteCollection<MPAMember> GetPlayers() {
             return Database.GetCollection<MPAMember>(PlayerTable);
         }
 
-        internal Task AddDutyResults(DutyResults results) {
-            return AsyncWriteToDatabase(() => GetDutyResults().Insert(results));
+        internal void AddDutyResults(DutyResults results, bool toSave = true) {
+            WriteToDatabase(() => GetDutyResults().Insert(results), toSave);
         }
 
-        internal Task AddDutyResults(IEnumerable<DutyResults> results) {
-            return AsyncWriteToDatabase(() => GetDutyResults().Insert(results));
+        internal void AddDutyResults(IEnumerable<DutyResults> results, bool toSave = true) {
+            WriteToDatabase(() => GetDutyResults().Insert(results), toSave);
         }
 
-        internal Task UpdateDutyResults(DutyResults results) {
-            return AsyncWriteToDatabase(() => GetDutyResults().Update(results));
+        internal void UpdateDutyResults(DutyResults results, bool toSave = true) {
+            WriteToDatabase(() => GetDutyResults().Update(results), toSave);
         }
 
-        internal Task UpdateDutyResults(IEnumerable<DutyResults> results) {
-            return AsyncWriteToDatabase(() => GetDutyResults().Update(results));
+        internal void UpdateDutyResults(IEnumerable<DutyResults> results, bool toSave = true) {
+            WriteToDatabase(() => GetDutyResults().Update(results), toSave);
         }
 
         internal ILiteCollection<DutyResults> GetDutyResults() {
             return Database.GetCollection<DutyResults>(DutyResultsTable);
         }
 
-        internal Task AddDutyResultsImport(DutyResultsImport import) {
+        internal void AddDutyResultsImport(DutyResultsImport import, bool toSave = true) {
             var importCollection = Database.GetCollection<DutyResultsImport>(StatsImportTable);
-            return AsyncWriteToDatabase(() => importCollection.Insert(import));
+            WriteToDatabase(() => importCollection.Insert(import), toSave);
         }
 
-        internal Task UpdateDutyResultsImport(DutyResultsImport import) {
+        internal void UpdateDutyResultsImport(DutyResultsImport import, bool toSave = true) {
             var importCollection = Database.GetCollection<DutyResultsImport>(StatsImportTable);
-            return AsyncWriteToDatabase(() => importCollection.Update(import));
+            WriteToDatabase(() => importCollection.Update(import), toSave);
         }
 
         internal ILiteCollection<DutyResultsImport> GetDutyResultsImports() {
@@ -176,23 +176,37 @@ namespace MapPartyAssist.Services {
         //    }
         //}
 
-        //all writes are asynchronous for performance reasons
-        private Task AsyncWriteToDatabase(Func<object> action, bool toSave = true) {
-            Task task = new Task(() => {
-                try {
-                    _dbLock.Wait();
-                    action.Invoke();
-                    if(toSave) {
-                        _plugin.Save();
-                    }
-                } finally {
-                    _dbLock.Release();
+        
+        //synchronous write
+        private void WriteToDatabase(Func<object> action, bool toSave = true) {
+            try {
+                _dbLock.Wait();
+                action.Invoke();
+                if(toSave) {
+                    _plugin.Save();
                 }
-            });
-            task.Start();
-            //task.ContinueWith(HandleTaskExceptions, TaskContinuationOptions.OnlyOnFaulted);
-            return task;
+            } finally {
+                _dbLock.Release();
+            }
         }
+
+        //all writes are asynchronous for performance reasons
+        //private Task AsyncWriteToDatabase(Func<object> action, bool toSave = true) {
+        //    Task task = new Task(() => {
+        //        try {
+        //            _dbLock.Wait();
+        //            action.Invoke();
+        //            if(toSave) {
+        //                _plugin.Save();
+        //            }
+        //        } finally {
+        //            _dbLock.Release();
+        //        }
+        //    });
+        //    task.Start();
+        //    //task.ContinueWith(HandleTaskExceptions, TaskContinuationOptions.OnlyOnFaulted);
+        //    return task;
+        //}
 
         //checks a data type for null values on non-nullable properties
         public bool ValidateDataType(object toValidate, bool correctErrors = false) {

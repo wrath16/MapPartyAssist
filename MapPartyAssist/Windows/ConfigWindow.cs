@@ -3,6 +3,7 @@ using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
+using MapPartyAssist.Helper;
 using MapPartyAssist.Settings;
 using System.Numerics;
 
@@ -27,32 +28,35 @@ namespace MapPartyAssist.Windows {
             bool requireDoubleTap = _plugin.Configuration.RequireDoubleClickOnClearAll;
             if(ImGui.Checkbox("Require double click on 'Clear All'", ref requireDoubleTap)) {
                 _plugin.Configuration.RequireDoubleClickOnClearAll = requireDoubleTap;
-                _plugin.Save();
+                _plugin.Configuration.Save();
             }
 
             bool hideZoneTable = _plugin.Configuration.HideZoneTableWhenEmpty;
             if(ImGui.Checkbox("Hide 'Map Links by Zone' when empty", ref hideZoneTable)) {
                 _plugin.Configuration.HideZoneTableWhenEmpty = hideZoneTable;
-                _plugin.Save();
+                _plugin.Configuration.Save();
             }
 
             bool noOverwriteMapLink = _plugin.Configuration.NoOverwriteMapLink;
             if(ImGui.Checkbox("Don't overwrite map links", ref noOverwriteMapLink)) {
-                _plugin.Configuration.NoOverwriteMapLink = noOverwriteMapLink;
-                _plugin.Save();
+                _plugin.DataQueue.QueueDataOperation(() => {
+                    _plugin.Configuration.NoOverwriteMapLink = noOverwriteMapLink;
+                    _plugin.Configuration.Save();
+                });
             }
-            ImGuiComponents.HelpMarker("Will only clear map link on new treasure map added to player \nor manual removal.");
-
+            ImGui.SameLine();
+            ImGuiHelper.HelpMarker("Will only clear map link on new treasure map added to player \nor manual removal.");
+            
             bool highlightCurrentZoneLinks = _plugin.Configuration.HighlightLinksInCurrentZone;
             if(ImGui.Checkbox("Highlight map links in current zone (yellow)", ref highlightCurrentZoneLinks)) {
                 _plugin.Configuration.HighlightLinksInCurrentZone = highlightCurrentZoneLinks;
-                _plugin.Save();
+                _plugin.Configuration.Save();
             }
 
             bool highlightClosestLink = _plugin.Configuration.HighlightClosestLink;
             if(ImGui.Checkbox("Highlight closest map link (orange)", ref highlightClosestLink)) {
                 _plugin.Configuration.HighlightClosestLink = highlightClosestLink;
-                _plugin.Save();
+                _plugin.Configuration.Save();
             }
 
             ImGui.Spacing();
@@ -64,7 +68,7 @@ namespace MapPartyAssist.Windows {
             bool showTooltips = _plugin.Configuration.ShowStatsWindowTooltips;
             if(ImGui.Checkbox("Show explanatory tooltips", ref showTooltips)) {
                 _plugin.Configuration.ShowStatsWindowTooltips = showTooltips;
-                _plugin.Save();
+                _plugin.Configuration.Save();
             }
 
             //bool showAdvancedFilters = _plugin.Configuration.ShowAdvancedFilters;
@@ -72,12 +76,15 @@ namespace MapPartyAssist.Windows {
             //    _plugin.Configuration.ShowAdvancedFilters = showAdvancedFilters;
             //    _plugin.Save();
             //}
-            ImGuiComponents.HelpMarker("Filter stats by party members and map owner.");
+            ImGui.SameLine();
+            ImGuiHelper.HelpMarker("Filter stats by party members and map owner.");
 
             bool separateStatsByPlayer = _plugin.Configuration.CurrentCharacterStatsOnly;
             if(ImGui.Checkbox("Only include stats for current character", ref separateStatsByPlayer)) {
-                _plugin.Configuration.CurrentCharacterStatsOnly = separateStatsByPlayer;
-                _plugin.Save();
+                _plugin.DataQueue.QueueDataOperation(() => {
+                    _plugin.Configuration.CurrentCharacterStatsOnly = separateStatsByPlayer;
+                    _plugin.Save();
+                });
             }
 
             //bool showKicks = Plugin.Configuration.KicksProgressTable;
@@ -92,7 +99,7 @@ namespace MapPartyAssist.Windows {
             ImGui.SetNextItemWidth(200f * ImGuiHelpers.GlobalScale);
             if(ImGui.Combo($"Tally checkpoint totals##CountCombo", ref progressCountToInt, progressCountOptions, 2)) {
                 _plugin.Configuration.ProgressTableCount = (ProgressTableCount)progressCountToInt;
-                _plugin.Save();
+                _plugin.Configuration.Save();
             }
 
             int progressRateToInt = (int)_plugin.Configuration.ProgressTableRate;
@@ -100,7 +107,7 @@ namespace MapPartyAssist.Windows {
             ImGui.SetNextItemWidth(200f * ImGuiHelpers.GlobalScale);
             if(ImGui.Combo($"Divide progress rates##RateCombo", ref progressRateToInt, progressRateOptions, 2)) {
                 _plugin.Configuration.ProgressTableRate = (ProgressTableRate)progressRateToInt;
-                _plugin.Save();
+                _plugin.Configuration.Save();
             }
 
             int clearSequenceToInt = (int)_plugin.Configuration.ClearSequenceCount;
@@ -108,7 +115,7 @@ namespace MapPartyAssist.Windows {
             ImGui.SetNextItemWidth(200f * ImGuiHelpers.GlobalScale);
             if(ImGui.Combo($"Tally clear sequence##ClearSequenceCombo", ref clearSequenceToInt, clearSequenceOptions, 2)) {
                 _plugin.Configuration.ClearSequenceCount = (ClearSequenceCount)clearSequenceToInt;
-                _plugin.Save();
+                _plugin.Configuration.Save();
             }
 
             ImGui.Text("All duties:");
@@ -129,23 +136,24 @@ namespace MapPartyAssist.Windows {
                     foreach(var dutyConfig in _plugin.Configuration.DutyConfigurations) {
                         dutyConfig.Value.DisplayClearSequence = allSequences;
                     }
-                    _plugin.Save();
+                    _plugin.Configuration.Save();
                 }
                 ImGui.TableNextColumn();
                 if(ImGui.Checkbox("Display wipes", ref allDeaths)) {
                     foreach(var dutyConfig in _plugin.Configuration.DutyConfigurations) {
                         dutyConfig.Value.DisplayDeaths = allDeaths;
                     }
-                    _plugin.Save();
+                    _plugin.Configuration.Save();
                 }
                 ImGui.TableNextColumn();
                 if(ImGui.Checkbox("Omit no checkpoints", ref allZeroOmit)) {
                     foreach(var dutyConfig in _plugin.Configuration.DutyConfigurations) {
                         dutyConfig.Value.OmitZeroCheckpoints = allZeroOmit;
                     }
-                    _plugin.Save();
+                    _plugin.Configuration.Save();
                 }
-                ImGuiComponents.HelpMarker("Runs where no checkpoints were reached will be omitted from stats.");
+                ImGui.SameLine();
+                ImGuiHelper.HelpMarker("Runs where no checkpoints were reached will be omitted from stats.");
             }
             ImGui.EndTable();
 
@@ -159,19 +167,19 @@ namespace MapPartyAssist.Windows {
                         bool displayClearSequence = dutyConfig.Value.DisplayClearSequence;
                         if(ImGui.Checkbox($"Display clear sequence##{dutyConfig.Key}--ClearSequence", ref displayClearSequence)) {
                             dutyConfig.Value.DisplayClearSequence = displayClearSequence;
-                            _plugin.Save();
+                            _plugin.Configuration.Save();
                         }
                         ImGui.TableNextColumn();
                         bool showDeaths = dutyConfig.Value.DisplayDeaths;
                         if(ImGui.Checkbox($"Display wipes##{dutyConfig.Key}--Wipes", ref showDeaths)) {
                             dutyConfig.Value.DisplayDeaths = showDeaths;
-                            _plugin.Save();
+                            _plugin.Configuration.Save();
                         }
                         ImGui.TableNextColumn();
                         bool omitZeroCheckpoints = dutyConfig.Value.OmitZeroCheckpoints;
                         if(ImGui.Checkbox($"Omit no checkpoints##{dutyConfig.Key}--NoCheckpoints", ref omitZeroCheckpoints)) {
                             dutyConfig.Value.OmitZeroCheckpoints = omitZeroCheckpoints;
-                            _plugin.Save();
+                            _plugin.Configuration.Save();
                         }
                     }
                     ImGui.EndTable();

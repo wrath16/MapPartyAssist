@@ -5,6 +5,7 @@ using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Helper;
@@ -123,7 +124,6 @@ namespace MapPartyAssist.Services {
             _plugin.ClientState.TerritoryChanged += OnTerritoryChanged;
             _plugin.AddonLifecycle.RegisterListener(AddonEvent.PreUpdate, "_ToDoList", CheckForTreasureHunt);
 
-
             ResetDigStatus();
         }
 
@@ -173,18 +173,43 @@ namespace MapPartyAssist.Services {
         }
 
         private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled) {
+            //refuse to process if not a supported language
+            if(!_plugin.IsLanguageSupported()) {
+                return;
+            }
+
+            SeString messageUnRef = message;
+            SeString senderUnRef = sender;
+
+            switch((int)type) {
+                case 62:
+                case 2091:
+                case 2110:
+                case 2105:
+                case 2233:
+                case 2361:
+                case 4139:
+                case 8254:
+                case (int)XivChatType.SystemMessage:
+                case (int)XivChatType.Party:
+                case (int)XivChatType.Alliance:
+                case (int)XivChatType.Say:
+                    _plugin.DataQueue.QueueDataOperation(() => {
+                        ProcessChatMessage(type, senderUnRef, messageUnRef);
+                    });
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private void ProcessChatMessage(XivChatType type, SeString sender, SeString message) {
             bool isChange = false;
             bool newMapFound = false;
             bool isPortal = false;
             string key = "";
             string mapType = "";
             DateTime messageTime = DateTime.Now;
-
-            //refuse to process if not a supported language
-            //if(!Plugin.IsEnglishClient()) {
-            //    return;
-            //}
-
             if((int)type == 2361) {
                 //party member opens portal while not blocked
                 if(EnterPortalRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
@@ -225,19 +250,21 @@ namespace MapPartyAssist.Services {
                 } else if(OpenCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
                     //add delay because this message occurs before "crumbles into dust" to avoid double-counting with self-dig
                     Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
-                        if(!_lockedInDiggerKey.IsNullOrEmpty()) {
-                            AddMap(_plugin.CurrentPartyList[_lockedInDiggerKey]);
-                            if(_candidateCount > 1) {
-                                _plugin.Log.Warning($"Multiple map owner candidates detected!");
-                                SetStatus("Multiple map owner candidates found, verify last map ownership.", StatusLevel.CAUTION);
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            if(!_lockedInDiggerKey.IsNullOrEmpty()) {
+                                AddMap(_plugin.CurrentPartyList[_lockedInDiggerKey]);
+                                if(_candidateCount > 1) {
+                                    _plugin.Log.Warning($"Multiple map owner candidates detected!");
+                                    SetStatus("Multiple map owner candidates found, verify last map ownership.", StatusLevel.CAUTION);
+                                }
+                            } else if((messageTime - _lastMapTime).TotalMilliseconds > _lastMapAddedThresholdMS) {
+                                //need this in case player used a false dig out of range
+                                _plugin.Log.Warning($"No eligible map owner detected on opened coffer!");
+                                SetStatus("Unable to determine map owner, verify and add manually.", StatusLevel.ERROR);
                             }
-                        } else if((messageTime - _lastMapTime).TotalMilliseconds > _lastMapAddedThresholdMS) {
-                            //need this in case player used a false dig out of range
-                            _plugin.Log.Warning($"No eligible map owner detected on opened coffer!");
-                            SetStatus("Unable to determine map owner, verify and add manually.", StatusLevel.ERROR);
-                        }
-                        //have to reset here in case you fail to defeat the treasure chest enemies -_-
-                        ResetDigStatus();
+                            //have to reset here in case you fail to defeat the treasure chest enemies -_-
+                            ResetDigStatus();
+                        });
                     });
                     //LogMessage: 3765
                 } else if(DefeatAllRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
@@ -281,8 +308,7 @@ namespace MapPartyAssist.Services {
                 }
                 if(mapPayload != null && _plugin.CurrentPartyList.ContainsKey(key) && (_plugin.CurrentPartyList[key].MapLink == null || !_plugin.Configuration.NoOverwriteMapLink)) {
                     _plugin.CurrentPartyList[key].MapLink = new MPAMapLink(mapPayload);
-                    _plugin.StorageManager.UpdatePlayer(_plugin.CurrentPartyList[key]);
-                    _plugin.Save();
+                    _plugin.DataQueue.QueueDataOperation(() => _plugin.StorageManager.UpdatePlayer(_plugin.CurrentPartyList[key]));
                 }
             } else if(_boundByMapDuty) {
                 //gil
@@ -354,6 +380,7 @@ namespace MapPartyAssist.Services {
                 if(isChange && LastMap != null) {
                     //very first map...?
                     _plugin.StorageManager.UpdateMap(LastMap);
+                    //_plugin.Save();
                 }
             }
 
@@ -415,30 +442,28 @@ namespace MapPartyAssist.Services {
 
         public void ClearAllMaps() {
             _plugin.Log.Information("Archiving all maps...");
-            var maps = _plugin.StorageManager.GetMaps().Query().ToList();
+            var maps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived).ToList();
             maps.ForEach(m => m.IsArchived = true);
-            _plugin.StorageManager.UpdateMaps(maps).ContinueWith(t => {
-                _plugin.BuildRecentPartyList();
-            });
+            _plugin.StorageManager.UpdateMaps(maps, false);
+            _plugin.BuildRecentPartyList();
+            _plugin.Save();
             ClearStatus();
         }
 
         public void ArchiveMaps(IEnumerable<MPAMap> maps) {
             _plugin.Log.Information("Archiving maps...");
             maps.ToList().ForEach(m => m.IsArchived = true);
-            _plugin.StorageManager.UpdateMaps(maps).ContinueWith(t => {
-                _plugin.BuildRecentPartyList();
-            });
-            //Plugin.Save();
+            _plugin.StorageManager.UpdateMaps(maps, false);
+            _plugin.BuildRecentPartyList();
+            _plugin.Save();
         }
 
         public void DeleteMaps(IEnumerable<MPAMap> maps) {
             _plugin.Log.Information("Deleting maps...");
             maps.ToList().ForEach(m => m.IsDeleted = true);
-            _plugin.StorageManager.UpdateMaps(maps).ContinueWith(t => {
-                _plugin.BuildRecentPartyList();
-            });
-            //Plugin.Save();
+            _plugin.StorageManager.UpdateMaps(maps, false);
+            _plugin.BuildRecentPartyList();
+            _plugin.Save();
         }
 
         public void CheckAndArchiveMaps() {
@@ -449,16 +474,15 @@ namespace MapPartyAssist.Services {
                 TimeSpan timeSpan = currentTime - map.Time;
                 map.IsArchived = timeSpan.TotalHours > _plugin.Configuration.ArchiveThresholdHours;
             }
-            _plugin.StorageManager.UpdateMaps(storageMaps).ContinueWith(t => {
-                _plugin.BuildRecentPartyList();
-            });
+            _plugin.StorageManager.UpdateMaps(storageMaps, false);
+            _plugin.BuildRecentPartyList();
             _plugin.Save();
         }
 
         public void ClearMapLink(MPAMember player) {
             player.MapLink = null;
             _plugin.StorageManager.UpdatePlayer(player);
-            _plugin.Save();
+            //_plugin.Save();
         }
 
         //returns map coords

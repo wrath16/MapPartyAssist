@@ -15,7 +15,7 @@ namespace MapPartyAssist.Services {
         internal Task QueueDataOperation<T>(Func<T> action) {
 #if DEBUG
             var x = new StackFrame(1, true).GetMethod();
-            PluginLog.Debug($"adding data operation from: {x.Name} {x.DeclaringType}");
+            PluginLog.Verbose($"adding data operation from: {x.Name} {x.DeclaringType}");
 #endif
             Task<T> t = new(action);
             return AddToTaskQueue(t);
@@ -24,7 +24,7 @@ namespace MapPartyAssist.Services {
         internal Task QueueDataOperation(Action action) {
 #if DEBUG
             var x = new StackFrame(1, true).GetMethod();
-            PluginLog.Debug($"adding data operation from: {x.Name} {x.DeclaringType}");
+            PluginLog.Verbose($"adding data operation from: {x.Name} {x.DeclaringType}");
 #endif
             Task t = new(action);
             return AddToTaskQueue(t);

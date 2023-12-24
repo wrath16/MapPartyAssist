@@ -158,6 +158,11 @@ namespace MapPartyAssist.Windows.Summary {
                 LootCSV = newLootCSV;
                 _firstDraw = true;
             }
+            //_lootResults = newLootResults;
+            //_lootEligibleRuns = newLootEligibleRuns;
+            //_lootEligibleMaps = newLootEligibleMaps;
+            //LootCSV = newLootCSV;
+            //_firstDraw = true;
         }
 
         public void Draw() {
@@ -176,7 +181,7 @@ namespace MapPartyAssist.Windows.Summary {
             ImGui.Text($"Eligible maps: {_lootEligibleMaps} Eligible duties: {_lootEligibleRuns}");
             //ImGuiComponents.HelpMarker("");
             ImGui.SameLine();
-            ImGuiHelper.HelpMarker("Loot tracking introduced in version 1.0.3.0.");
+            ImGuiHelper.HelpMarker("Loot tracking introduced in version 2.0.0.0.");
 
             ImGui.BeginTable($"loottable", 5, ImGuiTableFlags.Sortable | ImGuiTableFlags.Hideable | ImGuiTableFlags.Reorderable | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable
                 | ImGuiTableFlags.ScrollY, new Vector2(ImGui.GetContentRegionAvail().X, float.Max(ImGuiHelpers.GlobalScale * 400f, ImGui.GetContentRegionAvail().Y - ImGuiHelpers.GlobalScale)));
@@ -192,8 +197,10 @@ namespace MapPartyAssist.Windows.Summary {
             //column sorting
             ImGuiTableSortSpecsPtr sortSpecs = ImGui.TableGetSortSpecs();
             if(sortSpecs.SpecsDirty || _firstDraw) {
+                var columnIdDeRef = (SortableColumn)sortSpecs.Specs.ColumnUserID;
+                var sortDirectionDeRef = sortSpecs.Specs.SortDirection;
                 _plugin.DataQueue.QueueDataOperation(() => {
-                    SortByColumn((SortableColumn)sortSpecs.Specs.ColumnUserID, sortSpecs.Specs.SortDirection);
+                    SortByColumn(columnIdDeRef, sortDirectionDeRef);
                 });
                 sortSpecs.SpecsDirty = false;
             }

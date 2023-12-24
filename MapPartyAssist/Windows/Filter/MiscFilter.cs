@@ -19,8 +19,7 @@ namespace MapPartyAssist.Windows.Filter {
         }
 
         internal override void Draw() {
-
-            ImGui.BeginTable("miscFilterTable", 3);
+            ImGui.BeginTable("miscFilterTable", 3, ImGuiTableFlags.NoClip);
             ImGui.TableSetupColumn($"c1", ImGuiTableColumnFlags.WidthFixed, float.Min(ImGui.GetContentRegionAvail().X / 3, ImGuiHelpers.GlobalScale * 350f));
             ImGui.TableSetupColumn($"c2", ImGuiTableColumnFlags.WidthFixed, float.Min(ImGui.GetContentRegionAvail().X / 3, ImGuiHelpers.GlobalScale * 350f));
             ImGui.TableSetupColumn($"c3", ImGuiTableColumnFlags.WidthFixed, float.Min(ImGui.GetContentRegionAvail().X / 3, ImGuiHelpers.GlobalScale * 350f));
@@ -35,7 +34,7 @@ namespace MapPartyAssist.Windows.Filter {
             }
             ImGui.TableNextColumn();
             bool showDeleted = ShowDeleted;
-            if(ImGui.Checkbox("Show deleted", ref showDeleted)) {
+            if(ImGui.Checkbox("Show deleted/incomplete", ref showDeleted)) {
                 _plugin!.DataQueue.QueueDataOperation(() => {
                     ShowDeleted = showDeleted;
                     Refresh();

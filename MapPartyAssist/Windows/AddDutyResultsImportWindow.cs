@@ -75,7 +75,8 @@ namespace MapPartyAssist.Windows {
             }
             ImGui.TableNextColumn();
             ImGui.Text("Time");
-            ImGuiComponents.HelpMarker("When to insert data. Auto-formats date\nusing your local timezone.");
+            ImGui.SameLine();
+            ImGuiHelper.HelpMarker("When to insert data. Auto-formats date\nusing your local timezone.");
             ImGui.TableNextColumn();
             ImGui.TableNextColumn();
             ImGui.SetNextItemWidth(_inputWidth);
@@ -134,7 +135,8 @@ namespace MapPartyAssist.Windows {
             }
             ImGui.TableNextColumn();
             ImGui.Text("Total Gil");
-            ImGuiComponents.HelpMarker("Check box if gil was tracked.");
+            ImGui.SameLine();
+            ImGuiHelper.HelpMarker("Check box if gil was tracked.");
             ImGui.TableNextColumn();
 
             bool hasFloors = _model.CheckpointTotals != null;
@@ -150,7 +152,8 @@ namespace MapPartyAssist.Windows {
             ImGui.TableNextColumn();
             ImGui.TableNextColumn();
             ImGui.Text("Checkpoint Totals");
-            ImGuiComponents.HelpMarker("Total number of times each checkpoint was reached.\nCheck box if this was tracked, but select a duty first!");
+            ImGui.SameLine();
+            ImGuiHelper.HelpMarker("Total number of times each checkpoint was reached.\nCheck box if this was tracked, but select a duty first!");
             ImGui.TableNextColumn();
 
             if(hasFloors) {
@@ -189,7 +192,8 @@ namespace MapPartyAssist.Windows {
             }
             ImGui.TableNextColumn();
             ImGui.Text("Clear Sequence");
-            ImGuiComponents.HelpMarker("Runs between each clear.\nCheck box if this was tracked.");
+            ImGui.SameLine();
+            ImGuiHelper.HelpMarker("Runs between each clear.\nCheck box if this was tracked.");
             ImGui.TableNextColumn();
             if(hasSequence) {
                 for(int i = 0; i < _model.ClearSequence!.Count; i++) {
@@ -247,7 +251,8 @@ namespace MapPartyAssist.Windows {
                 ImGui.TableNextColumn();
                 ImGui.TableNextColumn();
                 ImGui.Text("Total Summons");
-                ImGuiComponents.HelpMarker("Total summons of each type.\nCheck box if this was tracked.");
+                ImGui.SameLine();
+                ImGuiHelper.HelpMarker("Total summons of each type.\nCheck box if this was tracked.");
                 ImGui.TableNextColumn();
 
                 if(hasSummons) {
@@ -293,16 +298,19 @@ namespace MapPartyAssist.Windows {
             ImGui.EndChild();
 
             if(ImGui.Button("Save")) {
-                if(_plugin.ImportManager.ValidateImport(_model)) {
-                    //save
-                    _plugin.Log.Debug("Valid Import");
-                    _plugin.ImportManager.AddorEditImport(_model, false);
-                    _statusMessage = "";
-                    IsOpen = false;
-                } else {
-                    _plugin.Log.Debug("Invalid Import");
-                    _statusMessage = "Invalid data, check numbers.";
-                }
+                _plugin.DataQueue.QueueDataOperation(() => {
+                    if(_plugin.ImportManager.ValidateImport(_model)) {
+                        //save
+                        _plugin.Log.Information("Valid Import");
+                        _plugin.ImportManager.AddorEditImport(_model, false);
+                        _statusMessage = "";
+                        IsOpen = false;
+                        //_plugin.Save();
+                    } else {
+                        _plugin.Log.Information("Invalid Import");
+                        _statusMessage = "Invalid data, check numbers.";
+                    }
+                });
             }
 
             ImGui.SameLine();

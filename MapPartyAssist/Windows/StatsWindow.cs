@@ -65,7 +65,7 @@ namespace MapPartyAssist.Windows {
         public void Refresh() {
             try {
                 RefreshLock.Wait();
-                var dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).Where(dr => dr.IsComplete).OrderBy(dr => dr.Time).ToList();
+                var dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).OrderBy(dr => dr.Time).ToList();
                 var maps = _plugin.StorageManager.GetMaps().Query().OrderBy(m => m.Time).ToList();
                 var imports = new List<DutyResultsImport>();
 
@@ -86,10 +86,6 @@ namespace MapPartyAssist.Windows {
                             break;
                         case Type _ when filter.GetType() == typeof(MapFilter):
                             var mapFilter = (MapFilter)filter;
-                            //if(!mapFilter.AllSelected) {
-                            //    maps = new();
-                            //}
-
                             maps = maps.Where(m => {
                                 if(m.TerritoryId == null && mapFilter.FilterState[TreasureMapCategory.Unknown]) {
                                     return true;
@@ -98,8 +94,6 @@ namespace MapPartyAssist.Windows {
                                 }
                                 return false;
                             }).ToList();
-
-
                             _plugin.Configuration.StatsWindowFilters.MapFilter = mapFilter;
                             break;
                         case Type _ when filter.GetType() == typeof(OwnerFilter):
@@ -111,10 +105,6 @@ namespace MapPartyAssist.Windows {
                             break;
                         case Type _ when filter.GetType() == typeof(PartyMemberFilter):
                             var partyMemberFilter = (PartyMemberFilter)filter;
-                            //if(partyMemberFilter.PartyMembers.Length <= 0) {
-                            //    break;
-                            //}
-
                             if(partyMemberFilter.OnlySolo) {
                                 dutyResults = dutyResults.Where(dr => dr.Players.Length == 1).ToList();
                                 maps = maps.Where(m => m.Players != null && m.Players.Length == 1).ToList();
@@ -216,6 +206,7 @@ namespace MapPartyAssist.Windows {
                             var miscFilter = (MiscFilter)filter;
                             if(!miscFilter.ShowDeleted) {
                                 maps = maps.Where(m => !m.IsDeleted).ToList();
+                                dutyResults = dutyResults.Where(dr => dr.IsComplete).ToList();
                             }
                             if(miscFilter.LootOnly) {
                                 maps = maps.Where(m => m.LootResults != null && m.LootResults.Count > 0).ToList();

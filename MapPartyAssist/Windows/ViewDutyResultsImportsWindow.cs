@@ -2,6 +2,7 @@
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
+using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using System.Collections.Generic;
 using System.Numerics;
@@ -31,24 +32,31 @@ namespace MapPartyAssist.Windows {
             _plugin.WindowSystem.AddWindow(_addImportWindow);
         }
 
-        public Task Refresh(int? pageIndex = 0) {
-            return Task.Run(async () => {
-                try {
-                    await _refreshLock.WaitAsync();
-                    //null index = stay on same page
-                    pageIndex ??= _currentPage;
-                    _currentPage = (int)pageIndex;
-                    _imports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted).OrderByDescending(i => i.Time).Offset(_currentPage * 100).Limit(100).ToList();
-                } finally {
-                    _refreshLock.Release();
-                }
-            });
+        public void Refresh(int? pageIndex = 0) {
+            pageIndex ??= _currentPage;
+            _currentPage = (int)pageIndex;
+            _imports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted).OrderByDescending(i => i.Time).Offset(_currentPage * 100).Limit(100).ToList();
+
+
+            //return Task.Run(async () => {
+            //    try {
+            //        await _refreshLock.WaitAsync();
+            //        //null index = stay on same page
+            //        pageIndex ??= _currentPage;
+            //        _currentPage = (int)pageIndex;
+            //        _imports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted).OrderByDescending(i => i.Time).Offset(_currentPage * 100).Limit(100).ToList();
+            //    } finally {
+            //        _refreshLock.Release();
+            //    }
+            //});
         }
 
         public override void OnClose() {
             base.OnClose();
             _addImportWindow.IsOpen = false;
-            Refresh();
+            _plugin.DataQueue.QueueDataOperation(() => {
+                Refresh();
+            });
         }
 
         public override void Draw() {
@@ -59,8 +67,8 @@ namespace MapPartyAssist.Windows {
                     _addImportWindow.Open();
                 }
             }
-
-            ImGuiComponents.HelpMarker("Use imports to include stats that were tracked when the plugin was unavailable.");
+            ImGui.SameLine();
+            ImGuiHelper.HelpMarker("Use imports to include stats that were tracked when the plugin was unavailable.");
 
             if(_imports.Count > 0) {
                 ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true);
@@ -82,7 +90,9 @@ namespace MapPartyAssist.Windows {
             if(_currentPage > 0) {
                 ImGui.SameLine();
                 if(ImGui.Button("Previous 100")) {
-                    Refresh(_currentPage - 1);
+                    _plugin.DataQueue.QueueDataOperation(() => {
+                        Refresh(_currentPage - 1);
+                    });
                 }
             }
 
@@ -90,8 +100,11 @@ namespace MapPartyAssist.Windows {
             if(_imports.Count >= 100) {
                 ImGui.SameLine();
                 if(ImGui.Button("Next 100")) {
-                    Refresh(_currentPage + 1);
+                    _plugin.DataQueue.QueueDataOperation(() => {
+                        Refresh(_currentPage + 1);
+                    });
                 }
+
             }
         }
 
@@ -107,8 +120,10 @@ namespace MapPartyAssist.Windows {
             if(ImGui.BeginPopup($"{import.Id.ToString()}-DeletePopup")) {
                 ImGui.Text("Are you sure?");
                 if(ImGui.Button($"Yes##{import.Id.ToString()}-ConfirmDelete")) {
-                    import.IsDeleted = true;
-                    _plugin.StorageManager.UpdateDutyResultsImport(import);
+                    _plugin.DataQueue.QueueDataOperation(() => {
+                        import.IsDeleted = true;
+                        _plugin.StorageManager.UpdateDutyResultsImport(import);
+                    });
                 }
                 ImGui.SameLine();
                 if(ImGui.Button($"Cancel##{import.Id.ToString()}-CancelDelete")) {

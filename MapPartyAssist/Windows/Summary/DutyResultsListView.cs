@@ -34,15 +34,14 @@ namespace MapPartyAssist.Windows.Summary {
         }
 
         public void Refresh(List<DutyResults> dutyResults) {
-            _dutyResults = dutyResults;
-            _lootResults = new();
+            Dictionary<ObjectId, Dictionary<LootResultKey, LootResultValue>> lootResults = new();
             //calculate loot results (this is largely duplicated from lootsummary)
             List<string> selfPlayers = new();
             _plugin.StorageManager.GetPlayers().Query().Where(p => p.IsSelf).ToList().ForEach(p => {
                 selfPlayers.Add(p.Key);
             });
 
-            foreach(var dr in _dutyResults) {
+            foreach(var dr in dutyResults) {
                 if(!dr.HasLootResults()) {
                     continue;
                 }
@@ -68,8 +67,10 @@ namespace MapPartyAssist.Windows.Summary {
                     }
                 }
                 newLootResults = newLootResults.OrderByDescending(lr => lr.Value.DroppedQuantity).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                _lootResults.Add(dr.Id, newLootResults);
+                lootResults.Add(dr.Id, newLootResults);
             }
+            _dutyResults = dutyResults;
+            _lootResults = lootResults;
             GoToPage();
         }
 
@@ -105,7 +106,7 @@ namespace MapPartyAssist.Windows.Summary {
             if(_plugin.AllowEdit && ImGui.Button("Save")) {
                 _plugin.DataQueue.QueueDataOperation(() => {
                     _plugin.StorageManager.UpdateDutyResults(_dutyResultsPage.Where(dr => dr.IsEdited));
-                    _plugin.Save();
+                    //_plugin.Save();
                 });
             }
 
@@ -161,17 +162,10 @@ namespace MapPartyAssist.Windows.Summary {
                 }
 
                 if(ImGui.CollapsingHeader(string.Format("{0:-23} {1:-40} {2:-25}", text1, text2, results.Id.ToString()))) {
-                    if(!_statsWindow.RefreshLock.Wait(0)) {
-                        continue;
-                    }
-                    try {
-                        if(_plugin.AllowEdit) {
-                            DrawDutyResultsEditable(results);
-                        } else {
-                            DrawDutyResults(results);
-                        }
-                    } finally {
-                        _statsWindow.RefreshLock.Release();
+                    if(_plugin.AllowEdit) {
+                        DrawDutyResultsEditable(results);
+                    } else {
+                        DrawDutyResults(results);
                     }
                 }
             }
@@ -206,6 +200,13 @@ namespace MapPartyAssist.Windows.Summary {
                     ImGui.Text($"{dutyResults.Owner}");
 
                     ImGui.TableNextColumn();
+                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Map: ");
+                    ImGui.TableNextColumn();
+                    if(dutyResults.Map != null) {
+                        ImGui.Text($"{dutyResults.Map.Id}");
+                    }
+
+                    ImGui.TableNextColumn();
                     ImGui.TextColored(ImGuiColors.DalamudGrey, "Last Checkpoint: ");
                     ImGui.TableNextColumn();
                     var currentLastCheckpointIndex = dutyResults.CheckpointResults.Count - 1;
@@ -228,7 +229,6 @@ namespace MapPartyAssist.Windows.Summary {
                             }
                         }
                     }
-
                     ImGui.EndTable();
                 }
                 ImGui.TableNextColumn();
@@ -245,39 +245,38 @@ namespace MapPartyAssist.Windows.Summary {
                 }
                 ImGui.EndTable();
             }
-
             if(dutyResults.HasLootResults()) {
                 ImGui.TextColored(ImGuiColors.DalamudGrey, "Loot: ");
-                ImGui.BeginTable($"loottable", 4, ImGuiTableFlags.None);
-                //ImGui.TableSetupColumn("Category", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f);
-                ImGui.TableSetupColumn("Quality", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f);
-                ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 200f);
-                ImGui.TableSetupColumn("Dropped", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 65f);
-                ImGui.TableSetupColumn("Obtained", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 70f);
-                ImGui.TableNextColumn();
-                ImGui.Text("Quality");
-                ImGui.TableNextColumn();
-                ImGui.Text("Name");
-                ImGui.TableNextColumn();
-                ImGui.Text("Dropped");
-                ImGui.TableNextColumn();
-                ImGui.Text("Obtained");
-
-                foreach(var lootResult in _lootResults[dutyResults.Id]) {
-                    //ImGui.TableNextColumn();
-                    //ImGui.Text($"{lootResult.Value.Category}");
+                if(ImGui.BeginTable($"loottable", 4, ImGuiTableFlags.None)) {
+                    //ImGui.TableSetupColumn("Category", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f);
+                    ImGui.TableSetupColumn("Quality", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f);
+                    ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 200f);
+                    ImGui.TableSetupColumn("Dropped", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 65f);
+                    ImGui.TableSetupColumn("Obtained", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 70f);
                     ImGui.TableNextColumn();
-                    var qualityText = lootResult.Key.IsHQ ? "HQ" : "";
-                    ImGuiHelper.CenterAlignCursor(qualityText);
-                    ImGui.Text($"{qualityText}");
+                    ImGui.Text("Quality");
                     ImGui.TableNextColumn();
-                    ImGui.Text($"{lootResult.Value.ItemName}");
+                    ImGui.Text("Name");
                     ImGui.TableNextColumn();
-                    ImGui.Text($"{lootResult.Value.DroppedQuantity}");
+                    ImGui.Text("Dropped");
                     ImGui.TableNextColumn();
-                    ImGui.Text($"{lootResult.Value.ObtainedQuantity}");
+                    ImGui.Text("Obtained");
+                    foreach(var lootResult in _lootResults[dutyResults.Id]) {
+                        //ImGui.TableNextColumn();
+                        //ImGui.Text($"{lootResult.Value.Category}");
+                        ImGui.TableNextColumn();
+                        var qualityText = lootResult.Key.IsHQ ? "HQ" : "";
+                        ImGuiHelper.CenterAlignCursor(qualityText);
+                        ImGui.Text($"{qualityText}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{lootResult.Value.ItemName}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{lootResult.Value.DroppedQuantity}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{lootResult.Value.ObtainedQuantity}");
+                    }
+                    ImGui.EndTable();
                 }
-                ImGui.EndTable();
             }
         }
 
