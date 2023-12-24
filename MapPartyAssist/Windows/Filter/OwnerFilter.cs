@@ -22,7 +22,7 @@ namespace MapPartyAssist.Windows.Filter {
             if(ImGui.InputText($"##ownerFilter", ref ownerFilter, 50, ImGuiInputTextFlags.None)) {
                 if(ownerFilter != _lastValue) {
                     _lastValue = ownerFilter;
-                    _plugin.DataQueue.QueueDataOperation(() => {
+                    _plugin!.DataQueue.QueueDataOperation(() => {
                         Owner = ownerFilter;
                         Refresh();
                     });

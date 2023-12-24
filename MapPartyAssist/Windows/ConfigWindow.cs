@@ -1,5 +1,4 @@
 ﻿using Dalamud.Interface.Colors;
-using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
@@ -46,7 +45,7 @@ namespace MapPartyAssist.Windows {
             }
             ImGui.SameLine();
             ImGuiHelper.HelpMarker("Will only clear map link on new treasure map added to player \nor manual removal.");
-            
+
             bool highlightCurrentZoneLinks = _plugin.Configuration.HighlightLinksInCurrentZone;
             if(ImGui.Checkbox("Highlight map links in current zone (yellow)", ref highlightCurrentZoneLinks)) {
                 _plugin.Configuration.HighlightLinksInCurrentZone = highlightCurrentZoneLinks;

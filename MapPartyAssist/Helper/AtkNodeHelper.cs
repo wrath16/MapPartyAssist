@@ -72,6 +72,9 @@ namespace MapPartyAssist.Helper {
         }
 
         internal static unsafe void PrintTextNodes(string addon) {
+            if(Log is null) {
+                return;
+            }
             AtkUnitBase* addonNode = AtkStage.GetSingleton()->RaptureAtkUnitManager->GetAddonByName(addon);
             if(addonNode != null) {
                 //Log.Debug($"addon name: {Marshal.PtrToStringUTF8((nint)addonNode->Name)} ptr: {string.Format("0x{0:X8}", new IntPtr(addonNode).ToString())}");
@@ -87,7 +90,7 @@ namespace MapPartyAssist.Helper {
         }
 
         internal static unsafe void PrintTextNodes(AtkResNode* node, bool checkSiblings = true, bool onlyVisible = true) {
-            if(node == null) {
+            if(node == null || Log is null) {
                 return;
             }
             int type = (int)node->Type;
@@ -154,6 +157,9 @@ namespace MapPartyAssist.Helper {
         }
 
         internal static unsafe void PrintAtkValues(AtkUnitBase* node) {
+            if(Log is null) {
+                return;
+            }
             if(node->AtkValues != null) {
                 for(int i = 0; i < node->AtkValuesCount; i++) {
                     string data = ConvertAtkValueToString(node->AtkValues[i]);
@@ -179,7 +185,7 @@ namespace MapPartyAssist.Helper {
                 case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.String:
                 case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.AllocatedString:
                 case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.String8:
-                    return Marshal.PtrToStringUTF8((nint)value.String);
+                    return Marshal.PtrToStringUTF8((nint)value.String) ?? "";
                 default:
                     break;
             }
@@ -187,6 +193,9 @@ namespace MapPartyAssist.Helper {
         }
 
         internal static unsafe void PrintAtkStringArray() {
+            if(Log is null) {
+                return;
+            }
             //int index = 0;
             //var stringArray = AtkStage.GetSingleton()->GetStringArrayData()[index];
 
@@ -228,7 +237,7 @@ namespace MapPartyAssist.Helper {
             //}
         }
 
-        public static unsafe string ReadString(byte* b, int maxLength = 0, bool nullIsEmpty = true) {
+        public static unsafe string? ReadString(byte* b, int maxLength = 0, bool nullIsEmpty = true) {
             if(b == null) return nullIsEmpty ? string.Empty : null;
             if(maxLength > 0) return Encoding.UTF8.GetString(b, maxLength).Split('\0')[0];
             var l = 0;

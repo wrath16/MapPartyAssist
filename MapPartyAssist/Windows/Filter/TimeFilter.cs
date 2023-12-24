@@ -34,7 +34,7 @@ namespace MapPartyAssist.Windows.Filter {
             int statRangeToInt = (int)StatRange;
             //ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X / 2f);
             if(ImGui.Combo($"##timeRangeCombo", ref statRangeToInt, Range, Range.Length)) {
-                _plugin.DataQueue.QueueDataOperation(() => {
+                _plugin!.DataQueue.QueueDataOperation(() => {
                     StatRange = (StatRange)statRangeToInt;
                     Refresh();
                 });

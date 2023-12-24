@@ -8,7 +8,6 @@ using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Text.RegularExpressions;
 
 namespace MapPartyAssist.Services {
@@ -550,7 +549,9 @@ namespace MapPartyAssist.Services {
                     if(item is not null) {
                         AddLootResults(item.ItemId, item.IsHQ, quantity, playerKey);
                         isChange = true;
+#if DEBUG
                         _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", item.ItemId, item.IsHQ, quantity, player));
+#endif
                     }
                 }
 
@@ -562,9 +563,14 @@ namespace MapPartyAssist.Services {
                     bool isNumber = Regex.IsMatch(m.Value, @"\d+");
                     int quantity = isNumber ? int.Parse(m.Value) : 1;
                     var item = (ItemPayload?)message.Payloads.FirstOrDefault(m => m is ItemPayload);
-                    AddLootResults(item.ItemId, item.IsHQ, quantity);
-                    isChange = true;
-                    _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", item.ItemId, item.IsHQ, quantity));
+                    if(item is not null) {
+                        AddLootResults(item.ItemId, item.IsHQ, quantity);
+                        isChange = true;
+#if DEBUG
+                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", item.ItemId, item.IsHQ, quantity));
+#endif
+                    }
+
                 }
 
                 //check for failure
@@ -713,7 +719,7 @@ namespace MapPartyAssist.Services {
                 if(LastCheckpoint is null) {
                     _firstLootResults.Add(lootResult);
                 } else {
-                    LastCheckpoint.LootResults.Add(lootResult);
+                    LastCheckpoint.LootResults!.Add(lootResult);
                 }
             } else {
                 matchingLootResults.Recipient = recipient;

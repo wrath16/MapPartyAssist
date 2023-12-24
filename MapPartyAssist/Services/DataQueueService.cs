@@ -1,5 +1,4 @@
-﻿using Dalamud.Logging;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading;
@@ -11,11 +10,16 @@ namespace MapPartyAssist.Services {
         //coordinates all data sequence-sensitive operations
         private ConcurrentQueue<Task> DataTaskQueue { get; init; } = new();
         private SemaphoreSlim DataLock { get; init; } = new SemaphoreSlim(1, 1);
+        private Plugin _plugin;
+
+        internal DataQueueService(Plugin plugin) {
+            _plugin = plugin;
+        }
 
         internal Task QueueDataOperation<T>(Func<T> action) {
 #if DEBUG
             var x = new StackFrame(1, true).GetMethod();
-            PluginLog.Verbose($"adding data operation from: {x.Name} {x.DeclaringType}");
+            _plugin.Log.Verbose($"adding data operation from: {x.Name} {x.DeclaringType} tasks queued: {DataTaskQueue.Count + 1}");
 #endif
             Task<T> t = new(action);
             return AddToTaskQueue(t);
@@ -24,7 +28,7 @@ namespace MapPartyAssist.Services {
         internal Task QueueDataOperation(Action action) {
 #if DEBUG
             var x = new StackFrame(1, true).GetMethod();
-            PluginLog.Verbose($"adding data operation from: {x.Name} {x.DeclaringType}");
+            _plugin.Log.Verbose($"adding data operation from: {x.Name} {x.DeclaringType} tasks queued: {DataTaskQueue.Count + 1}");
 #endif
             Task t = new(action);
             return AddToTaskQueue(t);

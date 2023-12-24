@@ -64,7 +64,7 @@ namespace MapPartyAssist.Windows.Filter {
                 ImGui.TableNextColumn();
                 bool filterState = category.Value;
                 if(ImGui.Checkbox($"{MapHelper.GetCategoryName(category.Key)}##{GetHashCode()}", ref filterState)) {
-                    _plugin.DataQueue.QueueDataOperation(() => {
+                    _plugin!.DataQueue.QueueDataOperation(() => {
                         FilterState[category.Key] = filterState;
                         UpdateAllSelected();
                         Refresh();

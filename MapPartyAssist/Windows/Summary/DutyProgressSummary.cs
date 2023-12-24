@@ -40,7 +40,6 @@ namespace MapPartyAssist.Windows.Summary {
         SingleDutyFilter _dutyFilter;
         //duty id for draw time
         //private int _dutyId => _dutyFilter.DutyId;
-        private bool _isUpdating = false;
 
         ////linked filters
         //TimeFilter? _linkedTimeFilter;

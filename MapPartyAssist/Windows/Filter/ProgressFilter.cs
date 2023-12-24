@@ -18,7 +18,7 @@ namespace MapPartyAssist.Windows.Filter {
         internal override void Draw() {
             bool onlyClears = OnlyClears;
             if(ImGui.Checkbox("Full clears only", ref onlyClears)) {
-                _plugin.DataQueue.QueueDataOperation(() => {
+                _plugin!.DataQueue.QueueDataOperation(() => {
                     OnlyClears = onlyClears;
                     Refresh();
                 });

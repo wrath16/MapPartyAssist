@@ -34,7 +34,7 @@ namespace MapPartyAssist.Windows.Filter {
         internal override void Draw() {
             bool allSelected = AllSelected;
             if(ImGui.Checkbox($"Select All##{GetHashCode()}", ref allSelected)) {
-                _plugin.DataQueue.QueueDataOperation(() => {
+                _plugin!.DataQueue.QueueDataOperation(() => {
                     foreach(var duty in FilterState) {
                         FilterState[duty.Key] = allSelected;
                     }
@@ -51,7 +51,7 @@ namespace MapPartyAssist.Windows.Filter {
             foreach(var duty in FilterState) {
                 ImGui.TableNextColumn();
                 bool filterState = duty.Value;
-                if(ImGui.Checkbox($"{_plugin.DutyManager.Duties[duty.Key].GetDisplayName()}##{GetHashCode()}", ref filterState)) {
+                if(ImGui.Checkbox($"{_plugin!.DutyManager.Duties[duty.Key].GetDisplayName()}##{GetHashCode()}", ref filterState)) {
                     _plugin.DataQueue.QueueDataOperation(() => {
                         FilterState[duty.Key] = filterState;
                         UpdateAllSelected();
@@ -59,7 +59,6 @@ namespace MapPartyAssist.Windows.Filter {
                     });
                 }
             }
-
             ImGui.EndTable();
         }
     }

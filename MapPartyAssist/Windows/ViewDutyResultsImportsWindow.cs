@@ -1,5 +1,4 @@
-﻿using Dalamud.Interface.Components;
-using Dalamud.Interface.Utility;
+﻿using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
 using MapPartyAssist.Helper;
@@ -7,7 +6,6 @@ using MapPartyAssist.Types;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows {
     internal class ViewDutyResultsImportsWindow : Window {

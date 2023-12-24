@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace MapPartyAssist.Services {
     //internal service for managing connections to LiteDB database
@@ -176,7 +175,7 @@ namespace MapPartyAssist.Services {
         //    }
         //}
 
-        
+
         //synchronous write
         private void WriteToDatabase(Func<object> action, bool toSave = true) {
             try {

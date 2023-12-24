@@ -5,7 +5,6 @@ using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Utility;
-using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Helper;
@@ -360,7 +359,9 @@ namespace MapPartyAssist.Services {
                         if(item is not null) {
                             AddLootResults(item.ItemId, item.IsHQ, quantity, playerKey);
                             isChange = true;
+#if DEBUG
                             _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", item.ItemId, item.IsHQ, quantity, player));
+#endif
                         }
                     }
 
@@ -372,9 +373,13 @@ namespace MapPartyAssist.Services {
                         bool isNumber = Regex.IsMatch(m.Value, @"\d+");
                         int quantity = isNumber ? int.Parse(m.Value) : 1;
                         var item = (ItemPayload?)message.Payloads.FirstOrDefault(m => m is ItemPayload);
-                        AddLootResults(item.ItemId, item.IsHQ, quantity);
-                        isChange = true;
-                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", item.ItemId, item.IsHQ, quantity));
+                        if(item is not null) {
+                            AddLootResults(item.ItemId, item.IsHQ, quantity);
+                            isChange = true;
+#if DEBUG
+                            _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", item.ItemId, item.IsHQ, quantity));
+#endif
+                        }
                     }
                 }
                 if(isChange && LastMap != null) {

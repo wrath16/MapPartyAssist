@@ -26,7 +26,6 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace MapPartyAssist {
 
@@ -130,12 +129,12 @@ namespace MapPartyAssist {
                     Log.Warning("Client language unsupported, most functions will be unavailable.");
                 }
 
-                DataQueue = new();
-                StorageManager = new StorageManager(this, $"{PluginInterface.GetPluginConfigDirectory()}\\{DatabaseName}");
-                Functions = new GameFunctions();
-                DutyManager = new DutyManager(this);
-                MapManager = new MapManager(this);
-                ImportManager = new ImportManager(this);
+                DataQueue = new(this);
+                StorageManager = new(this, $"{PluginInterface.GetPluginConfigDirectory()}\\{DatabaseName}");
+                Functions = new();
+                DutyManager = new(this);
+                MapManager = new(this);
+                ImportManager = new(this);
 
                 //needs DutyManager to be initialized first
                 Configuration.Initialize(this);
