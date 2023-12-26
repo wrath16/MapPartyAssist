@@ -200,7 +200,7 @@ namespace MapPartyAssist.Windows.Summary {
                     ImGui.Text($"{dutyResults.Owner}");
 
                     ImGui.TableNextColumn();
-                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Map: ");
+                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Map ID: ");
                     ImGui.TableNextColumn();
                     if(dutyResults.Map != null) {
                         ImGui.Text($"{dutyResults.Map.Id}");

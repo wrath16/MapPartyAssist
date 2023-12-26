@@ -51,7 +51,7 @@ namespace MapPartyAssist.Windows {
         public override void Draw() {
             ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true);
             ImGui.BeginTable($"AddTable", 3, ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip);
-            ImGui.TableSetupColumn("enabled", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 25);
+            ImGui.TableSetupColumn("enabled", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 40);
             ImGui.TableSetupColumn("field", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 200);
             //ImGui.TableSetupColumn("field", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableSetupColumn("name", ImGuiTableColumnFlags.WidthStretch);
@@ -62,6 +62,10 @@ namespace MapPartyAssist.Windows {
             //ImGui.TableNextColumn();
             //ImGui.TableNextColumn();
             //ImGui.TableNextColumn();
+
+            if(ImGui.Button("Now")) {
+                _model.Time = DateTime.Now;
+            }
 
             ImGui.TableNextColumn();
             var timeString = _model.Time.ToString();
@@ -76,6 +80,14 @@ namespace MapPartyAssist.Windows {
             ImGui.Text("Time");
             ImGui.SameLine();
             ImGuiHelper.HelpMarker("When to insert data. Auto-formats date\nusing your local timezone.");
+
+            //ImGui.TableNextColumn();
+            //ImGui.TableNextColumn();
+            //if(ImGui.Button("Now")) {
+            //    _model.Time = DateTime.Now;
+            //}
+            //ImGui.TableNextColumn();
+
             ImGui.TableNextColumn();
             ImGui.TableNextColumn();
             ImGui.SetNextItemWidth(_inputWidth);

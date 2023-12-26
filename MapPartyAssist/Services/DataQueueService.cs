@@ -19,7 +19,7 @@ namespace MapPartyAssist.Services {
         internal Task QueueDataOperation<T>(Func<T> action) {
 #if DEBUG
             var x = new StackFrame(1, true).GetMethod();
-            _plugin.Log.Verbose($"adding data operation from: {x.Name} {x.DeclaringType} tasks queued: {DataTaskQueue.Count + 1}");
+            //_plugin.Log.Verbose($"adding data operation from: {x.Name} {x.DeclaringType} tasks queued: {DataTaskQueue.Count + 1}");
 #endif
             Task<T> t = new(action);
             return AddToTaskQueue(t);
@@ -28,7 +28,7 @@ namespace MapPartyAssist.Services {
         internal Task QueueDataOperation(Action action) {
 #if DEBUG
             var x = new StackFrame(1, true).GetMethod();
-            _plugin.Log.Verbose($"adding data operation from: {x.Name} {x.DeclaringType} tasks queued: {DataTaskQueue.Count + 1}");
+            //_plugin.Log.Verbose($"adding data operation from: {x.Name} {x.DeclaringType} tasks queued: {DataTaskQueue.Count + 1}");
 #endif
             Task t = new(action);
             return AddToTaskQueue(t);

@@ -1,10 +1,14 @@
 ﻿#pragma warning disable
 #if DEBUG
 using Dalamud;
+using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface;
 using Dalamud.Interface.Windowing;
 using Dalamud.Logging;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
@@ -14,6 +18,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows {
     //for testing purposes only
@@ -246,6 +252,19 @@ namespace MapPartyAssist.Windows {
                     if(ImGui.Button("get greater regex")) {
                         _plugin.Log.Debug($"{_plugin.DutyManager.CurrentDuty.GreaterSummonRegex[_plugin.ClientState.ClientLanguage].ToString()}");
                     }
+
+                    if(ImGui.Button("test ref")) {
+
+                        SeStringBuilder sb = new SeStringBuilder();
+                        sb.AddText("hehe!");
+                        var x = sb.BuiltString;
+                        testRef(ref x);
+                        sb.AddText("wow!");
+
+                        //SeString message = new([new RawPayload("")])
+                    }
+
+
                     ImGui.EndTabItem();
                 }
 
@@ -442,7 +461,6 @@ namespace MapPartyAssist.Windows {
             //dutyResults2.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[0]));
             //dutyResults2.TotalGil = 20000;
 
-
             _plugin.StorageManager.UpdateDutyResults(dutyResults);
             //Plugin.StorageManager.UpdateDutyResults(dutyResults2);
             //Plugin.StorageManager.AddDutyResults(dutyResults3);
@@ -452,6 +470,17 @@ namespace MapPartyAssist.Windows {
             //dr.Map = map;
             //Plugin.StorageManager.UpdateDutyResults(dr);
 
+        }
+
+        private void testRef(ref SeString message) {
+            SeString messageUnref = message;
+            StringBuilder sb = new();
+
+            var x = message.ToString();
+            Task.Delay(1000).ContinueWith(t => {
+                _plugin.Log.Debug($"unref message: {messageUnref.ToString()}");
+                _plugin.Log.Debug($"unref message string: {x}");
+            });
         }
     }
 }

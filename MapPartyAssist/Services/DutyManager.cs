@@ -474,17 +474,22 @@ namespace MapPartyAssist.Services {
                 return;
             }
 
-            SeString messageUnRef = message;
-
             switch((int)type) {
                 case 62:
                 case 2105:
                 case 2110:
                 case 2233:
+                case 4158:
                 case 8254:
                 case (int)XivChatType.SystemMessage:
+                    string messageText = message.ToString();
+                    var item = (ItemPayload?)message.Payloads.FirstOrDefault(m => m is ItemPayload);
+                    uint? itemId = item?.ItemId;
+                    bool isHq = item is not null ? item.IsHQ : false;
+                    var player = (PlayerPayload?)message.Payloads.FirstOrDefault(m => m is PlayerPayload);
+                    string? playerKey = player is not null ? $"{player.PlayerName} {player.World.Name}" : null;
                     _plugin.DataQueue.QueueDataOperation(() => {
-                        ProcessChatMessage(type, messageUnRef);
+                        ProcessChatMessage(type, messageText, playerKey, itemId, isHq);
                     });
                     break;
                 default:
@@ -492,7 +497,7 @@ namespace MapPartyAssist.Services {
             }
         }
 
-        private void ProcessChatMessage(XivChatType type, SeString message) {
+        private void ProcessChatMessage(XivChatType type, string message, string? playerKey, uint? itemId, bool isHQ = false) {
             if(!IsDutyInProgress()) {
                 return;
             }
@@ -501,7 +506,7 @@ namespace MapPartyAssist.Services {
 
             //check for gil obtained
             if((int)type == 62) {
-                Match m = GilObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                Match m = GilObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message);
                 if(m.Success) {
                     string parsedGilString = m.Value.Replace(",", "").Replace(".", "").Replace(" ", "");
                     int gil = int.Parse(parsedGilString);
@@ -511,24 +516,23 @@ namespace MapPartyAssist.Services {
                 }
                 //self loot obtained
             } else if((int)type == 2110) {
-                Match quantityMatch = SelfObtainedQuantityRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                Match quantityMatch = SelfObtainedQuantityRegex[_plugin.ClientState.ClientLanguage].Match(message);
                 if(quantityMatch.Success) {
                     //todo make this work for all languages...
                     bool isNumber = Regex.IsMatch(quantityMatch.Value, @"\d+");
                     int quantity = isNumber ? int.Parse(quantityMatch.Value.Replace(",", "").Replace(".", "")) : 1;
-                    var player = _plugin.GetCurrentPlayer();
-                    var item = (ItemPayload?)message.Payloads.FirstOrDefault(m => m is ItemPayload);
-                    if(item is not null) {
-                        AddLootResults(item.ItemId, item.IsHQ, quantity, player);
+                    var currentPlayer = _plugin.GetCurrentPlayer();
+                    if(itemId is not null) {
+                        AddLootResults((uint)itemId, isHQ, quantity, currentPlayer);
                         isChange = true;
-                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", item.ItemId, item.IsHQ, quantity, player));
+                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, currentPlayer));
                     } else {
                         //tomestones...
-                        Match itemMatch = SelfObtainedItemRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                        Match itemMatch = SelfObtainedItemRegex[_plugin.ClientState.ClientLanguage].Match(message);
                         if(itemMatch.Success) {
                             var rowId = quantity != 1 ? _plugin.GetRowId<Item>(itemMatch.Value, "Plural") : _plugin.GetRowId<Item>(itemMatch.Value, "Singular");
                             if(rowId is not null) {
-                                AddLootResults((uint)rowId, false, quantity, player);
+                                AddLootResults((uint)rowId, false, quantity, currentPlayer);
                                 isChange = true;
                             } else {
                                 _plugin.Log.Warning($"Cannot find rowId for {itemMatch.Value}");
@@ -537,20 +541,17 @@ namespace MapPartyAssist.Services {
                     }
                 }
                 //party member loot obtained
-            } else if((int)type == 8254) {
+            } else if((int)type == 8254 || (int)type == 4158) {
                 Match m = PartyMemberObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
                 if(m.Success) {
                     //todo make this work for all languages...
                     bool isNumber = Regex.IsMatch(m.Value, @"\d+");
                     int quantity = isNumber ? int.Parse(m.Value.Replace(",", "").Replace(".", "")) : 1;
-                    var player = (PlayerPayload?)message.Payloads.FirstOrDefault(m => m is PlayerPayload);
-                    var playerKey = $"{player.PlayerName} {player.World.Name}";
-                    var item = (ItemPayload?)message.Payloads.FirstOrDefault(m => m is ItemPayload);
-                    if(item is not null) {
-                        AddLootResults(item.ItemId, item.IsHQ, quantity, playerKey);
+                    if(itemId is not null && !playerKey.IsNullOrEmpty()) {
+                        AddLootResults((uint)itemId, isHQ, quantity, playerKey);
                         isChange = true;
 #if DEBUG
-                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", item.ItemId, item.IsHQ, quantity, player));
+                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, playerKey));
 #endif
                     }
                 }
@@ -562,19 +563,18 @@ namespace MapPartyAssist.Services {
                     //todo make this work for all languages...
                     bool isNumber = Regex.IsMatch(m.Value, @"\d+");
                     int quantity = isNumber ? int.Parse(m.Value) : 1;
-                    var item = (ItemPayload?)message.Payloads.FirstOrDefault(m => m is ItemPayload);
-                    if(item is not null) {
-                        AddLootResults(item.ItemId, item.IsHQ, quantity);
+                    if(itemId is not null) {
+                        AddLootResults((uint)itemId, isHQ, quantity);
                         isChange = true;
 #if DEBUG
-                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", item.ItemId, item.IsHQ, quantity));
+                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", itemId, isHQ, quantity));
 #endif
                     }
 
                 }
 
                 //check for failure
-            } else if(((int)type == 2233 || (int)type == 2105) && CurrentDuty!.FailureCheckpoint!.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
+            } else if(((int)type == 2233 || (int)type == 2105) && CurrentDuty!.FailureCheckpoint!.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message)) {
                 CurrentDutyResults!.IsComplete = true;
                 CurrentDutyResults!.CompletionTime = DateTime.Now;
                 isChange = true;
@@ -598,10 +598,10 @@ namespace MapPartyAssist.Services {
         }
 
         //return true if updates made
-        private bool ProcessCheckpointsDoors(XivChatType type, SeString message) {
+        private bool ProcessCheckpointsDoors(XivChatType type, string message) {
             if(CurrentDutyResults!.CheckpointResults.Count < CurrentDuty!.Checkpoints!.Count) {
                 var nextCheckpoint = CurrentDuty!.Checkpoints![CurrentDutyResults!.CheckpointResults.Count];
-                if(((int)type == 2233 || (int)type == 2105) && nextCheckpoint.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
+                if(((int)type == 2233 || (int)type == 2105) && nextCheckpoint.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message)) {
                     _plugin.Log.Information($"Adding new checkpoint: {nextCheckpoint.Name}");
                     CurrentDutyResults.CheckpointResults.Add(new() {
                         Checkpoint = nextCheckpoint,
@@ -624,22 +624,22 @@ namespace MapPartyAssist.Services {
             return false;
         }
 
-        private bool ProcessCheckpointsRoulette(XivChatType type, SeString message) {
+        private bool ProcessCheckpointsRoulette(XivChatType type, string message) {
             if(!IsDutyInProgress() || CurrentDuty!.Structure != DutyStructure.Roulette) {
                 throw new InvalidOperationException("Incorrect duty type.");
             }
 
             if((int)type == 2105 || (int)type == 2233) {
                 //check for save
-                bool isSave = IsSavedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString());
+                bool isSave = IsSavedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message);
                 //check for circles shift
-                Match shiftMatch = CurrentDuty!.CircleShiftsRegex![_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                Match shiftMatch = CurrentDuty!.CircleShiftsRegex![_plugin.ClientState.ClientLanguage].Match(message);
                 if(shiftMatch.Success) {
                     AddRouletteCheckpointResults(Summon.Gold, _plugin.TranslateBNpcName(shiftMatch.Value, ClientLanguage.English), isSave);
                     return true;
                 }
                 //check for abomination
-                Match specialMatch = AbominationRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                Match specialMatch = AbominationRegex[_plugin.ClientState.ClientLanguage].Match(message);
                 if(specialMatch.Success) {
                     AddRouletteCheckpointResults(Summon.Silver, null, isSave);
                     //add next checkpoint as well
@@ -651,25 +651,25 @@ namespace MapPartyAssist.Services {
                     return true;
                 }
                 //check for lesser summon
-                Match lesserMatch = CurrentDuty.LesserSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message.ToString());
+                Match lesserMatch = CurrentDuty.LesserSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message);
                 if(lesserMatch.Success) {
                     AddRouletteCheckpointResults(Summon.Lesser, _plugin.TranslateBNpcName(lesserMatch.Value, ClientLanguage.English), isSave);
                     return true;
                 }
                 //check for greater summon
-                Match greaterMatch = CurrentDuty.GreaterSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message.ToString());
+                Match greaterMatch = CurrentDuty.GreaterSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message);
                 if(greaterMatch.Success) {
                     AddRouletteCheckpointResults(Summon.Greater, _plugin.TranslateBNpcName(greaterMatch.Value, ClientLanguage.English), isSave);
                     return true;
                 }
                 //check for elder summon
-                Match elderMatch = CurrentDuty.ElderSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message.ToString());
+                Match elderMatch = CurrentDuty.ElderSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message);
                 if(elderMatch.Success) {
                     AddRouletteCheckpointResults(Summon.Elder, _plugin.TranslateBNpcName(elderMatch.Value, ClientLanguage.English), isSave);
                     return true;
                 }
                 //enemy defeated
-                if(SummonDefeatedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
+                if(SummonDefeatedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message)) {
                     AddRouletteCheckpointResults(null);
                     if(CurrentDutyResults!.CheckpointResults.Where(cr => cr.IsReached).Count() == CurrentDuty.Checkpoints!.Count) {
                         CurrentDutyResults.IsComplete = true;
