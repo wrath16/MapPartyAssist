@@ -25,7 +25,7 @@ namespace MapPartyAssist.Services {
             }
         }
 
-        internal CheckpointResults? LastCheckpoint => CurrentDutyResults?.CheckpointResults.Last();
+        internal CheckpointResults? LastCheckpoint => CurrentDutyResults?.CheckpointResults.LastOrDefault();
 
         internal readonly Dictionary<int, Duty> Duties = new Dictionary<int, Duty>() {
             { 179 , new Duty(179, "the aquapolis", DutyStructure.Doors, 7, new() {
@@ -308,7 +308,7 @@ namespace MapPartyAssist.Services {
             //}
 
             if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null) {
-                var lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().Last();
+                var lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().LastOrDefault();
                 _plugin.Log.Information($"Starting new duty results for duty id: {dutyId}");
                 //_currentDutyResults = new DutyResults(dutyId, Duties[dutyId].Name, _plugin.CurrentPartyList, "");
                 CurrentDutyResults = new DutyResults {
@@ -319,7 +319,7 @@ namespace MapPartyAssist.Services {
                 };
                 _firstLootResults = new();
                 //check last map, 10 min fallback for linking to most recent map
-                if((DateTime.Now - lastMap.Time).TotalMinutes < 10) {
+                if(lastMap != null && (DateTime.Now - lastMap.Time).TotalMinutes < 10) {
                     CurrentDutyResults.Map = lastMap;
                     CurrentDutyResults.Owner = lastMap.Owner!;
                     lastMap.IsPortal = true;
@@ -741,7 +741,7 @@ namespace MapPartyAssist.Services {
             }
         }
 
-        private bool IsDutyInProgress() {
+        internal bool IsDutyInProgress() {
             return CurrentDutyResults != null;
         }
 

@@ -46,6 +46,7 @@ namespace MapPartyAssist.Services {
         private DateTime _lastMapTime = DateTime.UnixEpoch;
         private DateTime _portalBlockUntil = DateTime.UnixEpoch;
         private bool _boundByMapDuty;
+        private bool _boundByMapDutyDelayed;
 
         //LogMessage: 3778
         private static readonly Dictionary<ClientLanguage, Regex> EnterPortalRegex = new() {
@@ -138,6 +139,7 @@ namespace MapPartyAssist.Services {
         private void OnTerritoryChanged(ushort territoryId) {
             ResetDigStatus();
             _boundByMapDuty = false;
+            _boundByMapDutyDelayed = false;
         }
 
         private unsafe void CheckForTreasureHunt(AddonEvent type, AddonArgs args) {
@@ -161,9 +163,14 @@ namespace MapPartyAssist.Services {
                     _plugin.Log.Verbose($"Bound by map duty!");
                 }
                 _boundByMapDuty = true;
+                _boundByMapDutyDelayed = true;
             } else if(_boundByMapDuty) {
                 _plugin.Log.Verbose($"No longer bound by map duty!");
                 _boundByMapDuty = false;
+                //add delay since we can miss some loot messages otherwise
+                _plugin.DataQueue.QueueDataOperation(() => {
+                    _boundByMapDutyDelayed = false;
+                });
             }
         }
 
@@ -258,7 +265,8 @@ namespace MapPartyAssist.Services {
                         SetStatus("Unable to determine map owner, verify and add manually.", StatusLevel.ERROR);
                     }
                     //LogMessage: 3756, 9361, 9363
-                } else if(OpenCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(message)) {
+                    //this can trigger in excitatron 6000
+                } else if(OpenCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(message) && _plugin.Functions.GetCurrentDutyId() == 0) {
                     //add delay because this message occurs before "crumbles into dust" to avoid double-counting with self-dig
                     Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
                         _plugin.DataQueue.QueueDataOperation(() => {
@@ -310,7 +318,7 @@ namespace MapPartyAssist.Services {
                     _plugin.CurrentPartyList[playerKey].MapLink = mapLink;
                     _plugin.DataQueue.QueueDataOperation(() => _plugin.StorageManager.UpdatePlayer(_plugin.CurrentPartyList[playerKey]));
                 }
-            } else if(_boundByMapDuty) {
+            } else if(_boundByMapDutyDelayed) {
                 //gil
                 if((int)type == 62) {
                     Match m = DutyManager.GilObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message);
