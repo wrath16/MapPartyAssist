@@ -154,31 +154,33 @@ namespace MapPartyAssist.Services {
 
         internal static readonly Dictionary<ClientLanguage, Regex> LootListRegex = new() {
             { ClientLanguage.English, new Regex(@"(the|an|a|[\.,\d]+)\b(?=.* been added to the loot list)", RegexOptions.IgnoreCase) },
-            { ClientLanguage.French, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"(le|la|l'|un|une|[\.,\d]+)\b(?=.* a été ajoutée au butin)", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
-            { ClientLanguage.Japanese, new Regex(@"", RegexOptions.IgnoreCase) }
+            { ClientLanguage.Japanese, new Regex(@"([\.,\d]*)(?=戦利品に追加されました)", RegexOptions.IgnoreCase) }
         };
 
         internal static readonly Dictionary<ClientLanguage, Regex> SelfObtainedQuantityRegex = new() {
             { ClientLanguage.English, new Regex(@"(?<=You obtain .?)(the|an|a|[\.,\d]+)\b", RegexOptions.IgnoreCase) },
-            { ClientLanguage.French, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"(?<=Vous obtenez .?)(le|la|l'|un|une|[\.,\d]+)\b", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
-            { ClientLanguage.Japanese, new Regex(@"", RegexOptions.IgnoreCase) }
+            { ClientLanguage.Japanese, new Regex(@"[\.,\d]*(?=(個|を)手に入れた。)", RegexOptions.IgnoreCase) }
         };
 
-        //EN note: does not work with items beginning with no indefinite article
+        //EN note: does not work with items beginning with no indefinite
+        //JP note: specifies allagan tomestones
+        //may need this for party members...
         internal static readonly Dictionary<ClientLanguage, Regex> SelfObtainedItemRegex = new() {
             { ClientLanguage.English, new Regex(@"(?<=You obtain (an|a|[\.,\d])+\s)[\w\s]*", RegexOptions.IgnoreCase) },
-            { ClientLanguage.French, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"(?<=Vous obtenez (un|une|[\.,\d])+\s)[\w\s]*", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
-            { ClientLanguage.Japanese, new Regex(@"", RegexOptions.IgnoreCase) }
+            { ClientLanguage.Japanese, new Regex(@".*(?=を[\d]*個手に入れた。)", RegexOptions.IgnoreCase) }
         };
 
         internal static readonly Dictionary<ClientLanguage, Regex> PartyMemberObtainedRegex = new() {
             { ClientLanguage.English, new Regex(@"(?<=obtains .?)(the|an|a|[\.,\d]+)\b", RegexOptions.IgnoreCase) },
-            { ClientLanguage.French, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"(?<=obtient .?)(le|la|l'|un|une|[\.,\d]+)\b", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
-            { ClientLanguage.Japanese, new Regex(@"", RegexOptions.IgnoreCase) }
+            { ClientLanguage.Japanese, new Regex(@"[\.,\d]*(?=を手に入れた。)", RegexOptions.IgnoreCase) }
         };
 
         //LogMessage: 3777, 3800
@@ -517,8 +519,8 @@ namespace MapPartyAssist.Services {
                 //self loot obtained
             } else if((int)type == 2110) {
                 Match quantityMatch = SelfObtainedQuantityRegex[_plugin.ClientState.ClientLanguage].Match(message);
+                Match itemMatch = SelfObtainedItemRegex[_plugin.ClientState.ClientLanguage].Match(message);
                 if(quantityMatch.Success) {
-                    //todo make this work for all languages...
                     bool isNumber = Regex.IsMatch(quantityMatch.Value, @"\d+");
                     int quantity = isNumber ? int.Parse(quantityMatch.Value.Replace(",", "").Replace(".", "")) : 1;
                     var currentPlayer = _plugin.GetCurrentPlayer();
@@ -526,17 +528,15 @@ namespace MapPartyAssist.Services {
                         AddLootResults((uint)itemId, isHQ, quantity, currentPlayer);
                         isChange = true;
                         _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, currentPlayer));
-                    } else {
-                        //tomestones...
-                        Match itemMatch = SelfObtainedItemRegex[_plugin.ClientState.ClientLanguage].Match(message);
-                        if(itemMatch.Success) {
-                            var rowId = quantity != 1 ? _plugin.GetRowId<Item>(itemMatch.Value, "Plural") : _plugin.GetRowId<Item>(itemMatch.Value, "Singular");
-                            if(rowId is not null) {
-                                AddLootResults((uint)rowId, false, quantity, currentPlayer);
-                                isChange = true;
-                            } else {
-                                _plugin.Log.Warning($"Cannot find rowId for {itemMatch.Value}");
-                            }
+                    } else if(itemMatch.Success) {
+                        //tomestones
+                        //Japanese has no plural...
+                        var rowId = quantity != 1 && _plugin.ClientState.ClientLanguage != ClientLanguage.Japanese ? _plugin.GetRowId<Item>(itemMatch.Value, "Plural") : _plugin.GetRowId<Item>(itemMatch.Value, "Singular");
+                        if(rowId is not null) {
+                            AddLootResults((uint)rowId, false, quantity, currentPlayer);
+                            isChange = true;
+                        } else {
+                            _plugin.Log.Warning($"Cannot find rowId for {itemMatch.Value}");
                         }
                     }
                 }

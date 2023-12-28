@@ -15,6 +15,7 @@ namespace MapPartyAssist.Windows.Filter {
         internal MiscFilter(Plugin plugin, Action action, MiscFilter? filter = null) : base(plugin, action) {
             if(filter is not null) {
                 LootOnly = filter.LootOnly;
+                ShowDeleted = filter.ShowDeleted;
             }
         }
 

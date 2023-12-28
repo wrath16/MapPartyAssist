@@ -9,6 +9,7 @@ using MapPartyAssist.Types;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
 using static MapPartyAssist.Windows.Summary.LootSummary;
 
 namespace MapPartyAssist.Windows.Summary {
@@ -25,6 +26,7 @@ namespace MapPartyAssist.Windows.Summary {
 
         private int _currentPage = 0;
         private bool _collapseAll = false;
+        private SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
 
         public string CSV { get; private set; } = "";
 
@@ -71,8 +73,13 @@ namespace MapPartyAssist.Windows.Summary {
                 newLootResults = newLootResults.OrderByDescending(lr => lr.Value.DroppedQuantity).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 lootResults.Add(m.Id, newLootResults);
             }
-            _maps = maps;
-            _lootResults = lootResults;
+            try {
+                _refreshLock.Wait();
+                _maps = maps;
+                _lootResults = lootResults;
+            } finally {
+                _refreshLock.Release();
+            }
             GoToPage();
         }
 
@@ -93,107 +100,103 @@ namespace MapPartyAssist.Windows.Summary {
         }
 
         public void Draw() {
-            if(_plugin.AllowEdit) {
-                ImGui.PushFont(UiBuilder.IconFont);
-                ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
-                ImGui.PopFont();
-                ImGui.SameLine();
-                ImGui.TextColored(ImGuiColors.DalamudRed, $"EDIT MODE ENABLED");
-                ImGui.SameLine();
-                ImGui.PushFont(UiBuilder.IconFont);
-                ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
-                ImGui.PopFont();
+            if(!_refreshLock.Wait(0)) {
+                return;
             }
 
-            if(_plugin.AllowEdit && ImGui.Button("Save")) {
-                _plugin.DataQueue.QueueDataOperation(() => {
-                    _plugin.StorageManager.UpdateMaps(_mapsPage.Where(m => m.IsEdited));
-                    //_plugin.Save();
-                });
-            }
+            try {
+                if(_plugin.AllowEdit) {
+                    ImGui.PushFont(UiBuilder.IconFont);
+                    ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
+                    ImGui.PopFont();
+                    ImGui.SameLine();
+                    ImGui.TextColored(ImGuiColors.DalamudRed, $"EDIT MODE ENABLED");
+                    ImGui.SameLine();
+                    ImGui.PushFont(UiBuilder.IconFont);
+                    ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
+                    ImGui.PopFont();
+                }
 
-            //ImGui.SameLine();
-            //if(ImGui.Button("Copy CSV")) {
-            //    Task.Run(() => {
-            //        ImGui.SetClipboardText(CSV);
-            //    });
-            //}
-            //if(ImGui.IsItemHovered()) {
-            //    ImGui.BeginTooltip();
-            //    ImGui.Text($"Creates a sequential comma-separated list of the last checkpoint reached to the clipboard.");
-            //    ImGui.EndTooltip();
-            //}
-
-            ImGui.SameLine();
-            if(ImGui.Button("Collapse All")) {
-                _collapseAll = true;
-            }
-
-            if(_currentPage > 0) {
-                ImGui.SameLine();
-                if(ImGui.Button($"Previous {_maxPageSize}")) {
+                if(_plugin.AllowEdit && ImGui.Button("Save")) {
                     _plugin.DataQueue.QueueDataOperation(() => {
-                        GoToPage(_currentPage - 1);
+                        _plugin.StorageManager.UpdateMaps(_mapsPage.Where(m => m.IsEdited));
+                        //_plugin.Save();
                     });
                 }
-            }
 
-            if(_mapsPage.Count >= _maxPageSize) {
+                //ImGui.SameLine();
+                //if(ImGui.Button("Copy CSV")) {
+                //    Task.Run(() => {
+                //        ImGui.SetClipboardText(CSV);
+                //    });
+                //}
+                //if(ImGui.IsItemHovered()) {
+                //    ImGui.BeginTooltip();
+                //    ImGui.Text($"Creates a sequential comma-separated list of the last checkpoint reached to the clipboard.");
+                //    ImGui.EndTooltip();
+                //}
+
                 ImGui.SameLine();
-                if(ImGui.Button($"Next {_maxPageSize}")) {
-                    _plugin.DataQueue.QueueDataOperation(() => {
-                        GoToPage(_currentPage + 1);
-                    });
-                }
-            }
-
-            ImGui.Text($"Total maps: {_maps.Count} Total portals: {_portalCount}");
-
-            ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true);
-            foreach(var map in _mapsPage) {
-                if(_collapseAll) {
-                    ImGui.SetNextItemOpen(false);
+                if(ImGui.Button("Collapse All")) {
+                    _collapseAll = true;
                 }
 
-                float targetWidth1 = 150f * ImGuiHelpers.GlobalScale;
-                float targetWidth2 = 200f * ImGuiHelpers.GlobalScale;
-                float targetWidth3 = 215f * ImGuiHelpers.GlobalScale;
-                var text1 = map.Time.ToString();
-                var text2 = map.Zone;
-                var text3 = map.DutyName ?? "";
-                while(ImGui.CalcTextSize(text1).X < targetWidth1) {
-                    text1 += " ";
-                }
-                while(ImGui.CalcTextSize(text2).X < targetWidth2) {
-                    text2 += " ";
-                }
-                while(ImGui.CalcTextSize(text3).X < targetWidth3) {
-                    text3 += " ";
-                }
-
-                if(ImGui.CollapsingHeader(string.Format("{0} {1} {2} {3}", text1, text2, text3, map.Id.ToString()))) {
-
-                    if(_plugin.AllowEdit) {
-                        DrawMapEditable(map);
-                    } else {
-                        DrawMap(map);
+                if(_currentPage > 0) {
+                    ImGui.SameLine();
+                    if(ImGui.Button($"Previous {_maxPageSize}")) {
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            GoToPage(_currentPage - 1);
+                        });
                     }
-                    //if(!_statsWindow.RefreshLock.Wait(0)) {
-                    //    continue;
-                    //}
-                    //try {
-                    //    if(_plugin.AllowEdit) {
-                    //        DrawMapEditable(map);
-                    //    } else {
-                    //        DrawMap(map);
-                    //    }
-                    //} finally {
-                    //    _statsWindow.RefreshLock.Release();
-                    //}
                 }
+
+                if(_mapsPage.Count >= _maxPageSize) {
+                    ImGui.SameLine();
+                    if(ImGui.Button($"Next {_maxPageSize}")) {
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            GoToPage(_currentPage + 1);
+                        });
+                    }
+                }
+
+                ImGui.Text($"Total maps: {_maps.Count} Total portals: {_portalCount}");
+
+                ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true);
+                foreach(var map in _mapsPage) {
+                    if(_collapseAll) {
+                        ImGui.SetNextItemOpen(false);
+                    }
+
+                    float targetWidth1 = 150f * ImGuiHelpers.GlobalScale;
+                    float targetWidth2 = 200f * ImGuiHelpers.GlobalScale;
+                    float targetWidth3 = 215f * ImGuiHelpers.GlobalScale;
+                    var text1 = map.Time.ToString();
+                    var text2 = map.Zone;
+                    var text3 = map.DutyName ?? "";
+                    while(ImGui.CalcTextSize(text1).X < targetWidth1) {
+                        text1 += " ";
+                    }
+                    while(ImGui.CalcTextSize(text2).X < targetWidth2) {
+                        text2 += " ";
+                    }
+                    while(ImGui.CalcTextSize(text3).X < targetWidth3) {
+                        text3 += " ";
+                    }
+
+                    if(ImGui.CollapsingHeader(string.Format("{0} {1} {2} {3}", text1, text2, text3, map.Id.ToString()))) {
+
+                        if(_plugin.AllowEdit) {
+                            DrawMapEditable(map);
+                        } else {
+                            DrawMap(map);
+                        }
+                    }
+                }
+                ImGui.EndChild();
+                _collapseAll = false;
+            } finally {
+                _refreshLock.Release();
             }
-            ImGui.EndChild();
-            _collapseAll = false;
         }
 
         private void DrawMap(MPAMap map) {

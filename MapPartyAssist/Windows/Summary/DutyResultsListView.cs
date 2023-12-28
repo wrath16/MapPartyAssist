@@ -9,6 +9,7 @@ using MapPartyAssist.Types;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
 using static MapPartyAssist.Windows.Summary.LootSummary;
 
@@ -25,6 +26,7 @@ namespace MapPartyAssist.Windows.Summary {
 
         private int _currentPage = 0;
         private bool _collapseAll = false;
+        private SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
 
         public string CSV { get; private set; } = "";
 
@@ -69,8 +71,13 @@ namespace MapPartyAssist.Windows.Summary {
                 newLootResults = newLootResults.OrderByDescending(lr => lr.Value.DroppedQuantity).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 lootResults.Add(dr.Id, newLootResults);
             }
-            _dutyResults = dutyResults;
-            _lootResults = lootResults;
+            try {
+                _refreshLock.Wait();
+                _dutyResults = dutyResults;
+                _lootResults = lootResults;
+            } finally {
+                _refreshLock.Release();
+            }
             GoToPage();
         }
 
@@ -91,86 +98,93 @@ namespace MapPartyAssist.Windows.Summary {
         }
 
         public void Draw() {
-            if(_plugin.AllowEdit) {
-                ImGui.PushFont(UiBuilder.IconFont);
-                ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
-                ImGui.PopFont();
-                ImGui.SameLine();
-                ImGui.TextColored(ImGuiColors.DalamudRed, $"EDIT MODE ENABLED");
-                ImGui.SameLine();
-                ImGui.PushFont(UiBuilder.IconFont);
-                ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
-                ImGui.PopFont();
+            if(!_refreshLock.Wait(0)) {
+                return;
             }
+            try {
+                if(_plugin.AllowEdit) {
+                    ImGui.PushFont(UiBuilder.IconFont);
+                    ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
+                    ImGui.PopFont();
+                    ImGui.SameLine();
+                    ImGui.TextColored(ImGuiColors.DalamudRed, $"EDIT MODE ENABLED");
+                    ImGui.SameLine();
+                    ImGui.PushFont(UiBuilder.IconFont);
+                    ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
+                    ImGui.PopFont();
+                }
 
-            if(_plugin.AllowEdit && ImGui.Button("Save")) {
-                _plugin.DataQueue.QueueDataOperation(() => {
-                    _plugin.StorageManager.UpdateDutyResults(_dutyResultsPage.Where(dr => dr.IsEdited));
-                    //_plugin.Save();
-                });
-            }
-
-            ImGui.SameLine();
-            if(ImGui.Button("Copy CSV")) {
-                Task.Run(() => {
-                    ImGui.SetClipboardText(CSV);
-                });
-            }
-            if(ImGui.IsItemHovered()) {
-                ImGui.BeginTooltip();
-                ImGui.Text($"Creates a sequential comma-separated list of the last checkpoint reached to the clipboard.");
-                ImGui.EndTooltip();
-            }
-
-            ImGui.SameLine();
-            if(ImGui.Button("Collapse All")) {
-                _collapseAll = true;
-            }
-
-            if(_currentPage > 0) {
-                ImGui.SameLine();
-                if(ImGui.Button($"Previous {_maxPageSize}")) {
+                if(_plugin.AllowEdit && ImGui.Button("Save")) {
                     _plugin.DataQueue.QueueDataOperation(() => {
-                        GoToPage(_currentPage - 1);
+                        _plugin.StorageManager.UpdateDutyResults(_dutyResultsPage.Where(dr => dr.IsEdited));
+                        //_plugin.Save();
                     });
                 }
-            }
 
-            if(_dutyResultsPage.Count >= _maxPageSize) {
                 ImGui.SameLine();
-                if(ImGui.Button($"Next {_maxPageSize}")) {
-                    _plugin.DataQueue.QueueDataOperation(() => {
-                        GoToPage(_currentPage + 1);
+                if(ImGui.Button("Copy CSV")) {
+                    Task.Run(() => {
+                        ImGui.SetClipboardText(CSV);
                     });
                 }
-            }
-            ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true);
-            foreach(var results in _dutyResultsPage) {
-                if(_collapseAll) {
-                    ImGui.SetNextItemOpen(false);
+                if(ImGui.IsItemHovered()) {
+                    ImGui.BeginTooltip();
+                    ImGui.Text($"Creates a sequential comma-separated list of the last checkpoint reached to the clipboard.");
+                    ImGui.EndTooltip();
                 }
 
-                float targetWidth1 = 150f * ImGuiHelpers.GlobalScale;
-                float targetWidth2 = 215f * ImGuiHelpers.GlobalScale;
-                var text1 = results.Time.ToString();
-                var text2 = _plugin.DutyManager.Duties[results.DutyId].GetDisplayName();
-                while(ImGui.CalcTextSize(text1).X < targetWidth1) {
-                    text1 += " ";
-                }
-                while(ImGui.CalcTextSize(text2).X < targetWidth2) {
-                    text2 += " ";
+                ImGui.SameLine();
+                if(ImGui.Button("Collapse All")) {
+                    _collapseAll = true;
                 }
 
-                if(ImGui.CollapsingHeader(string.Format("{0:-23} {1:-40} {2:-25}", text1, text2, results.Id.ToString()))) {
-                    if(_plugin.AllowEdit) {
-                        DrawDutyResultsEditable(results);
-                    } else {
-                        DrawDutyResults(results);
+                if(_currentPage > 0) {
+                    ImGui.SameLine();
+                    if(ImGui.Button($"Previous {_maxPageSize}")) {
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            GoToPage(_currentPage - 1);
+                        });
                     }
                 }
+
+                if(_dutyResultsPage.Count >= _maxPageSize) {
+                    ImGui.SameLine();
+                    if(ImGui.Button($"Next {_maxPageSize}")) {
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            GoToPage(_currentPage + 1);
+                        });
+                    }
+                }
+                ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true);
+                foreach(var results in _dutyResultsPage) {
+                    if(_collapseAll) {
+                        ImGui.SetNextItemOpen(false);
+                    }
+
+                    float targetWidth1 = 150f * ImGuiHelpers.GlobalScale;
+                    float targetWidth2 = 215f * ImGuiHelpers.GlobalScale;
+                    var text1 = results.Time.ToString();
+                    var text2 = _plugin.DutyManager.Duties[results.DutyId].GetDisplayName();
+                    while(ImGui.CalcTextSize(text1).X < targetWidth1) {
+                        text1 += " ";
+                    }
+                    while(ImGui.CalcTextSize(text2).X < targetWidth2) {
+                        text2 += " ";
+                    }
+
+                    if(ImGui.CollapsingHeader(string.Format("{0:-23} {1:-40} {2:-25}", text1, text2, results.Id.ToString()))) {
+                        if(_plugin.AllowEdit) {
+                            DrawDutyResultsEditable(results);
+                        } else {
+                            DrawDutyResults(results);
+                        }
+                    }
+                }
+                ImGui.EndChild();
+                _collapseAll = false;
+            } finally {
+                _refreshLock.Release();
             }
-            ImGui.EndChild();
-            _collapseAll = false;
         }
 
         private void DrawDutyResults(DutyResults dutyResults) {

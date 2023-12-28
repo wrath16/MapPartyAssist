@@ -102,12 +102,11 @@ namespace MapPartyAssist.Services {
             { ClientLanguage.Japanese, new Regex(@"の「ディグ」$", RegexOptions.IgnoreCase) }
         };
 
-        //Japanese uses same for party member
         private static readonly Dictionary<ClientLanguage, Regex> SelfDigRegex = new() {
             { ClientLanguage.English, new Regex(@"^You use Dig\.$", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"^Vous utilisez Excavation\.$", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"^Du setzt Ausgraben ein\.$", RegexOptions.IgnoreCase) },
-            { ClientLanguage.Japanese, new Regex(@"", RegexOptions.IgnoreCase) }
+            { ClientLanguage.Japanese, new Regex(@"の「ディグ」", RegexOptions.IgnoreCase) }
         };
 
         //Addon: 2276, 8107
@@ -331,26 +330,24 @@ namespace MapPartyAssist.Services {
                     //self loot obtained
                 } else if((int)type == 2110) {
                     Match quantityMatch = DutyManager.SelfObtainedQuantityRegex[_plugin.ClientState.ClientLanguage].Match(message);
+                    Match itemMatch = DutyManager.SelfObtainedItemRegex[_plugin.ClientState.ClientLanguage].Match(message);
                     if(quantityMatch.Success) {
-                        //todo make this work for all languages...
                         bool isNumber = Regex.IsMatch(quantityMatch.Value, @"\d+");
                         int quantity = isNumber ? int.Parse(quantityMatch.Value.Replace(",", "").Replace(".", "")) : 1;
-                        var player = _plugin.GetCurrentPlayer();
+                        var currentPlayer = _plugin.GetCurrentPlayer();
                         if(itemId is not null) {
-                            AddLootResults((uint)itemId, isHQ, quantity, player);
+                            AddLootResults((uint)itemId, isHQ, quantity, currentPlayer);
                             isChange = true;
-                            _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, player));
-                        } else {
+                            _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, currentPlayer));
+                        } else if(itemMatch.Success) {
                             //tomestones...
-                            Match itemMatch = DutyManager.SelfObtainedItemRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
-                            if(itemMatch.Success) {
-                                var rowId = quantity != 1 ? _plugin.GetRowId<Item>(itemMatch.Value, "Plural") : _plugin.GetRowId<Item>(itemMatch.Value, "Singular");
-                                if(rowId is not null) {
-                                    AddLootResults((uint)rowId, false, quantity, player);
-                                    isChange = true;
-                                } else {
-                                    _plugin.Log.Warning($"Cannot find rowId for {itemMatch.Value}");
-                                }
+                            //Japanese has no plural...
+                            var rowId = quantity != 1 && _plugin.ClientState.ClientLanguage != ClientLanguage.Japanese ? _plugin.GetRowId<Item>(itemMatch.Value, "Plural") : _plugin.GetRowId<Item>(itemMatch.Value, "Singular");
+                            if(rowId is not null) {
+                                AddLootResults((uint)rowId, false, quantity, currentPlayer);
+                                isChange = true;
+                            } else {
+                                _plugin.Log.Warning($"Cannot find rowId for {itemMatch.Value}");
                             }
                         }
                     }
@@ -631,8 +628,8 @@ namespace MapPartyAssist.Services {
 
             if(LastMap.LootResults is null) {
                 throw new InvalidOperationException("Unable to add loot result to map!");
-                //20 minute fallback
-            } else if((DateTime.Now - LastMap.Time).TotalMinutes > 20) {
+                //10 minute fallback
+            } else if((DateTime.Now - LastMap.Time).TotalMinutes > 10) {
                 //throw new InvalidOperationException("");
                 _plugin.Log.Warning("Last map time exceeded loot threshold window.");
                 return;
