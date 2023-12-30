@@ -155,14 +155,14 @@ namespace MapPartyAssist.Services {
         internal static readonly Dictionary<ClientLanguage, Regex> LootListRegex = new() {
             { ClientLanguage.English, new Regex(@"(the|an|a|[\.,\d]+)\b(?=.* been added to the loot list)", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"(le|la|l'|un|une|[\.,\d]+)\b(?=.* a été ajoutée au butin)", RegexOptions.IgnoreCase) },
-            { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"(?<=Ihr habt Beutegut \(.?)(ein|eine|einen|der|die|den|dem|des|[\.,\d]+)\b", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"([\.,\d]*)(?=戦利品に追加されました)", RegexOptions.IgnoreCase) }
         };
 
         internal static readonly Dictionary<ClientLanguage, Regex> SelfObtainedQuantityRegex = new() {
             { ClientLanguage.English, new Regex(@"(?<=You obtain .?)(the|an|a|[\.,\d]+)\b", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"(?<=Vous obtenez .?)(le|la|l'|un|une|[\.,\d]+)\b", RegexOptions.IgnoreCase) },
-            { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"(?<=Du hast .?)(ein|eine|einen|der|die|den|dem|des|[\.,\d]+)\b", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"[\.,\d]*(?=(個|を)手に入れた。)", RegexOptions.IgnoreCase) }
         };
 
@@ -170,16 +170,16 @@ namespace MapPartyAssist.Services {
         //JP note: specifies allagan tomestones
         //may need this for party members...
         internal static readonly Dictionary<ClientLanguage, Regex> SelfObtainedItemRegex = new() {
-            { ClientLanguage.English, new Regex(@"(?<=You obtain (an|a|[\.,\d])+\s)[\w\s]*", RegexOptions.IgnoreCase) },
-            { ClientLanguage.French, new Regex(@"(?<=Vous obtenez (un|une|[\.,\d])+\s)[\w\s]*", RegexOptions.IgnoreCase) },
-            { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.English, new Regex(@"(?<=You obtain .?(an|a|[\.,\d])+\s)[\w\s]*", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"(?<=Vous obtenez .?(un|une|[\.,\d])+\s)[\w\s]*", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"(?<=Du hast .?(ein|eine|einen|[\.,\d]+)\s)[\w\s]*(?= erhalten)", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@".*(?=を[\d]*個手に入れた。)", RegexOptions.IgnoreCase) }
         };
 
         internal static readonly Dictionary<ClientLanguage, Regex> PartyMemberObtainedRegex = new() {
             { ClientLanguage.English, new Regex(@"(?<=obtains .?)(the|an|a|[\.,\d]+)\b", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"(?<=obtient .?)(le|la|l'|un|une|[\.,\d]+)\b", RegexOptions.IgnoreCase) },
-            { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"(?<=hat .?)(ein|eine|einen|der|die|den|dem|des|[\.,\d]+)\b", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"[\.,\d]*(?=を手に入れた。)", RegexOptions.IgnoreCase) }
         };
 
@@ -531,7 +531,7 @@ namespace MapPartyAssist.Services {
                     } else if(itemMatch.Success) {
                         //tomestones
                         //Japanese has no plural...
-                        var rowId = quantity != 1 && _plugin.ClientState.ClientLanguage != ClientLanguage.Japanese ? _plugin.GetRowId<Item>(itemMatch.Value, "Plural") : _plugin.GetRowId<Item>(itemMatch.Value, "Singular");
+                        var rowId = quantity != 1 && _plugin.ClientState.ClientLanguage != ClientLanguage.Japanese ? _plugin.GetRowId<Item>(itemMatch.Value, "Plural", GrammarCase.Accusative) : _plugin.GetRowId<Item>(itemMatch.Value, "Singular", GrammarCase.Accusative);
                         if(rowId is not null) {
                             AddLootResults((uint)rowId, false, quantity, currentPlayer);
                             isChange = true;

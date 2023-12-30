@@ -122,12 +122,12 @@ namespace MapPartyAssist.Services {
             return Database.GetCollection<MPAMap>(MapTable);
         }
 
-        internal void AddPlayer(MPAMember player) {
-            WriteToDatabase(() => GetPlayers().Insert(player), false);
+        internal void AddPlayer(MPAMember player, bool toSave = true) {
+            WriteToDatabase(() => GetPlayers().Insert(player), toSave);
         }
 
-        internal void UpdatePlayer(MPAMember player) {
-            WriteToDatabase(() => GetPlayers().Update(player), false);
+        internal void UpdatePlayer(MPAMember player, bool toSave = true) {
+            WriteToDatabase(() => GetPlayers().Update(player), toSave);
         }
 
         internal ILiteCollection<MPAMember> GetPlayers() {

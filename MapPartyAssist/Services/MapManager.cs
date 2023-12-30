@@ -113,7 +113,7 @@ namespace MapPartyAssist.Services {
         private static readonly Dictionary<ClientLanguage, Regex> TreasureHuntRegex = new() {
             { ClientLanguage.English, new Regex(@"^Treasure Hunt$", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"^Chasse aux trésors$", RegexOptions.IgnoreCase) },
-            { ClientLanguage.German, new Regex(@"^Schatz-suche$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"^Schatzsuche$", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"^トレジャーハント$", RegexOptions.IgnoreCase) }
         };
 
@@ -136,9 +136,11 @@ namespace MapPartyAssist.Services {
         }
 
         private void OnTerritoryChanged(ushort territoryId) {
-            ResetDigStatus();
-            _boundByMapDuty = false;
-            _boundByMapDutyDelayed = false;
+            _plugin.DataQueue.QueueDataOperation(() => {
+                ResetDigStatus();
+                _boundByMapDuty = false;
+                _boundByMapDutyDelayed = false;
+            });
         }
 
         private unsafe void CheckForTreasureHunt(AddonEvent type, AddonArgs args) {
@@ -246,7 +248,7 @@ namespace MapPartyAssist.Services {
                     if(!mapType.IsNullOrEmpty()) {
                         //this is bad!
                         try {
-                            mapType = _plugin.TranslateDataTableEntry<EventItem>(mapType, "Singular", ClientLanguage.English);
+                            mapType = _plugin.TranslateDataTableEntry<EventItem>(mapType, "Singular", GrammarCase.Nominative, ClientLanguage.English);
                         } catch {
                             mapType = "";
                         }
@@ -342,7 +344,7 @@ namespace MapPartyAssist.Services {
                         } else if(itemMatch.Success) {
                             //tomestones...
                             //Japanese has no plural...
-                            var rowId = quantity != 1 && _plugin.ClientState.ClientLanguage != ClientLanguage.Japanese ? _plugin.GetRowId<Item>(itemMatch.Value, "Plural") : _plugin.GetRowId<Item>(itemMatch.Value, "Singular");
+                            var rowId = quantity != 1 && _plugin.ClientState.ClientLanguage != ClientLanguage.Japanese ? _plugin.GetRowId<Item>(itemMatch.Value, "Plural", GrammarCase.Accusative) : _plugin.GetRowId<Item>(itemMatch.Value, "Singular", GrammarCase.Accusative);
                             if(rowId is not null) {
                                 AddLootResults((uint)rowId, false, quantity, currentPlayer);
                                 isChange = true;
@@ -411,7 +413,7 @@ namespace MapPartyAssist.Services {
             TreasureMap mapType = TreasureMap.Unknown;
             uint? rowId = null;
             if(mapName != null && !isManual) {
-                rowId = _plugin.GetRowId<EventItem>(mapName, "Singular", ClientLanguage.English);
+                rowId = _plugin.GetRowId<EventItem>(mapName, "Singular", GrammarCase.Nominative, ClientLanguage.English);
                 if(rowId != null && MapHelper.IdToMapTypeMap.ContainsKey((uint)rowId)) {
                     mapType = MapHelper.IdToMapTypeMap[(uint)rowId];
                 }
@@ -438,8 +440,8 @@ namespace MapPartyAssist.Services {
             _lastMapTime = currentTime;
 
             //add to DB
+            _plugin.StorageManager.UpdatePlayer(player, false);
             _plugin.StorageManager.AddMap(newMap);
-            _plugin.StorageManager.UpdatePlayer(player);
             LastMap = newMap;
             //Plugin.Save();
 

@@ -35,6 +35,13 @@ namespace MapPartyAssist {
         ERROR
     }
 
+    public enum GrammarCase {
+        Nominative,
+        Accusative,
+        Dative,
+        Genitive
+    }
+
     public sealed class Plugin : IDalamudPlugin {
         public string Name => "Map Party Assist";
         private const string DatabaseName = "data.db";
@@ -375,11 +382,11 @@ namespace MapPartyAssist {
                 if(currentPlayer == null) {
                     var newPlayer = new MPAMember(currentPlayerName, currentPlayerWorld, true);
                     CurrentPartyList.Add(currentPlayerKey, newPlayer);
-                    StorageManager.AddPlayer(newPlayer);
+                    StorageManager.AddPlayer(newPlayer, false);
                 } else {
                     currentPlayer.LastJoined = DateTime.Now;
                     CurrentPartyList.Add(currentPlayerKey, currentPlayer);
-                    StorageManager.UpdatePlayer(currentPlayer);
+                    StorageManager.UpdatePlayer(currentPlayer, false);
                 }
             } else {
                 foreach(PartyMember p in partyMembers) {
@@ -393,13 +400,13 @@ namespace MapPartyAssist {
                     if(findPlayer == null) {
                         var newPlayer = new MPAMember(partyMemberName, partyMemberWorld, isCurrentPlayer);
                         CurrentPartyList.Add(key, newPlayer);
-                        StorageManager.AddPlayer(newPlayer);
+                        StorageManager.AddPlayer(newPlayer, false);
                     } else {
                         //find existing player
                         findPlayer.LastJoined = DateTime.Now;
                         findPlayer.IsSelf = isCurrentPlayer;
                         CurrentPartyList.Add(key, findPlayer);
-                        StorageManager.UpdatePlayer(findPlayer);
+                        StorageManager.UpdatePlayer(findPlayer, false);
                     }
                 }
             }
@@ -408,9 +415,9 @@ namespace MapPartyAssist {
         public void BuildRecentPartyList() {
             Log.Verbose("Rebuilding recent party list.");
             RecentPartyList = new();
-            var allPlayers = StorageManager.GetPlayers();
+            var allPlayers = StorageManager.GetPlayers().Query().ToList();
             var currentMaps = StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted).ToList();
-            foreach(var player in allPlayers.Query().ToList()) {
+            foreach(var player in allPlayers) {
                 TimeSpan timeSpan = DateTime.Now - player.LastJoined;
                 bool isRecent = timeSpan.TotalHours <= Configuration.ArchiveThresholdHours;
                 bool hasMaps = currentMaps.Where(m => !m.Owner.IsNullOrEmpty() && m.Owner.Equals(player.Key)).Any();
@@ -468,10 +475,10 @@ namespace MapPartyAssist {
         }
 
         public string TranslateBNpcName(string npcName, ClientLanguage destinationLanguage, ClientLanguage? originLanguage = null) {
-            return TranslateDataTableEntry<BNpcName>(npcName, "Singular", destinationLanguage, originLanguage);
+            return TranslateDataTableEntry<BNpcName>(npcName, "Singular", GrammarCase.Nominative, destinationLanguage, originLanguage);
         }
 
-        public string TranslateDataTableEntry<T>(string data, string column, ClientLanguage destinationLanguage, ClientLanguage? originLanguage = null) where T : ExcelRow {
+        public string TranslateDataTableEntry<T>(string data, string column, GrammarCase gramCase, ClientLanguage destinationLanguage, ClientLanguage? originLanguage = null) where T : ExcelRow {
             originLanguage ??= ClientState.ClientLanguage;
             uint? rowId = null;
             Type type = typeof(T);
@@ -496,7 +503,7 @@ namespace MapPartyAssist {
                     var pronounProperty = type.GetProperty("Pronoun");
                     if(pronounProperty != null) {
                         int pronoun = Convert.ToInt32(pronounProperty.GetValue(row))!;
-                        rowData = ReplaceGermanDeclensionPlaceholders(rowData, pronoun, isPlural);
+                        rowData = ReplaceGermanDeclensionPlaceholders(rowData, pronoun, isPlural, gramCase);
                     }
                 }
                 if(data.Equals(rowData, StringComparison.OrdinalIgnoreCase)) {
@@ -515,29 +522,76 @@ namespace MapPartyAssist {
                 var pronounProperty = type.GetProperty("Pronoun");
                 if(pronounProperty != null) {
                     int pronoun = Convert.ToInt32(pronounProperty.GetValue(translatedRow))!;
-                    translatedString = ReplaceGermanDeclensionPlaceholders(translatedString, pronoun, isPlural);
+                    translatedString = ReplaceGermanDeclensionPlaceholders(translatedString, pronoun, isPlural, gramCase);
                 }
             }
 
             return translatedString;
         }
 
-        //assumes nominative case
         //male = 0, female = 1, neuter = 2
-        private static string ReplaceGermanDeclensionPlaceholders(string input, int gender, bool isPlural) {
+        private static string ReplaceGermanDeclensionPlaceholders(string input, int gender, bool isPlural, GrammarCase gramCase) {
             if(isPlural) {
-                input = input.Replace("[a]", "e");
+                switch(gramCase) {
+                    case GrammarCase.Nominative:
+                    case GrammarCase.Accusative:
+                    default:
+                        input = input.Replace("[a]", "e").Replace("[t]", "die");
+                        break;
+                    case GrammarCase.Dative:
+                        input = input.Replace("[a]", "en").Replace("[t]", "den");
+                        break;
+                    case GrammarCase.Genitive:
+                        input = input.Replace("[a]", "er").Replace("[t]", "der");
+                        break;
+                }
             }
             switch(gender) {
                 default:
                 case 0: //male
-                    input = input.Replace("[a]", "er").Replace("[t]", "der");
+                    switch(gramCase) {
+                        case GrammarCase.Nominative:
+                        default:
+                            input = input.Replace("[a]", "er").Replace("[t]", "der");
+                            break;
+                        case GrammarCase.Accusative:
+                            input = input.Replace("[a]", "en").Replace("[t]", "den");
+                            break;
+                        case GrammarCase.Dative:
+                            input = input.Replace("[a]", "em").Replace("[t]", "dem");
+                            break;
+                        case GrammarCase.Genitive:
+                            input = input.Replace("[a]", "es").Replace("[t]", "des");
+                            break;
+                    }
                     break;
                 case 1: //female
-                    input = input.Replace("[a]", "e").Replace("[t]", "die");
+                    switch(gramCase) {
+                        case GrammarCase.Nominative:
+                        case GrammarCase.Accusative:
+                        default:
+                            input = input.Replace("[a]", "e").Replace("[t]", "die");
+                            break;
+                        case GrammarCase.Dative:
+                        case GrammarCase.Genitive:
+                            input = input.Replace("[a]", "er").Replace("[t]", "der");
+                            break;
+                    }
                     break;
                 case 2: //neuter
-                    input = input.Replace("[a]", "es").Replace("[t]", "das");
+                    switch(gramCase) {
+                        case GrammarCase.Nominative:
+                        case GrammarCase.Accusative:
+                        default:
+                            input = input.Replace("[a]", "es").Replace("[t]", "das");
+                            break;
+                        case GrammarCase.Dative:
+                            input = input.Replace("[a]", "em").Replace("[t]", "dem");
+                            break;
+                        case GrammarCase.Genitive:
+                            input = input.Replace("[a]", "es").Replace("[t]", "des");
+                            break;
+                    }
                     break;
             }
             //remove possessive placeholder
@@ -545,7 +599,7 @@ namespace MapPartyAssist {
             return input;
         }
 
-        public uint? GetRowId<T>(string data, string column, ClientLanguage? language = null) where T : ExcelRow {
+        public uint? GetRowId<T>(string data, string column, GrammarCase gramCase, ClientLanguage? language = null) where T : ExcelRow {
             language ??= ClientState.ClientLanguage;
             Type type = typeof(T);
             bool isPlural = column.Equals("Plural", StringComparison.OrdinalIgnoreCase);
@@ -569,7 +623,7 @@ namespace MapPartyAssist {
                     var pronounProperty = type.GetProperty("Pronoun");
                     if(pronounProperty != null) {
                         int pronoun = Convert.ToInt32(pronounProperty.GetValue(row))!;
-                        rowData = ReplaceGermanDeclensionPlaceholders(rowData, pronoun, isPlural);
+                        rowData = ReplaceGermanDeclensionPlaceholders(rowData, pronoun, isPlural, gramCase);
                     }
                 }
                 if(data.Equals(rowData, StringComparison.OrdinalIgnoreCase)) {

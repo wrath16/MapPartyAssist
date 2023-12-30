@@ -108,6 +108,7 @@ namespace MapPartyAssist.Windows.Summary {
                         ObtainedQuantity = obtainedQuantity,
                         Rarity = row.Rarity,
                         Category = row.ItemUICategory.Value.Name,
+                        ItemName = row.Name,
                     });
                 }
             };
@@ -133,13 +134,13 @@ namespace MapPartyAssist.Windows.Summary {
                 }
             }
 
-            //set names, set CSV and check for changes
+            //=set CSV and check for changes
             bool hasChange = newLootResults.Count != _lootResults.Count;
             foreach(var lootResult in newLootResults) {
                 bool isPlural = lootResult.Value.DroppedQuantity != 1;
-                var row = _plugin.DataManager.GetExcelSheet<Item>()?.First(r => r.RowId == lootResult.Key.ItemId);
+                //var row = _plugin.DataManager.GetExcelSheet<Item>()?.First(r => r.RowId == lootResult.Key.ItemId);
                 //lootResult.Value.ItemName = row is null ? "" : (isPlural ? row.Plural : row.Singular);
-                lootResult.Value.ItemName = row is null ? "" : row.Name;
+                //lootResult.Value.ItemName = row is null ? "" : row.Name;
                 newLootCSV += $"{lootResult.Value.Category},{(lootResult.Key.IsHQ ? "HQ" : "")},{lootResult.Value.ItemName},{lootResult.Value.DroppedQuantity},{lootResult.Value.ObtainedQuantity}\n";
 
                 if(!_lootResults.ContainsKey(lootResult.Key)) {

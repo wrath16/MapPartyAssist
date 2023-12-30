@@ -51,6 +51,9 @@ namespace MapPartyAssist.Services {
                         throw new Exception("Unable to dequeue task!");
                         //Log.Warning($"Unable to dequeue next task. Tasks remaining: {DataTaskQueue.Count}");
                     }
+                } catch(Exception e) {
+                    _plugin.Log.Error($"Exception in data task: {e.Message}");
+                    _plugin.Log.Error(e.StackTrace ?? "");
                 } finally {
                     DataLock.Release();
                 }
