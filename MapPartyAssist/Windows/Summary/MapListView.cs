@@ -60,14 +60,16 @@ namespace MapPartyAssist.Windows.Summary {
                         newLootResults[key].ObtainedQuantity += obtainedQuantity;
                         newLootResults[key].DroppedQuantity += lootResult.Quantity;
                     } else {
-                        var row = _plugin.DataManager.GetExcelSheet<Item>().GetRow(lootResult.ItemId);
-                        newLootResults.Add(key, new LootResultValue {
-                            DroppedQuantity = lootResult.Quantity,
-                            ObtainedQuantity = obtainedQuantity,
-                            Rarity = row.Rarity,
-                            ItemName = row.Name,
-                            Category = row.ItemUICategory.Value.Name,
-                        });
+                        var row = _plugin.DataManager.GetExcelSheet<Item>()?.GetRow(lootResult.ItemId);
+                        if(row is not null) {
+                            newLootResults.Add(key, new LootResultValue {
+                                DroppedQuantity = lootResult.Quantity,
+                                ObtainedQuantity = obtainedQuantity,
+                                Rarity = row.Rarity,
+                                ItemName = row.Name,
+                                Category = row.ItemUICategory.Value.Name,
+                            });
+                        }
                     }
                 }
                 newLootResults = newLootResults.OrderByDescending(lr => lr.Value.DroppedQuantity).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
@@ -80,6 +82,9 @@ namespace MapPartyAssist.Windows.Summary {
             } finally {
                 _refreshLock.Release();
             }
+            if(_currentPage * _maxPageSize > _maps.Count) {
+                _currentPage = 0;
+            }
             GoToPage();
         }
 
@@ -89,14 +94,6 @@ namespace MapPartyAssist.Windows.Summary {
             _currentPage = (int)page;
             _mapsPage = _maps.OrderByDescending(m => m.Time).Skip(_currentPage * _maxPageSize).Take(_maxPageSize).ToList();
             CSV = "";
-            //foreach(var dutyResult in _dutyResultsPage.OrderBy(dr => dr.Time)) {
-            //    //no checks
-            //    float checkpoint = dutyResult.CheckpointResults.Count / 2f;
-            //    if(_plugin.DutyManager.Duties[dutyResult.DutyId].Structure == DutyStructure.Doors) {
-            //        checkpoint += 0.5f;
-            //    }
-            //    CSV = CSV + checkpoint.ToString() + ",";
-            //}
         }
 
         public void Draw() {
@@ -115,49 +112,29 @@ namespace MapPartyAssist.Windows.Summary {
                     ImGui.PushFont(UiBuilder.IconFont);
                     ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
                     ImGui.PopFont();
-                }
 
-                if(_plugin.AllowEdit && ImGui.Button("Save")) {
-                    _plugin.DataQueue.QueueDataOperation(() => {
-                        _plugin.StorageManager.UpdateMaps(_mapsPage.Where(m => m.IsEdited));
-                        //_plugin.Save();
-                    });
+                    if(ImGui.Button("Save")) {
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            _plugin.StorageManager.UpdateMaps(_mapsPage.Where(m => m.IsEdited));
+                            //_plugin.Save();
+                        });
+                    }
+
+                    ImGui.SameLine();
+                    if(ImGui.Button("Cancel")) {
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            _plugin.AllowEdit = false;
+                            _statsWindow.Refresh();
+                        });
+                    }
                 }
 
                 //ImGui.SameLine();
-                //if(ImGui.Button("Copy CSV")) {
-                //    Task.Run(() => {
-                //        ImGui.SetClipboardText(CSV);
-                //    });
-                //}
-                //if(ImGui.IsItemHovered()) {
-                //    ImGui.BeginTooltip();
-                //    ImGui.Text($"Creates a sequential comma-separated list of the last checkpoint reached to the clipboard.");
-                //    ImGui.EndTooltip();
-                //}
-
-                ImGui.SameLine();
                 if(ImGui.Button("Collapse All")) {
                     _collapseAll = true;
                 }
 
-                if(_currentPage > 0) {
-                    ImGui.SameLine();
-                    if(ImGui.Button($"Previous {_maxPageSize}")) {
-                        _plugin.DataQueue.QueueDataOperation(() => {
-                            GoToPage(_currentPage - 1);
-                        });
-                    }
-                }
 
-                if(_mapsPage.Count >= _maxPageSize) {
-                    ImGui.SameLine();
-                    if(ImGui.Button($"Next {_maxPageSize}")) {
-                        _plugin.DataQueue.QueueDataOperation(() => {
-                            GoToPage(_currentPage + 1);
-                        });
-                    }
-                }
 
                 ImGui.Text($"Total maps: {_maps.Count} Total portals: {_portalCount}");
 
@@ -193,6 +170,27 @@ namespace MapPartyAssist.Windows.Summary {
                     }
                 }
                 ImGui.EndChild();
+                ImGui.Text("");
+                ImGui.SameLine();
+
+                if(_currentPage > 0) {
+                    ImGui.SameLine();
+                    if(ImGui.Button($"Previous {_maxPageSize}")) {
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            GoToPage(_currentPage - 1);
+                        });
+                    }
+                }
+
+                if(_mapsPage.Count >= _maxPageSize) {
+                    ImGui.SameLine();
+                    ImGui.SetCursorPosX(ImGui.GetContentRegionMax().X - 65f * ImGuiHelpers.GlobalScale);
+                    if(ImGui.Button($"Next {_maxPageSize}")) {
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            GoToPage(_currentPage + 1);
+                        });
+                    }
+                }
                 _collapseAll = false;
             } finally {
                 _refreshLock.Release();

@@ -403,7 +403,7 @@ namespace MapPartyAssist.Services {
 
             if(_plugin.IsLanguageSupported()) {
                 //have to do lookup on PlaceName sheet otherwise will not translate properly
-                var placeNameId = _plugin.DataManager.GetExcelSheet<TerritoryType>(ClientLanguage.English)?.GetRow(_plugin.ClientState.TerritoryType)?.PlaceName.Row;
+                var placeNameId = _plugin.DataManager.GetExcelSheet<TerritoryType>(ClientLanguage.English)?.GetRow(_plugin.GameStateManager.CurrentTerritory)?.PlaceName.Row;
                 zone ??= placeNameId != null ? _plugin.DataManager.GetExcelSheet<PlaceName>(ClientLanguage.English)!.GetRow((uint)placeNameId)!.Name : "";
             } else {
                 zone ??= "";
@@ -431,7 +431,7 @@ namespace MapPartyAssist.Services {
                 IsPortal = isPortal,
                 LootResults = new(),
                 Players = _plugin.CurrentPartyList.Keys.ToArray(),
-                TerritoryId = _plugin.ClientState.TerritoryType,
+                TerritoryId = _plugin.GameStateManager.CurrentTerritory,
                 MapType = mapType,
                 EventItemId = rowId
             };
@@ -495,7 +495,7 @@ namespace MapPartyAssist.Services {
 
         //returns map coords
         public double? GetDistanceToMapLink(MPAMapLink mapLink) {
-            if(_plugin.ClientState.LocalPlayer == null || _plugin.GetCurrentTerritoryId() != mapLink.TerritoryTypeId) {
+            if(_plugin.ClientState.LocalPlayer == null || _plugin.GameStateManager.CurrentTerritory != mapLink.TerritoryTypeId) {
                 return null;
             }
 

@@ -57,14 +57,16 @@ namespace MapPartyAssist.Windows.Summary {
                             newLootResults[key].ObtainedQuantity += obtainedQuantity;
                             newLootResults[key].DroppedQuantity += lootResult.Quantity;
                         } else {
-                            var row = _plugin.DataManager.GetExcelSheet<Item>().GetRow(lootResult.ItemId);
-                            newLootResults.Add(key, new LootResultValue {
-                                DroppedQuantity = lootResult.Quantity,
-                                ObtainedQuantity = obtainedQuantity,
-                                Rarity = row.Rarity,
-                                ItemName = row.Name,
-                                Category = row.ItemUICategory.Value.Name,
-                            });
+                            var row = _plugin.DataManager.GetExcelSheet<Item>()?.GetRow(lootResult.ItemId);
+                            if(row is not null) {
+                                newLootResults.Add(key, new LootResultValue {
+                                    DroppedQuantity = lootResult.Quantity,
+                                    ObtainedQuantity = obtainedQuantity,
+                                    Rarity = row.Rarity,
+                                    ItemName = row.Name,
+                                    Category = row.ItemUICategory.Value.Name,
+                                });
+                            }
                         }
                     }
                 }
@@ -77,6 +79,9 @@ namespace MapPartyAssist.Windows.Summary {
                 _lootResults = lootResults;
             } finally {
                 _refreshLock.Release();
+            }
+            if(_currentPage * _maxPageSize > _dutyResults.Count) {
+                _currentPage = 0;
             }
             GoToPage();
         }
@@ -112,16 +117,24 @@ namespace MapPartyAssist.Windows.Summary {
                     ImGui.PushFont(UiBuilder.IconFont);
                     ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
                     ImGui.PopFont();
+
+                    if(ImGui.Button("Save")) {
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            _plugin.StorageManager.UpdateDutyResults(_dutyResultsPage.Where(dr => dr.IsEdited));
+                            //_plugin.Save();
+                        });
+                    }
+
+                    ImGui.SameLine();
+                    if(ImGui.Button("Cancel")) {
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            _plugin.AllowEdit = false;
+                            _statsWindow.Refresh();
+                        });
+                    }
                 }
 
-                if(_plugin.AllowEdit && ImGui.Button("Save")) {
-                    _plugin.DataQueue.QueueDataOperation(() => {
-                        _plugin.StorageManager.UpdateDutyResults(_dutyResultsPage.Where(dr => dr.IsEdited));
-                        //_plugin.Save();
-                    });
-                }
-
-                ImGui.SameLine();
+                //ImGui.SameLine();
                 if(ImGui.Button("Copy CSV")) {
                     Task.Run(() => {
                         ImGui.SetClipboardText(CSV);
@@ -138,23 +151,6 @@ namespace MapPartyAssist.Windows.Summary {
                     _collapseAll = true;
                 }
 
-                if(_currentPage > 0) {
-                    ImGui.SameLine();
-                    if(ImGui.Button($"Previous {_maxPageSize}")) {
-                        _plugin.DataQueue.QueueDataOperation(() => {
-                            GoToPage(_currentPage - 1);
-                        });
-                    }
-                }
-
-                if(_dutyResultsPage.Count >= _maxPageSize) {
-                    ImGui.SameLine();
-                    if(ImGui.Button($"Next {_maxPageSize}")) {
-                        _plugin.DataQueue.QueueDataOperation(() => {
-                            GoToPage(_currentPage + 1);
-                        });
-                    }
-                }
                 ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true);
                 foreach(var results in _dutyResultsPage) {
                     if(_collapseAll) {
@@ -181,6 +177,27 @@ namespace MapPartyAssist.Windows.Summary {
                     }
                 }
                 ImGui.EndChild();
+                ImGui.Text("");
+                ImGui.SameLine();
+
+                if(_currentPage > 0) {
+                    ImGui.SameLine();
+                    if(ImGui.Button($"Previous {_maxPageSize}")) {
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            GoToPage(_currentPage - 1);
+                        });
+                    }
+                }
+
+                if(_dutyResultsPage.Count >= _maxPageSize) {
+                    ImGui.SameLine();
+                    ImGui.SetCursorPosX(ImGui.GetContentRegionMax().X - 65f * ImGuiHelpers.GlobalScale);
+                    if(ImGui.Button($"Next {_maxPageSize}")) {
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            GoToPage(_currentPage + 1);
+                        });
+                    }
+                }
                 _collapseAll = false;
             } finally {
                 _refreshLock.Release();

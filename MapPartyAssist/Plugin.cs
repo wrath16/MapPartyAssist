@@ -25,7 +25,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading;
 
 namespace MapPartyAssist {
 
@@ -69,6 +68,7 @@ namespace MapPartyAssist {
         internal IPluginLog Log { get; init; }
 
         //Custom services
+        internal GameStateManager GameStateManager { get; init; }
         internal DutyManager DutyManager { get; init; }
         internal MapManager MapManager { get; init; }
         internal StorageManager StorageManager { get; init; }
@@ -96,8 +96,6 @@ namespace MapPartyAssist {
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
         public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
         private int _lastPartySize = 0;
-
-        private SemaphoreSlim _saveLock = new SemaphoreSlim(1, 1);
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -137,6 +135,7 @@ namespace MapPartyAssist {
                 }
 
                 DataQueue = new(this);
+                GameStateManager = new(this);
                 StorageManager = new(this, $"{PluginInterface.GetPluginConfigDirectory()}\\{DatabaseName}");
                 Functions = new();
                 DutyManager = new(this);
@@ -261,6 +260,9 @@ namespace MapPartyAssist {
             if(StorageManager != null) {
                 StorageManager.Dispose();
             }
+            if(GameStateManager != null) {
+                GameStateManager.Dispose();
+            }
         }
 
         private void OnCommand(string command, string args) {
@@ -372,7 +374,7 @@ namespace MapPartyAssist {
             Log.Verbose("Rebuilding current party list.");
             string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
             string currentPlayerWorld = ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
-            string currentPlayerKey = GetCurrentPlayer();
+            string currentPlayerKey = GetCurrentPlayer()!;
             CurrentPartyList = new();
             var allPlayers = StorageManager.GetPlayers();
             var currentPlayer = allPlayers.Query().Where(p => p.Key == currentPlayerKey).FirstOrDefault();
@@ -433,18 +435,18 @@ namespace MapPartyAssist {
             GameGui.OpenMapWithMapLink(mapLink);
         }
 
-        public int GetCurrentTerritoryId() {
-            return ClientState.TerritoryType;
-            //return DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name;
-        }
+        //public int GetCurrentTerritoryId() {
+        //    return ClientState.TerritoryType;
+        //    //return DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name;
+        //}
 
-        public string GetCurrentPlayer() {
+        public string? GetCurrentPlayer() {
             string? currentPlayerName = ClientState.LocalPlayer?.Name?.ToString();
             string? currentPlayerWorld = ClientState.LocalPlayer?.HomeWorld?.GameData?.Name?.ToString();
             if(currentPlayerName == null || currentPlayerWorld == null) {
                 //throw exception?
                 //throw new InvalidOperationException("Cannot retrieve current player");
-                return "";
+                return null;
             }
 
             return $"{currentPlayerName} {currentPlayerWorld}";
@@ -454,19 +456,6 @@ namespace MapPartyAssist {
             Configuration.Save();
             StatsWindow.Refresh();
             MainWindow.Refresh();
-
-            ////performance reasons...
-            //return Task.Run(async () => {
-            //    try {
-            //        await _saveLock.WaitAsync();
-            //        StatsWindow.Refresh();
-            //        Task mainWindowTask = MainWindow.Refresh();
-            //        Task dutyResultsWindowTask = DutyResultsWindow.Refresh();
-            //        Task.WaitAll(new[] { mainWindowTask, dutyResultsWindowTask });
-            //    } finally {
-            //        _saveLock.Release();
-            //    }
-            //});
         }
 
         public bool IsLanguageSupported(ClientLanguage? language = null) {

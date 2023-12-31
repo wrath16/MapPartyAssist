@@ -118,11 +118,6 @@ namespace MapPartyAssist.Windows {
                             if(partyMemberFilter.PartyMembers.Length <= 0) {
                                 break;
                             }
-#if DEBUG
-                            foreach(var pm in partyMemberFilter.PartyMembers) {
-                                _plugin.Log.Debug($"party member filter:|{pm}|");
-                            }
-#endif
                             dutyResults = dutyResults.Where(dr => {
                                 bool allMatch = true;
                                 foreach(string partyMemberFilter in partyMemberFilter.PartyMembers) {

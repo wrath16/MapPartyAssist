@@ -86,6 +86,15 @@ namespace MapPartyAssist.Windows {
                         }
                     }
 
+                    if(ImGui.Button("Show all Treasure Spots")) {
+                        foreach(var spot in _plugin.DataManager.GetExcelSheet<TreasureSpot>()) {
+                            if(spot.Location.Value == null) {
+                                continue;
+                            }
+                            _plugin.Log.Debug($"id: {spot.RowId}.{spot.SubRowId} zone: {spot.Location.Value.Territory.Value.PlaceName.Value.Name} x: {spot.Location.Value.X} y: {spot.Location.Value.Y} z: {spot.Location.Value.Z}");
+                        }
+                    }
+
                     if(ImGui.Button("Maps Table")) {
                         ShowMapsTable();
                     }

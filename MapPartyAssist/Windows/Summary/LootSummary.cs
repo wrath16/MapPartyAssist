@@ -106,14 +106,16 @@ namespace MapPartyAssist.Windows.Summary {
                     newLootResults[key].ObtainedQuantity += obtainedQuantity;
                     newLootResults[key].DroppedQuantity += lootResult.Quantity;
                 } else {
-                    var row = _plugin.DataManager.GetExcelSheet<Item>().GetRow(lootResult.ItemId);
-                    newLootResults.Add(key, new LootResultValue {
-                        DroppedQuantity = lootResult.Quantity,
-                        ObtainedQuantity = obtainedQuantity,
-                        Rarity = row.Rarity,
-                        Category = row.ItemUICategory.Value.Name,
-                        ItemName = row.Name,
-                    });
+                    var row = _plugin.DataManager.GetExcelSheet<Item>()?.GetRow(lootResult.ItemId);
+                    if(row is not null) {
+                        newLootResults.Add(key, new LootResultValue {
+                            DroppedQuantity = lootResult.Quantity,
+                            ObtainedQuantity = obtainedQuantity,
+                            Rarity = row.Rarity,
+                            Category = row.ItemUICategory.Value.Name,
+                            ItemName = row.Name,
+                        });
+                    }
                 }
             };
 
@@ -164,11 +166,6 @@ namespace MapPartyAssist.Windows.Summary {
                 _firstDraw = true;
                 GoToPage(0);
             }
-            //_lootResults = newLootResults;
-            //_lootEligibleRuns = newLootEligibleRuns;
-            //_lootEligibleMaps = newLootEligibleMaps;
-            //LootCSV = newLootCSV;
-            //_firstDraw = true;
         }
 
         private void GoToPage(int? page = null) {
@@ -192,31 +189,31 @@ namespace MapPartyAssist.Windows.Summary {
                 //SortByColumn((SortableColumn)sortSpecs.Specs.ColumnUserID, sortSpecs.Specs.SortDirection);
             }
 
-            if(_currentPage > 0) {
-                ImGui.SameLine();
-                if(ImGui.Button($"Previous {_maxPageSize}")) {
-                    _plugin.DataQueue.QueueDataOperation(() => {
-                        GoToPage(_currentPage - 1);
-                    });
-                }
-            }
+            //if(_currentPage > 0) {
+            //    ImGui.SameLine();
+            //    if(ImGui.Button($"Previous {_maxPageSize}")) {
+            //        _plugin.DataQueue.QueueDataOperation(() => {
+            //            GoToPage(_currentPage - 1);
+            //        });
+            //    }
+            //}
 
-            if(_lootResultsPage.Count >= _maxPageSize) {
-                ImGui.SameLine();
-                if(ImGui.Button($"Next {_maxPageSize}")) {
-                    _plugin.DataQueue.QueueDataOperation(() => {
-                        GoToPage(_currentPage + 1);
-                    });
-                }
-            }
+            //if(_lootResultsPage.Count >= _maxPageSize) {
+            //    ImGui.SameLine();
+            //    if(ImGui.Button($"Next {_maxPageSize}")) {
+            //        _plugin.DataQueue.QueueDataOperation(() => {
+            //            GoToPage(_currentPage + 1);
+            //        });
+            //    }
+            //}
 
             ImGui.Text($"Eligible maps: {_lootEligibleMaps} Eligible duties: {_lootEligibleRuns}");
             //ImGuiComponents.HelpMarker("");
             ImGui.SameLine();
             ImGuiHelper.HelpMarker("Loot tracking introduced in version 2.0.0.0.");
-
+            ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), false);
             ImGui.BeginTable($"loottable", 5, ImGuiTableFlags.Sortable | ImGuiTableFlags.Hideable | ImGuiTableFlags.Reorderable | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable
-                | ImGuiTableFlags.ScrollY, new Vector2(ImGui.GetContentRegionAvail().X, float.Max(ImGuiHelpers.GlobalScale * 400f, ImGui.GetContentRegionAvail().Y - ImGuiHelpers.GlobalScale)));
+                | ImGuiTableFlags.ScrollY, new Vector2(ImGui.GetContentRegionAvail().X, ImGui.GetContentRegionAvail().Y));
             ImGui.TableSetupColumn("Category", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f, (uint)SortableColumn.Category);
             ImGui.TableSetupColumn("Quality", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f, (uint)SortableColumn.IsHQ);
             ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 200f, (uint)SortableColumn.Name);
@@ -290,6 +287,28 @@ namespace MapPartyAssist.Windows.Summary {
                 ImGui.Text($"{lootResult.Value.ObtainedQuantity}");
             }
             ImGui.EndTable();
+            ImGui.EndChild();
+            ImGui.Text("");
+            ImGui.SameLine();
+
+            if(_currentPage > 0) {
+                ImGui.SameLine();
+                if(ImGui.Button($"Previous {_maxPageSize}")) {
+                    _plugin.DataQueue.QueueDataOperation(() => {
+                        GoToPage(_currentPage - 1);
+                    });
+                }
+            }
+
+            if(_lootResultsPage.Count >= _maxPageSize) {
+                ImGui.SameLine();
+                ImGui.SetCursorPosX(ImGui.GetContentRegionMax().X - 65f * ImGuiHelpers.GlobalScale);
+                if(ImGui.Button($"Next {_maxPageSize}")) {
+                    _plugin.DataQueue.QueueDataOperation(() => {
+                        GoToPage(_currentPage + 1);
+                    });
+                }
+            }
             _firstDraw = false;
         }
 

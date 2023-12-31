@@ -211,7 +211,7 @@ internal class MainWindow : Window {
                     ImGui.PushFont(UiBuilder.IconFont);
                     var linkColor = ImGuiColors.DalamudGrey;
                     if(_plugin.Configuration.HighlightLinksInCurrentZone) {
-                        linkColor = playerMaps.Key.MapLink.GetMapLinkPayload().TerritoryType.RowId == _plugin.GetCurrentTerritoryId() ? ImGuiColors.DalamudYellow : linkColor;
+                        linkColor = playerMaps.Key.MapLink.GetMapLinkPayload().TerritoryType.RowId == _plugin.GameStateManager.CurrentTerritory ? ImGuiColors.DalamudYellow : linkColor;
                     }
                     if(_plugin.Configuration.HighlightClosestLink) {
                         MPAMember? closestLink = _plugin.MapManager.GetPlayerWithClosestMapLink(_plugin.CurrentPartyList.Values.ToList());

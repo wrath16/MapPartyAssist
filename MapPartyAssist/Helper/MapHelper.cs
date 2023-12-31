@@ -66,6 +66,7 @@ namespace MapPartyAssist.Helper {
                 TreasureMapCategory.Endwalker => "Endwalker",
                 TreasureMapCategory.Elpis => "Elpis",
                 TreasureMapCategory.Unknown => "Unknown/Unrecorded",
+                _ => "Unknown/Unrecorded",
             };
         }
 

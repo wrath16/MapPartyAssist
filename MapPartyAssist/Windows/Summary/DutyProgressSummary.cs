@@ -10,14 +10,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-using System.Threading;
 using static Dalamud.Interface.Windowing.Window;
 
 namespace MapPartyAssist.Windows.Summary {
     internal class DutyProgressSummary {
 
         private class StatsSummary {
-            //stats
             public int TotalGil, TotalClears, TotalWipes, TotalRuns, RunsSinceLastClear, SaveCount;
             public List<int> ClearSequence = new();
             public List<DutyResults> ClearDuties = new();
@@ -32,48 +30,12 @@ namespace MapPartyAssist.Windows.Summary {
             public bool HasGil = true, HasSequence = true, HasFloors = true, HasSummons = true;
         }
 
-        private SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
         private Plugin _plugin;
         private StatsWindow _statsWindow;
         //native filters
         TimeFilter _timeFilter;
         SingleDutyFilter _dutyFilter;
-        //duty id for draw time
-        //private int _dutyId => _dutyFilter.DutyId;
-
-        ////linked filters
-        //TimeFilter? _linkedTimeFilter;
-        //DutyFilter? _linkedDutyFilter;
-
-        //private List<DutyResults> _dutyResults = new();
-        //private List<DutyResultsImport> _dutyResultsImports = new();
         private Dictionary<int, StatsSummary> _dutyStats = new();
-
-
-        //stats
-        //private int _totalGil = 0;
-        //private int _totalClears = 0;
-        //private int _totalWipes = 0;
-        //private int _totalRuns = 0;
-        //private int _runsSinceLastClear = 0;
-        //int[] _openChambers = new int[0];
-        //float[] _openChambersRates = new float[0];
-        //int[] _endChambers = new int[0];
-        //List<int> _chamberTotals = new();
-        //List<int> _ejectTotals = new();
-        //List<int> _clearSequence = new();
-        //List<int> _clearSequenceTotal = new();
-        //List<DutyResults> _clearDuties = new();
-        //Dictionary<Summon, int> _summonTotals = new() {
-        //{ Summon.Lesser, 0 },
-        //{ Summon.Greater, 0 },
-        //{ Summon.Elder, 0 },
-        //{ Summon.Gold, 0 },
-        //{ Summon.Silver, 0 } };
-        //private bool _hasGil;
-        //private bool _hasSequence;
-        //private bool _hasFloors;
-        //private bool _hasSummons;
 
         internal DutyProgressSummary(Plugin plugin, StatsWindow statsWindow) {
             _plugin = plugin;
@@ -93,10 +55,6 @@ namespace MapPartyAssist.Windows.Summary {
             UpdateDutyFilter();
             UpdateTimeFilter();
 
-            //if(_dutyFilter.DutyId == 0) {
-            //    _dutyResults = new();
-            //    return;
-            //}
             Dictionary<int, StatsSummary> dutyStats = new();
 
             //find number of unique duties
@@ -335,26 +293,6 @@ namespace MapPartyAssist.Windows.Summary {
         }
 
         public void Draw() {
-            ////ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X / 2f);
-            //ImGui.SetNextItemWidth(float.Max(ImGui.GetContentRegionAvail().X / 2f, _statsWindow.SizeConstraints!.Value.MinimumSize.X));
-            //_dutyFilter.Draw();
-            ////ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X / 2f);
-            //ImGui.SetNextItemWidth(float.Max(ImGui.GetContentRegionAvail().X / 2f, _statsWindow.SizeConstraints!.Value.MinimumSize.X));
-            //_timeFilter.Draw();
-
-            //if(_timeFilter.StatRange == StatRange.AllLegacy) {
-            //    if(ImGui.Button("Manage Imports")) {
-            //        _statsWindow.OpenImportsWindow();
-            //    }
-            //}
-
-            //race condition with refresh
-            //waiting will block thread!
-            //_plugin.Log.Debug($"lock count: {_refreshLock.CurrentCount}");
-            //if(!_statsWindow.RefreshLock.Wait(0)) {
-            //    return;
-            //}
-            //try {
             _statsWindow.SizeConstraints = new WindowSizeConstraints {
                 MinimumSize = new Vector2(_dutyStats.Count > 1 ? 575 : 300, _statsWindow.SizeConstraints!.Value.MinimumSize.Y),
                 MaximumSize = _statsWindow.SizeConstraints!.Value.MaximumSize,
@@ -376,29 +314,7 @@ namespace MapPartyAssist.Windows.Summary {
                     SummonTable(duty.Key);
                 }
             }
-
-            //foreach(var duty in _dutyStats) {
-            //    ImGui.TableNextColumn();
-            //    ImGui.Separator();
-            //    ImGui.TextColored(ImGuiColors.ParsedPink, _plugin.DutyManager.Duties[duty.Key].GetDisplayName());
-            //    //ImGui.Separator();
-            //    ProgressTable(duty.Key);
-            //    if(_plugin.DutyManager.Duties[duty.Key].Structure == DutyStructure.Roulette) {
-            //        SummonTable(duty.Key);
-            //    }
-            //    //ImGui.Separator();
-            //}
             ImGui.EndTable();
-            //if(_dutyId != 0 && !_isUpdating) {
-            //    //todo these calculations should happen in same thread as refresh
-            //    ProgressTable(_dutyResults, _dutyId);
-            //    if(_plugin.DutyManager.Duties[_dutyId].Structure == DutyStructure.Roulette) {
-            //        SummonTable(_dutyResults, _dutyId);
-            //    }
-            //}
-            //} finally {
-            //    _statsWindow.RefreshLock.Release();
-            //}
         }
 
         private void ProgressTable(int dutyId) {
