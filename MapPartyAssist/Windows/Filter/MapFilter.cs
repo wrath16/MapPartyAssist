@@ -10,7 +10,7 @@ namespace MapPartyAssist.Windows.Filter {
         public override string Name => "Map Type";
         public override string HelpMessage => "It isn't possible to tell with certainty what kind of map has been used by a party member, " +
             "\nso maps are grouped by the expansion of the zone in which they were recorded.\n\n" +
-            "For maps recorded prior to v2.0.0.0, this information may be missing.";
+            "For maps recorded prior to v2.0.0.0, this information may be unavailable.";
         internal bool AllSelected { get; set; }
         public Dictionary<TreasureMapCategory, bool> FilterState { get; set; } = new();
 

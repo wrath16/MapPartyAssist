@@ -35,7 +35,7 @@ internal class MainWindow : Window {
 
     internal MainWindow(Plugin plugin) : base("Map Party Assist") {
         ForceMainWindow = true;
-        PositionCondition = ImGuiCond.Appearing;
+        PositionCondition = ImGuiCond.Once;
         SizeConstraints = new WindowSizeConstraints {
             MinimumSize = new Vector2(200, 50),
             MaximumSize = new Vector2(500, 350)
@@ -100,6 +100,7 @@ internal class MainWindow : Window {
     }
 
     public override void Draw() {
+        PositionCondition = ImGuiCond.Once;
         CurrentPosition = ImGui.GetWindowPos();
         CurrentSize = ImGui.GetWindowSize();
 

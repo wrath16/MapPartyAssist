@@ -50,14 +50,18 @@ namespace MapPartyAssist.Windows.Summary {
             Category,
         }
 
+        private const int _maxPageSize = 100;
+
         private Plugin _plugin;
         private StatsWindow _statsWindow;
         private int _lootEligibleRuns = 0;
         private int _lootEligibleMaps = 0;
         private Dictionary<LootResultKey, LootResultValue> _lootResults = new();
+        private Dictionary<LootResultKey, LootResultValue> _lootResultsPage = new();
         //private List<LootResultKey> _pins = new();
         private SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
         private bool _firstDraw;
+        private int _currentPage = 0;
         public string LootCSV { get; private set; } = "";
 
         internal LootSummary(Plugin plugin, StatsWindow statsWindow) {
@@ -158,12 +162,20 @@ namespace MapPartyAssist.Windows.Summary {
                 _lootEligibleMaps = newLootEligibleMaps;
                 LootCSV = newLootCSV;
                 _firstDraw = true;
+                GoToPage(0);
             }
             //_lootResults = newLootResults;
             //_lootEligibleRuns = newLootEligibleRuns;
             //_lootEligibleMaps = newLootEligibleMaps;
             //LootCSV = newLootCSV;
             //_firstDraw = true;
+        }
+
+        private void GoToPage(int? page = null) {
+            //null = stay on same page
+            page ??= _currentPage;
+            _currentPage = (int)page;
+            _lootResultsPage = _lootResults.Skip(_currentPage * _maxPageSize).Take(_maxPageSize).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
         public void Draw() {
@@ -179,6 +191,25 @@ namespace MapPartyAssist.Windows.Summary {
                 _plugin.Configuration.Save();
                 //SortByColumn((SortableColumn)sortSpecs.Specs.ColumnUserID, sortSpecs.Specs.SortDirection);
             }
+
+            if(_currentPage > 0) {
+                ImGui.SameLine();
+                if(ImGui.Button($"Previous {_maxPageSize}")) {
+                    _plugin.DataQueue.QueueDataOperation(() => {
+                        GoToPage(_currentPage - 1);
+                    });
+                }
+            }
+
+            if(_lootResultsPage.Count >= _maxPageSize) {
+                ImGui.SameLine();
+                if(ImGui.Button($"Next {_maxPageSize}")) {
+                    _plugin.DataQueue.QueueDataOperation(() => {
+                        GoToPage(_currentPage + 1);
+                    });
+                }
+            }
+
             ImGui.Text($"Eligible maps: {_lootEligibleMaps} Eligible duties: {_lootEligibleRuns}");
             //ImGuiComponents.HelpMarker("");
             ImGui.SameLine();
@@ -207,7 +238,7 @@ namespace MapPartyAssist.Windows.Summary {
             }
 
             ImGui.TableNextRow();
-            foreach(var lootResult in _lootResults) {
+            foreach(var lootResult in _lootResultsPage) {
                 bool isPinned = _plugin.Configuration.LootPins.Contains(lootResult.Key);
                 ImGui.TableNextColumn();
                 if(isPinned) {
@@ -295,6 +326,7 @@ namespace MapPartyAssist.Windows.Summary {
             nonPinnedList = direction == ImGuiSortDirection.Ascending ? nonPinnedList.OrderBy(comparator) : nonPinnedList.OrderByDescending(comparator);
             var sortedList = pinnedList.Concat(nonPinnedList);
             _lootResults = sortedList.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            GoToPage(0);
         }
     }
 }

@@ -17,7 +17,7 @@ namespace MapPartyAssist.Helper {
             {2001764,  TreasureMap.Dragonskin},
             {2002209,  TreasureMap.Gaganaskin},
             {2002210,  TreasureMap.Gazelleskin},
-            {2002386,  TreasureMap.Thief},
+            {2002260,  TreasureMap.Thief},
             {2002503,  TreasureMap.SeeminglySpecial},
             {2002663,  TreasureMap.Gliderskin},
             {2002664,  TreasureMap.Zonureskin},

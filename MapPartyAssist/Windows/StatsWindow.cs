@@ -36,7 +36,7 @@ namespace MapPartyAssist.Windows {
 
         internal SemaphoreSlim RefreshLock { get; init; } = new SemaphoreSlim(1, 1);
 
-        internal StatsWindow(Plugin plugin) : base("Treasure Map Statistics") {
+        internal StatsWindow(Plugin plugin) : base("Treasure Hunt Statistics") {
             SizeConstraints = new WindowSizeConstraints {
                 MinimumSize = new Vector2(300, 400),
                 MaximumSize = new Vector2(1500, 1080)
@@ -64,10 +64,15 @@ namespace MapPartyAssist.Windows {
 
         public void Refresh() {
             try {
+                //_plugin.Log.Debug("start!");
+                //DateTime dt = DateTime.Now;
                 RefreshLock.Wait();
                 var dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).OrderBy(dr => dr.Time).ToList();
                 var maps = _plugin.StorageManager.GetMaps().Query().OrderBy(m => m.Time).ToList();
                 var imports = new List<DutyResultsImport>();
+
+                //DateTime dt2 = DateTime.Now;
+                //_plugin.Log.Debug($"from db: {(dt2 - dt).TotalMilliseconds}ms");
 
                 if(_plugin.Configuration.CurrentCharacterStatsOnly && !_plugin.GetCurrentPlayer().IsNullOrEmpty()) {
                     dutyResults = dutyResults.Where(dr => dr.Players.Contains(_plugin.GetCurrentPlayer())).ToList();
@@ -218,12 +223,40 @@ namespace MapPartyAssist.Windows {
                             break;
                     }
                 }
+                //DateTime dt3 = DateTime.Now;
+                //_plugin.Log.Debug($"filters: {(dt3 - dt2).TotalMilliseconds}ms");
+
                 _lootSummary.Refresh(dutyResults, maps);
+
+                //DateTime dt4 = DateTime.Now;
+                //_plugin.Log.Debug($"loot summary refresh: {(dt4 - dt3).TotalMilliseconds}ms");
+
                 _dutySummary.Refresh(dutyResults, imports);
+
+                //DateTime dt5 = DateTime.Now;
+                //_plugin.Log.Debug($"duty summary refresh: {(dt5 - dt4).TotalMilliseconds}ms");
+
                 _dutyResultsList.Refresh(dutyResults);
+
+                //DateTime dt6 = DateTime.Now;
+                //_plugin.Log.Debug($"duty list refresh: {(dt6 - dt5).TotalMilliseconds}ms");
+
                 _mapList.Refresh(maps);
+
+                //DateTime dt7 = DateTime.Now;
+                //_plugin.Log.Debug($"map list refresh: {(dt7 - dt6).TotalMilliseconds}ms");
+
                 _viewImportsWindow.Refresh();
+
+                //DateTime dt8 = DateTime.Now;
+                //_plugin.Log.Debug($"imports refresh: {(dt8 - dt7).TotalMilliseconds}ms");
+
                 _plugin.Configuration.Save();
+
+                //DateTime dt9 = DateTime.Now;
+                //_plugin.Log.Debug($"save plugin: {(dt9 - dt8).TotalMilliseconds}ms");
+
+
             } finally {
                 RefreshLock.Release();
             }
@@ -354,6 +387,7 @@ namespace MapPartyAssist.Windows {
 
         internal void OpenMapWindow() {
             if(!_plugin.MainWindow.IsOpen) {
+                _plugin.MainWindow.PositionCondition = ImGuiCond.Appearing;
                 _plugin.MainWindow.Position = new Vector2(ImGui.GetWindowPos().X + 50f * ImGuiHelpers.GlobalScale, ImGui.GetWindowPos().Y + 50f * ImGuiHelpers.GlobalScale);
                 _plugin.MainWindow.IsOpen = true;
             }
