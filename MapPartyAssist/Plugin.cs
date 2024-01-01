@@ -1,7 +1,5 @@
 ﻿using Dalamud;
 using Dalamud.Configuration;
-using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.ClientState.Party;
 using Dalamud.Game.Command;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
@@ -10,17 +8,14 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using Dalamud.Utility;
 using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Services;
 using MapPartyAssist.Settings;
-using MapPartyAssist.Types;
 using MapPartyAssist.Windows;
 using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -60,10 +55,10 @@ namespace MapPartyAssist {
         internal IClientState ClientState { get; init; }
         internal ICondition Condition { get; init; }
         internal IDutyState DutyState { get; init; }
-        private IPartyList PartyList { get; init; }
+        internal IPartyList PartyList { get; init; }
         internal IChatGui ChatGui { get; init; }
-        private IGameGui GameGui { get; init; }
-        private IFramework Framework { get; init; }
+        internal IGameGui GameGui { get; init; }
+        internal IFramework Framework { get; init; }
         internal IAddonLifecycle AddonLifecycle { get; init; }
         internal IPluginLog Log { get; init; }
 
@@ -91,11 +86,6 @@ namespace MapPartyAssist {
         internal bool PrintAllMessages { get; set; } = false;
         internal bool PrintPayloads { get; set; } = false;
         internal bool AllowEdit { get; set; } = false;
-
-
-        public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
-        public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
-        private int _lastPartySize = 0;
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -135,7 +125,6 @@ namespace MapPartyAssist {
                 }
 
                 DataQueue = new(this);
-                GameStateManager = new(this);
                 StorageManager = new(this, $"{PluginInterface.GetPluginConfigDirectory()}\\{DatabaseName}");
                 Functions = new();
                 DutyManager = new(this);
@@ -144,6 +133,7 @@ namespace MapPartyAssist {
 
                 //needs DutyManager to be initialized first
                 Configuration.Initialize(this);
+                GameStateManager = new(this);
 
                 MainWindow = new MainWindow(this);
                 WindowSystem.AddWindow(MainWindow);
@@ -185,27 +175,12 @@ namespace MapPartyAssist {
                 PluginInterface.UiBuilder.Draw += DrawUI;
                 PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
 
-                Framework.Update += OnFrameworkUpdate;
                 ChatGui.ChatMessage += OnChatMessage;
-                ClientState.Login += OnLogin;
-                ClientState.Logout += OnLogout;
 
                 //import data from old configuration to database
                 if(Configuration.Version < 2) {
                     StorageManager.Import();
                 }
-
-                //build current and recent party lists
-                DataQueue.QueueDataOperation(() => {
-                    if(ClientState.IsLoggedIn) {
-                        BuildCurrentPartyList(PartyList.ToArray());
-                        BuildRecentPartyList();
-                    } else {
-                        CurrentPartyList = new();
-                        RecentPartyList = new();
-                    }
-                    Save();
-                });
 
             } catch(Exception e) {
                 //remove handlers and release database if we fail to start
@@ -246,10 +221,7 @@ namespace MapPartyAssist {
             CommandManager.RemoveHandler(TestCommandName);
 #endif
 
-            Framework.Update -= OnFrameworkUpdate;
             ChatGui.ChatMessage -= OnChatMessage;
-            ClientState.Login -= OnLogin;
-            ClientState.Logout -= OnLogout;
 
             if(MapManager != null) {
                 MapManager.Dispose();
@@ -300,20 +272,6 @@ namespace MapPartyAssist {
             ConfigWindow.IsOpen = true;
         }
 
-        private void OnFrameworkUpdate(IFramework framework) {
-            var playerJob = ClientState.LocalPlayer?.ClassJob.GameData?.Abbreviation;
-            var currentPartySize = PartyList.Length;
-
-            if(!Condition[ConditionFlag.BetweenAreas] && playerJob != null && currentPartySize != _lastPartySize) {
-                Log.Verbose($"Party size has changed: {_lastPartySize} to {currentPartySize}");
-                _lastPartySize = currentPartySize;
-                DataQueue.QueueDataOperation(() => {
-                    BuildPartyLists();
-                    Save();
-                });
-            }
-        }
-
         private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled) {
             //filter nuisance combat messages...
             switch((int)type) {
@@ -349,107 +307,8 @@ namespace MapPartyAssist {
             }
         }
 
-        private void OnLogin() {
-            DataQueue.QueueDataOperation(() => {
-                BuildPartyLists();
-                MapManager.CheckAndArchiveMaps();
-            });
-        }
-
-        private void OnLogout() {
-            DataQueue.QueueDataOperation(() => {
-                //remove all party members
-                CurrentPartyList = new();
-                Save();
-            });
-        }
-
-        internal void BuildPartyLists() {
-            BuildCurrentPartyList(PartyList.ToArray());
-            BuildRecentPartyList();
-        }
-
-        //builds current party list from scratch
-        public void BuildCurrentPartyList(PartyMember[] partyMembers) {
-            Log.Verbose("Rebuilding current party list.");
-            string currentPlayerName = ClientState.LocalPlayer!.Name.ToString()!;
-            string currentPlayerWorld = ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
-            string currentPlayerKey = GetCurrentPlayer()!;
-            CurrentPartyList = new();
-            var allPlayers = StorageManager.GetPlayers();
-            var currentPlayer = allPlayers.Query().Where(p => p.Key == currentPlayerKey).FirstOrDefault();
-            //enable for solo player
-            if(partyMembers.Length <= 0) {
-                //add yourself for initial setup
-                if(currentPlayer == null) {
-                    var newPlayer = new MPAMember(currentPlayerName, currentPlayerWorld, true);
-                    CurrentPartyList.Add(currentPlayerKey, newPlayer);
-                    StorageManager.AddPlayer(newPlayer, false);
-                } else {
-                    currentPlayer.LastJoined = DateTime.Now;
-                    CurrentPartyList.Add(currentPlayerKey, currentPlayer);
-                    StorageManager.UpdatePlayer(currentPlayer, false);
-                }
-            } else {
-                foreach(PartyMember p in partyMembers) {
-                    string partyMemberName = p.Name.ToString();
-                    string partyMemberWorld = p.World.GameData!.Name.ToString();
-                    var key = $"{partyMemberName} {partyMemberWorld}";
-                    bool isCurrentPlayer = partyMemberName.Equals(currentPlayerName) && partyMemberWorld.Equals(currentPlayerWorld);
-                    var findPlayer = allPlayers.Query().Where(p => p.Key == key).FirstOrDefault();
-
-                    //new player!
-                    if(findPlayer == null) {
-                        var newPlayer = new MPAMember(partyMemberName, partyMemberWorld, isCurrentPlayer);
-                        CurrentPartyList.Add(key, newPlayer);
-                        StorageManager.AddPlayer(newPlayer, false);
-                    } else {
-                        //find existing player
-                        findPlayer.LastJoined = DateTime.Now;
-                        findPlayer.IsSelf = isCurrentPlayer;
-                        CurrentPartyList.Add(key, findPlayer);
-                        StorageManager.UpdatePlayer(findPlayer, false);
-                    }
-                }
-            }
-        }
-
-        public void BuildRecentPartyList() {
-            Log.Verbose("Rebuilding recent party list.");
-            RecentPartyList = new();
-            var allPlayers = StorageManager.GetPlayers().Query().ToList();
-            var currentMaps = StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted).ToList();
-            foreach(var player in allPlayers) {
-                TimeSpan timeSpan = DateTime.Now - player.LastJoined;
-                bool isRecent = timeSpan.TotalHours <= Configuration.ArchiveThresholdHours;
-                bool hasMaps = currentMaps.Where(m => !m.Owner.IsNullOrEmpty() && m.Owner.Equals(player.Key)).Any();
-                bool notCurrent = !CurrentPartyList.ContainsKey(player.Key);
-                bool notSelf = !player.IsSelf;
-                if(isRecent && hasMaps && notCurrent) {
-                    RecentPartyList.Add(player.Key, player);
-                }
-            }
-        }
-
         public void OpenMapLink(MapLinkPayload mapLink) {
             GameGui.OpenMapWithMapLink(mapLink);
-        }
-
-        //public int GetCurrentTerritoryId() {
-        //    return ClientState.TerritoryType;
-        //    //return DataManager.GetExcelSheet<TerritoryType>()?.GetRow(ClientState.TerritoryType)?.PlaceName.Value?.Name;
-        //}
-
-        public string? GetCurrentPlayer() {
-            string? currentPlayerName = ClientState.LocalPlayer?.Name?.ToString();
-            string? currentPlayerWorld = ClientState.LocalPlayer?.HomeWorld?.GameData?.Name?.ToString();
-            if(currentPlayerName == null || currentPlayerWorld == null) {
-                //throw exception?
-                //throw new InvalidOperationException("Cannot retrieve current player");
-                return null;
-            }
-
-            return $"{currentPlayerName} {currentPlayerWorld}";
         }
 
         public void Save() {

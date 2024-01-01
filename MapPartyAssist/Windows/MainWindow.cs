@@ -58,25 +58,25 @@ internal class MainWindow : Window {
 
         //setup players independent of Plugin's recent and current lists
         _currentPlayerMaps = new Dictionary<MPAMember, List<MPAMap>>();
-        foreach(var kvp in _plugin.CurrentPartyList) {
+        foreach(var kvp in _plugin.GameStateManager.CurrentPartyList) {
             _currentPlayerMaps.Add(kvp.Value, new List<MPAMap>());
         }
 
         _recentPlayerMaps = new Dictionary<MPAMember, List<MPAMap>>();
-        foreach(var kvp in _plugin.RecentPartyList) {
+        foreach(var kvp in _plugin.GameStateManager.RecentPartyList) {
             _recentPlayerMaps.Add(kvp.Value, new List<MPAMap>());
         }
 
         var maps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted && m.Owner != null).OrderBy(m => m.Time).ToList();
         foreach(var map in maps) {
-            if(_plugin.CurrentPartyList.ContainsKey(map.Owner!)) {
-                _currentPlayerMaps[_plugin.CurrentPartyList[map.Owner!]].Add(map);
+            if(_plugin.GameStateManager.CurrentPartyList.ContainsKey(map.Owner!)) {
+                _currentPlayerMaps[_plugin.GameStateManager.CurrentPartyList[map.Owner!]].Add(map);
                 _currentMapCount++;
                 if(map.IsPortal) {
                     _currentPortalCount++;
                 }
-            } else if(_plugin.RecentPartyList.ContainsKey(map.Owner!)) {
-                _recentPlayerMaps[_plugin.RecentPartyList[map.Owner!]].Add(map);
+            } else if(_plugin.GameStateManager.RecentPartyList.ContainsKey(map.Owner!)) {
+                _recentPlayerMaps[_plugin.GameStateManager.RecentPartyList[map.Owner!]].Add(map);
                 _recentMapCount++;
                 if(map.IsPortal) {
                     _recentPortalCount++;
@@ -214,7 +214,7 @@ internal class MainWindow : Window {
                         linkColor = playerMaps.Key.MapLink.GetMapLinkPayload().TerritoryType.RowId == _plugin.GameStateManager.CurrentTerritory ? ImGuiColors.DalamudYellow : linkColor;
                     }
                     if(_plugin.Configuration.HighlightClosestLink) {
-                        MPAMember? closestLink = _plugin.MapManager.GetPlayerWithClosestMapLink(_plugin.CurrentPartyList.Values.ToList());
+                        MPAMember? closestLink = _plugin.MapManager.GetPlayerWithClosestMapLink(_plugin.GameStateManager.CurrentPartyList.Values.ToList());
                         linkColor = closestLink != null && closestLink.Key == playerMaps.Key.Key ? ImGuiColors.DalamudOrange : linkColor;
                     }
                     ImGui.TextColored(linkColor, FontAwesomeIcon.Search.ToIconString());

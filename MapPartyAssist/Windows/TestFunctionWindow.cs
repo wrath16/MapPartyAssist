@@ -138,7 +138,7 @@ namespace MapPartyAssist.Windows {
                     }
 
                     if(ImGui.Button("GetCurrentPlayer()")) {
-                        _plugin.GetCurrentPlayer();
+                        _plugin.GameStateManager.GetCurrentPlayer();
                     }
 
 
@@ -200,7 +200,7 @@ namespace MapPartyAssist.Windows {
                     }
 
                     if(ImGui.Button("Get Map Position")) {
-                        var map = _plugin.CurrentPartyList.ElementAt(0).Value.MapLink;
+                        var map = _plugin.GameStateManager.CurrentPartyList.ElementAt(0).Value.MapLink;
                         _plugin.Log.Debug($"XCoord: {map.GetMapLinkPayload().XCoord}");
                         _plugin.Log.Debug($"YCoord: {map.GetMapLinkPayload().YCoord}");
                         _plugin.Log.Debug($"RawX: {map.RawX}");
@@ -209,12 +209,12 @@ namespace MapPartyAssist.Windows {
                     }
 
                     if(ImGui.Button("Distance to Map Link")) {
-                        var distance = _plugin.MapManager.GetDistanceToMapLink(_plugin.CurrentPartyList.ElementAt(0).Value.MapLink);
+                        var distance = _plugin.MapManager.GetDistanceToMapLink(_plugin.GameStateManager.CurrentPartyList.ElementAt(0).Value.MapLink);
                         _plugin.Log.Debug($"Distance: {distance}");
                     }
 
                     if(ImGui.Button("Check closest link player")) {
-                        _plugin.Log.Debug($"{_plugin.MapManager.GetPlayerWithClosestMapLink(_plugin.CurrentPartyList.Values.ToList()).Key} has the closest map link");
+                        _plugin.Log.Debug($"{_plugin.MapManager.GetPlayerWithClosestMapLink(_plugin.GameStateManager.CurrentPartyList.Values.ToList()).Key} has the closest map link");
                     }
 
                     if(ImGui.Button("Last Map loot")) {
@@ -415,7 +415,7 @@ namespace MapPartyAssist.Windows {
         }
 
         private void TestMapEquality() {
-            var map = _plugin.CurrentPartyList.Values.FirstOrDefault().Maps.Last();
+            var map = _plugin.GameStateManager.CurrentPartyList.Values.FirstOrDefault().Maps.Last();
             var storageMap = _plugin.StorageManager.GetMaps().Query().ToList().Last();
 
             bool sameMap = map.Equals(storageMap);
@@ -425,7 +425,7 @@ namespace MapPartyAssist.Windows {
 
         private void TestMapContains() {
             var maps = new List<MPAMap> {
-                _plugin.CurrentPartyList.Values.FirstOrDefault().Maps.Last()
+                _plugin.GameStateManager.CurrentPartyList.Values.FirstOrDefault().Maps.Last()
             };
 
             var storageMap = _plugin.StorageManager.GetMaps().Query().ToList().Last();

@@ -74,8 +74,8 @@ namespace MapPartyAssist.Windows {
                 //DateTime dt2 = DateTime.Now;
                 //_plugin.Log.Debug($"from db: {(dt2 - dt).TotalMilliseconds}ms");
 
-                if(_plugin.Configuration.CurrentCharacterStatsOnly && !_plugin.GetCurrentPlayer().IsNullOrEmpty()) {
-                    dutyResults = dutyResults.Where(dr => dr.Players.Contains(_plugin.GetCurrentPlayer())).ToList();
+                if(_plugin.Configuration.CurrentCharacterStatsOnly && !_plugin.GameStateManager.GetCurrentPlayer().IsNullOrEmpty()) {
+                    dutyResults = dutyResults.Where(dr => dr.Players.Contains(_plugin.GameStateManager.GetCurrentPlayer())).ToList();
                 }
 
                 //apply filters

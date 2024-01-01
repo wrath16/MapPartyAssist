@@ -32,7 +32,7 @@ namespace MapPartyAssist.Windows {
 
         private void UpdateZoneCountTable() {
             Zones = new();
-            foreach(MPAMember player in _plugin.CurrentPartyList.Values.Where(p => p.MapLink != null)) {
+            foreach(MPAMember player in _plugin.GameStateManager.CurrentPartyList.Values.Where(p => p.MapLink != null)) {
                 if(Zones.ContainsKey(player.MapLink!.GetMapLinkPayload().PlaceName)) {
                     Zones[player.MapLink.GetMapLinkPayload().PlaceName] += 1;
                 } else {

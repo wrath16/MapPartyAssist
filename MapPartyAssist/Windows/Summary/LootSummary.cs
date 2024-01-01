@@ -160,12 +160,12 @@ namespace MapPartyAssist.Windows.Summary {
                 _plugin.Log.Debug($"changes detected!");
 #endif
                 _lootResults = newLootResults;
-                _lootEligibleRuns = newLootEligibleRuns;
-                _lootEligibleMaps = newLootEligibleMaps;
                 LootCSV = newLootCSV;
                 _firstDraw = true;
                 GoToPage(0);
             }
+            _lootEligibleRuns = newLootEligibleRuns;
+            _lootEligibleMaps = newLootEligibleMaps;
         }
 
         private void GoToPage(int? page = null) {

@@ -316,7 +316,7 @@ namespace MapPartyAssist.Services {
                 CurrentDutyResults = new DutyResults {
                     DutyId = dutyId,
                     DutyName = Duties[dutyId].Name,
-                    Players = _plugin.CurrentPartyList.Keys.ToArray(),
+                    Players = _plugin.GameStateManager.CurrentPartyList.Keys.ToArray(),
                     Owner = "",
                 };
                 _firstLootResults = new();
@@ -416,7 +416,7 @@ namespace MapPartyAssist.Services {
                 } else {
                     //dutyResults.Players = new[] { dutyResults.Owner };
                 }
-                dutyResults.Players = _plugin.CurrentPartyList.Keys.ToArray();
+                dutyResults.Players = _plugin.GameStateManager.CurrentPartyList.Keys.ToArray();
                 return false;
             }
             return true;
@@ -513,7 +513,7 @@ namespace MapPartyAssist.Services {
                     string parsedGilString = m.Value.Replace(",", "").Replace(".", "").Replace(" ", "");
                     int gil = int.Parse(parsedGilString);
                     CurrentDutyResults!.TotalGil += gil;
-                    AddLootResults(1, false, gil, _plugin.GetCurrentPlayer());
+                    AddLootResults(1, false, gil, _plugin.GameStateManager.GetCurrentPlayer());
                     isChange = true;
                 }
                 //self loot obtained
@@ -523,7 +523,7 @@ namespace MapPartyAssist.Services {
                 if(quantityMatch.Success) {
                     bool isNumber = Regex.IsMatch(quantityMatch.Value, @"\d+");
                     int quantity = isNumber ? int.Parse(quantityMatch.Value.Replace(",", "").Replace(".", "")) : 1;
-                    var currentPlayer = _plugin.GetCurrentPlayer();
+                    var currentPlayer = _plugin.GameStateManager.GetCurrentPlayer();
                     if(itemId is not null) {
                         AddLootResults((uint)itemId, isHQ, quantity, currentPlayer);
                         isChange = true;
