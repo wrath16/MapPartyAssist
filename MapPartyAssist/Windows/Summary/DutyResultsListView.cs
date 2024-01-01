@@ -241,7 +241,9 @@ namespace MapPartyAssist.Windows.Summary {
                     ImGui.TextColored(ImGuiColors.DalamudGrey, "Last Checkpoint: ");
                     ImGui.TableNextColumn();
                     var currentLastCheckpointIndex = dutyResults.CheckpointResults.Count - 1;
-                    ImGui.Text($"{_plugin.DutyManager.Duties[dutyResults.DutyId].Checkpoints!.ElementAt(currentLastCheckpointIndex).Name}");
+                    if(currentLastCheckpointIndex >= 0) {
+                        ImGui.Text($"{_plugin.DutyManager.Duties[dutyResults.DutyId].Checkpoints!.ElementAt(currentLastCheckpointIndex).Name}");
+                    }
 
                     ImGui.TableNextColumn();
                     ImGui.TextColored(ImGuiColors.DalamudGrey, "Total Gil: ");
