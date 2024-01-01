@@ -258,8 +258,8 @@ namespace MapPartyAssist.Windows {
                         _plugin.StorageManager.UpdateMap(map);
                     }
 
-                    if(ImGui.Button("get greater regex")) {
-                        _plugin.Log.Debug($"{_plugin.DutyManager.CurrentDuty.GreaterSummonRegex[_plugin.ClientState.ClientLanguage].ToString()}");
+                    if(ImGui.Button("get circle regex")) {
+                        _plugin.Log.Debug($"{_plugin.DutyManager.CurrentDuty.CircleShiftsRegex[_plugin.ClientState.ClientLanguage].ToString()}");
                     }
 
                     if(ImGui.Button("test ref")) {

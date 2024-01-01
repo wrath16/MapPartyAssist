@@ -808,7 +808,7 @@ namespace MapPartyAssist.Services {
                     patterns[ClientLanguage.Japanese] += "(?=が現れた)";
                     break;
                 case Summon.Gold:
-                    patterns.Add(ClientLanguage.English, "(?<=The circles shift and (a | an )?)" + duty.GetSummonPatternString(Summon.Elder) + "(?=,? appears?)");
+                    patterns.Add(ClientLanguage.English, "(?<=The circles shift and (a |an )?)" + duty.GetSummonPatternString(Summon.Elder) + "(?=,? appears?)");
                     patterns[ClientLanguage.French] = "(?<=Aubaine! (Un |Une )?)" + patterns[ClientLanguage.French] + "(?= apparaît)";
                     patterns[ClientLanguage.German] = "(?<=Eine glückliche Fügung wird euch zuteil und (ein |eine |einen )?)" + patterns[ClientLanguage.German] + "(?= erscheint)";
                     patterns[ClientLanguage.Japanese] = "(?<=召喚式変動が発動し、)" + patterns[ClientLanguage.Japanese] + "(?=が現れた)";
