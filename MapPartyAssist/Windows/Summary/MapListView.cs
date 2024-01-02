@@ -200,7 +200,7 @@ namespace MapPartyAssist.Windows.Summary {
         private void DrawMap(MPAMap map) {
             if(ImGui.BeginTable($"##{map.Id}--MainTable", 2, ImGuiTableFlags.NoClip)) {
                 ImGui.TableNextColumn();
-                if(ImGui.BeginTable($"##{map.Id}--SubTable1", 2)) {
+                if(ImGui.BeginTable($"##{map.Id}--SubTable1", 2, ImGuiTableFlags.NoClip)) {
                     ImGui.TableSetupColumn("propName", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 95f);
                     ImGui.TableSetupColumn("propVal", ImGuiTableColumnFlags.WidthStretch);
 

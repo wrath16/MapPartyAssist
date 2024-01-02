@@ -207,7 +207,7 @@ namespace MapPartyAssist.Windows.Summary {
         private void DrawDutyResults(DutyResults dutyResults) {
             if(ImGui.BeginTable($"##{dutyResults.Id}--MainTable", 2, ImGuiTableFlags.NoClip)) {
                 ImGui.TableNextColumn();
-                if(ImGui.BeginTable($"##{dutyResults.Id}--SubTable1", 2)) {
+                if(ImGui.BeginTable($"##{dutyResults.Id}--SubTable1", 2, ImGuiTableFlags.NoClip)) {
                     ImGui.TableSetupColumn("propName", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 95f);
                     ImGui.TableSetupColumn("propVal", ImGuiTableColumnFlags.WidthStretch);
 
