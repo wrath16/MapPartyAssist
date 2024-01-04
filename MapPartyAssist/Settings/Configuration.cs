@@ -28,6 +28,7 @@ namespace MapPartyAssist.Settings {
         public int Version { get; set; } = CurrentVersion;
         public bool MasterSwitch { get; set; } = true;
         public uint ArchiveThresholdHours { get; set; } = 24;
+        public bool UndockZoneWindow { get; set; } = false;
         public bool HideZoneTableWhenEmpty { get; set; } = false;
         public bool RequireDoubleClickOnClearAll { get; set; } = false;
         public bool NoOverwriteMapLink { get; set; } = false;

@@ -88,14 +88,23 @@ internal class MainWindow : Window {
     }
 
     public override void OnClose() {
-        _zoneCountWindow.IsOpen = false;
+        if(!_plugin.Configuration.UndockZoneWindow) {
+            _zoneCountWindow.IsOpen = false;
+        }
         _statusMessageWindow.IsOpen = false;
         base.OnClose();
     }
 
+    public override void OnOpen() {
+        base.OnOpen();
+        _zoneCountWindow.IsOpen = true;
+    }
+
     public override void PreDraw() {
         base.PreDraw();
-        _zoneCountWindow.IsOpen = false;
+        if(!_plugin.Configuration.UndockZoneWindow) {
+            _zoneCountWindow.IsOpen = false;
+        }
         _statusMessageWindow.IsOpen = false;
     }
 
@@ -104,11 +113,12 @@ internal class MainWindow : Window {
         CurrentPosition = ImGui.GetWindowPos();
         CurrentSize = ImGui.GetWindowSize();
 
-        //set zone count window visibility
-        if(_plugin.Configuration.HideZoneTableWhenEmpty) {
-            _zoneCountWindow.IsOpen = _zoneCountWindow.Zones.Count > 0;
-        } else {
-            _zoneCountWindow.IsOpen = true;
+        if(!_plugin.Configuration.UndockZoneWindow) {
+            if(_plugin.Configuration.HideZoneTableWhenEmpty) {
+                _zoneCountWindow.IsOpen = _zoneCountWindow.Zones.Count > 0;
+            } else {
+                _zoneCountWindow.IsOpen = true;
+            }
         }
 
         //set status message window visibility

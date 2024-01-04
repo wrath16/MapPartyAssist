@@ -43,7 +43,15 @@ namespace MapPartyAssist.Windows {
 
         public override void PreDraw() {
             base.PreDraw();
-            Position = new Vector2(_mainWindow.CurrentPosition.X, _mainWindow.CurrentPosition.Y + _mainWindow.CurrentSize.Y);
+            if(!_plugin.Configuration.UndockZoneWindow) {
+                Position = new Vector2(_mainWindow.CurrentPosition.X, _mainWindow.CurrentPosition.Y + _mainWindow.CurrentSize.Y);
+                ShowCloseButton = false;
+                PositionCondition = ImGuiCond.Always;
+                IsOpen = _mainWindow.IsOpen && _mainWindow.Collapsed is not null && (bool)!_mainWindow.Collapsed && (Zones.Count > 0 || !_plugin.Configuration.HideZoneTableWhenEmpty);
+            } else {
+                ShowCloseButton = true;
+                PositionCondition = ImGuiCond.Appearing;
+            }
         }
 
         public override void Draw() {

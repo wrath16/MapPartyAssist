@@ -22,14 +22,16 @@ namespace MapPartyAssist.Services {
     internal class MapManager : IDisposable {
         public string LastMapPlayerKey { get; private set; } = "";
         private MPAMap? _lastMap;
-        internal MPAMap? LastMap { get {
+        internal MPAMap? LastMap {
+            get {
                 if(_lastMap is not null) {
                     return _lastMap;
                 } else {
                     _lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().LastOrDefault();
                     return _lastMap;
                 }
-            } set {
+            }
+            set {
                 _lastMap = value;
             }
         }
@@ -643,7 +645,7 @@ namespace MapPartyAssist.Services {
             if(LastMap is null) {
                 _plugin.Log.Warning("Unable to add loot results: no map");
                 return;
-            }else if(LastMap.LootResults is null) {
+            } else if(LastMap.LootResults is null) {
                 throw new InvalidOperationException("Unable to add loot result to map!");
                 //10 minute fallback
             } else if((DateTime.Now - LastMap.Time).TotalMinutes > 10) {
