@@ -4,6 +4,7 @@ using Dalamud.Game.Command;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
+using Dalamud.Interface;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
@@ -223,6 +224,9 @@ namespace MapPartyAssist {
 
             ChatGui.ChatMessage -= OnChatMessage;
 
+            PluginInterface.UiBuilder.Draw -= DrawUI;
+            PluginInterface.UiBuilder.OpenConfigUi -= DrawConfigUI;
+
             if(MapManager != null) {
                 MapManager.Dispose();
             }
@@ -234,6 +238,9 @@ namespace MapPartyAssist {
             }
             if(GameStateManager != null) {
                 GameStateManager.Dispose();
+            }
+            if(DataQueue != null) {
+                DataQueue.Dispose();
             }
         }
 
@@ -292,10 +299,10 @@ namespace MapPartyAssist {
                 case (int)XivChatType.Party:
                 case (int)XivChatType.SystemMessage:
                     //Log.Verbose($"Message received: {type} {message} from {sender}");
-                    Log.Verbose(String.Format("type: {0,-6} sender: {1,-20} message: {2}", type, sender, message));
+                    Log.Debug(String.Format("type: {0,-6} sender: {1,-20} message: {2}", type, sender, message));
                     if(PrintPayloads) {
                         foreach(Payload payload in message.Payloads) {
-                            Log.Verbose($"payload: {payload}");
+                            Log.Debug($"payload: {payload}");
                         }
                     }
                     break;

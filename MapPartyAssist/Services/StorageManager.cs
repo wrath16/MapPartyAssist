@@ -4,6 +4,7 @@ using MapPartyAssist.Types;
 using MapPartyAssist.Types.Attributes;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -103,18 +104,34 @@ namespace MapPartyAssist.Services {
 #pragma warning restore 612, 618
 
         internal void AddMap(MPAMap map, bool toSave = true) {
+#if DEBUG
+            var x = new StackFrame(1, true).GetMethod();
+            _plugin.Log.Debug($"Adding map: {map.Id} from {x.Name} {x.DeclaringType}");
+#endif
             WriteToDatabase(() => GetMaps().Insert(map), toSave);
         }
 
         internal void AddMaps(IEnumerable<MPAMap> maps, bool toSave = true) {
+#if DEBUG
+            var x = new StackFrame(1, true).GetMethod();
+            _plugin.Log.Debug($"Adding maps, count: {maps.Count()} from {x.Name} {x.DeclaringType}");
+#endif
             WriteToDatabase(() => GetMaps().Insert(maps), toSave);
         }
 
         internal void UpdateMap(MPAMap map, bool toSave = true) {
+#if DEBUG
+            var x = new StackFrame(1, true).GetMethod();
+            _plugin.Log.Debug($"Updating map: {map.Id} from {x.Name} {x.DeclaringType}");
+#endif
             WriteToDatabase(() => GetMaps().Update(map), toSave);
         }
 
         internal void UpdateMaps(IEnumerable<MPAMap> maps, bool toSave = true) {
+#if DEBUG
+            var x = new StackFrame(1, true).GetMethod();
+            _plugin.Log.Debug($"Updating maps, count: {maps.Count()} from {x.Name} {x.DeclaringType}");
+#endif
             WriteToDatabase(() => GetMaps().Update(maps.Where(m => m.Id != null)), toSave);
         }
 
@@ -123,10 +140,18 @@ namespace MapPartyAssist.Services {
         }
 
         internal void AddPlayer(MPAMember player, bool toSave = true) {
+#if DEBUG
+            var x = new StackFrame(1, true).GetMethod();
+            _plugin.Log.Debug($"Adding player: {player.Key} from {x.Name} {x.DeclaringType}");
+#endif
             WriteToDatabase(() => GetPlayers().Insert(player), toSave);
         }
 
         internal void UpdatePlayer(MPAMember player, bool toSave = true) {
+#if DEBUG
+            var x = new StackFrame(1, true).GetMethod();
+            _plugin.Log.Debug($"Updating player: {player.Key} from {x.Name} {x.DeclaringType}");
+#endif
             WriteToDatabase(() => GetPlayers().Update(player), toSave);
         }
 
@@ -135,18 +160,34 @@ namespace MapPartyAssist.Services {
         }
 
         internal void AddDutyResults(DutyResults results, bool toSave = true) {
+#if DEBUG
+            var x = new StackFrame(1, true).GetMethod();
+            _plugin.Log.Debug($"Adding duty results: {results.Id} from {x.Name} {x.DeclaringType}");
+#endif
             WriteToDatabase(() => GetDutyResults().Insert(results), toSave);
         }
 
         internal void AddDutyResults(IEnumerable<DutyResults> results, bool toSave = true) {
+#if DEBUG
+            var x = new StackFrame(1, true).GetMethod();
+            _plugin.Log.Debug($"Adding duty results, count: {results.Count()} from {x.Name} {x.DeclaringType}");
+#endif
             WriteToDatabase(() => GetDutyResults().Insert(results), toSave);
         }
 
         internal void UpdateDutyResults(DutyResults results, bool toSave = true) {
+#if DEBUG
+            var x = new StackFrame(1, true).GetMethod();
+            _plugin.Log.Debug($"Updating duty results: {results.Id} from {x.Name} {x.DeclaringType}");
+#endif
             WriteToDatabase(() => GetDutyResults().Update(results), toSave);
         }
 
         internal void UpdateDutyResults(IEnumerable<DutyResults> results, bool toSave = true) {
+#if DEBUG
+            var x = new StackFrame(1, true).GetMethod();
+            _plugin.Log.Debug($"Updating duty results, count: {results.Count()} from {x.Name} {x.DeclaringType}");
+#endif
             WriteToDatabase(() => GetDutyResults().Update(results), toSave);
         }
 
@@ -155,13 +196,19 @@ namespace MapPartyAssist.Services {
         }
 
         internal void AddDutyResultsImport(DutyResultsImport import, bool toSave = true) {
-            var importCollection = Database.GetCollection<DutyResultsImport>(StatsImportTable);
-            WriteToDatabase(() => importCollection.Insert(import), toSave);
+#if DEBUG
+            var x = new StackFrame(1, true).GetMethod();
+            _plugin.Log.Debug($"Adding import: {import.Id} from {x.Name} {x.DeclaringType}");
+#endif
+            WriteToDatabase(() => GetDutyResultsImports().Insert(import), toSave);
         }
 
         internal void UpdateDutyResultsImport(DutyResultsImport import, bool toSave = true) {
-            var importCollection = Database.GetCollection<DutyResultsImport>(StatsImportTable);
-            WriteToDatabase(() => importCollection.Update(import), toSave);
+#if DEBUG
+            var x = new StackFrame(1, true).GetMethod();
+            _plugin.Log.Debug($"Updating import: {import.Id} from {x.Name} {x.DeclaringType}");
+#endif
+            WriteToDatabase(() => GetDutyResultsImports().Update(import), toSave);
         }
 
         internal ILiteCollection<DutyResultsImport> GetDutyResultsImports() {

@@ -310,7 +310,7 @@ namespace MapPartyAssist.Services {
             //}
 
             if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null) {
-                var lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().LastOrDefault();
+                //var lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().LastOrDefault();
                 _plugin.Log.Information($"Starting new duty results for duty id: {dutyId}");
                 //_currentDutyResults = new DutyResults(dutyId, Duties[dutyId].Name, _plugin.CurrentPartyList, "");
                 CurrentDutyResults = new DutyResults {
@@ -321,13 +321,13 @@ namespace MapPartyAssist.Services {
                 };
                 _firstLootResults = new();
                 //check last map, 10 min fallback for linking to most recent map
-                if(lastMap != null && (DateTime.Now - lastMap.Time).TotalMinutes < 10) {
-                    CurrentDutyResults.Map = lastMap;
-                    CurrentDutyResults.Owner = lastMap.Owner!;
-                    lastMap.IsPortal = true;
-                    lastMap.DutyName = Duties[dutyId].GetDisplayName();
-                    lastMap.DutyId = dutyId;
-                    _plugin.StorageManager.UpdateMap(lastMap);
+                if(_plugin.MapManager.LastMap != null && (DateTime.Now - _plugin.MapManager.LastMap.Time).TotalMinutes < 10) {
+                    CurrentDutyResults.Map = _plugin.MapManager.LastMap;
+                    CurrentDutyResults.Owner = _plugin.MapManager.LastMap.Owner!;
+                    _plugin.MapManager.LastMap.IsPortal = true;
+                    _plugin.MapManager.LastMap.DutyName = Duties[dutyId].GetDisplayName();
+                    _plugin.MapManager.LastMap.DutyId = dutyId;
+                    _plugin.StorageManager.UpdateMap(_plugin.MapManager.LastMap);
                 } else {
                     CurrentDutyResults.Map = null;
                     CurrentDutyResults.Owner = "";
@@ -729,10 +729,10 @@ namespace MapPartyAssist.Services {
         private void EndCurrentDuty() {
             if(IsDutyInProgress()) {
                 _plugin.Log.Information($"Ending duty results id: {CurrentDutyResults!.Id}");
-                CurrentDutyResults!.IsComplete = true;
-                if(CurrentDutyResults.CompletionTime.Ticks == 0) {
-                    CurrentDutyResults.CompletionTime = DateTime.Now;
-                }
+                //CurrentDutyResults!.IsComplete = true;
+                //if(CurrentDutyResults.CompletionTime.Ticks == 0) {
+                //    CurrentDutyResults.CompletionTime = DateTime.Now;
+                //}
                 //check for malformed/missing data
                 ValidateUpdateDutyResults(CurrentDutyResults);
                 _plugin.StorageManager.UpdateDutyResults(CurrentDutyResults);

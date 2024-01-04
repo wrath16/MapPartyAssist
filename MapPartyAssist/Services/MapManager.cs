@@ -21,7 +21,18 @@ namespace MapPartyAssist.Services {
     //internal service for managing treasure maps and map links
     internal class MapManager : IDisposable {
         public string LastMapPlayerKey { get; private set; } = "";
-        internal MPAMap? LastMap { get; private set; }
+        private MPAMap? _lastMap;
+        internal MPAMap? LastMap { get {
+                if(_lastMap is not null) {
+                    return _lastMap;
+                } else {
+                    _lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().LastOrDefault();
+                    return _lastMap;
+                }
+            } set {
+                _lastMap = value;
+            }
+        }
         public string StatusMessage { get; set; } = "";
         public StatusLevel Status { get; set; } = StatusLevel.OK;
 
@@ -121,7 +132,7 @@ namespace MapPartyAssist.Services {
             _plugin = plugin;
             _plugin.ChatGui.ChatMessage += OnChatMessage;
             _plugin.ClientState.TerritoryChanged += OnTerritoryChanged;
-            _plugin.AddonLifecycle.RegisterListener(AddonEvent.PreUpdate, "_ToDoList", CheckForTreasureHunt);
+            //_plugin.AddonLifecycle.RegisterListener(AddonEvent.PreUpdate, "_ToDoList", CheckForTreasureHunt);
 
             ResetDigStatus();
         }
@@ -132,7 +143,7 @@ namespace MapPartyAssist.Services {
 #endif
             _plugin.ChatGui.ChatMessage -= OnChatMessage;
             _plugin.ClientState.TerritoryChanged -= OnTerritoryChanged;
-            _plugin.AddonLifecycle.UnregisterListener(CheckForTreasureHunt);
+            //_plugin.AddonLifecycle.UnregisterListener(CheckForTreasureHunt);
         }
 
         private void OnTerritoryChanged(ushort territoryId) {
@@ -259,7 +270,8 @@ namespace MapPartyAssist.Services {
                     ResetDigStatus();
                 } else if(DiscoverCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(message)) {
                     //find (non-current PC) party member with the closest matching dig time and assume they are owner
-                    //_boundByMapDuty = true;
+                    _boundByMapDuty = true;
+                    _boundByMapDutyDelayed = true;
                     _lockedInDiggerKey = GetLikelyMapOwner(messageTime, _plugin.GameStateManager.GetCurrentPlayer());
                     if(_lockedInDiggerKey.IsNullOrEmpty() && !IsPlayerCandidateOwner(messageTime, _plugin.GameStateManager.GetCurrentPlayer())) {
                         _plugin.Log.Warning($"No eligible map owner detected for discovered coffer!");
@@ -340,7 +352,9 @@ namespace MapPartyAssist.Services {
                         if(itemId is not null) {
                             AddLootResults((uint)itemId, isHQ, quantity, currentPlayer);
                             isChange = true;
+#if DEBUG
                             _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, currentPlayer));
+#endif
                         } else if(itemMatch.Success) {
                             //tomestones...
                             //Japanese has no plural...
@@ -357,7 +371,6 @@ namespace MapPartyAssist.Services {
                 } else if((int)type == 8254 || (int)type == 4158) {
                     Match m = DutyManager.PartyMemberObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
                     if(m.Success) {
-                        //todo make this work for all languages...
                         bool isNumber = Regex.IsMatch(m.Value, @"\d+");
                         int quantity = isNumber ? int.Parse(m.Value.Replace(",", "").Replace(".", "")) : 1;
                         if(itemId is not null) {
@@ -373,7 +386,6 @@ namespace MapPartyAssist.Services {
                 } else if(type == XivChatType.SystemMessage) {
                     Match m = DutyManager.LootListRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
                     if(m.Success) {
-                        //todo make this work for all languages...
                         bool isNumber = Regex.IsMatch(m.Value, @"\d+");
                         int quantity = isNumber ? int.Parse(m.Value) : 1;
                         if(itemId is not null) {
@@ -619,16 +631,19 @@ namespace MapPartyAssist.Services {
         }
 
         private void AddLootResults(uint itemId, bool isHQ, int quantity, string? recipient = null) {
-            //this is bad
-            if(LastMap is null) {
-                var lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().Last();
-                if(lastMap is null) {
-                    return;
-                }
-                LastMap = lastMap;
-            }
+            ////this is bad
+            //if(LastMap is null) {
+            //    var lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().Last();
+            //    if(lastMap is null) {
+            //        return;
+            //    }
+            //    LastMap = lastMap;
+            //}
 
-            if(LastMap.LootResults is null) {
+            if(LastMap is null) {
+                _plugin.Log.Warning("Unable to add loot results: no map");
+                return;
+            }else if(LastMap.LootResults is null) {
                 throw new InvalidOperationException("Unable to add loot result to map!");
                 //10 minute fallback
             } else if((DateTime.Now - LastMap.Time).TotalMinutes > 10) {

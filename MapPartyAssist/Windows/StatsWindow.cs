@@ -273,7 +273,6 @@ namespace MapPartyAssist.Windows {
                 ImGui.End();
                 return;
             }
-            ImGui.Begin(WindowName);
 
             if(ImGui.BeginMenuBar()) {
                 if(ImGui.BeginMenu("Windows")) {
@@ -362,6 +361,7 @@ namespace MapPartyAssist.Windows {
                 }
                 ImGui.EndTabBar();
             }
+            ImGui.End();
         }
 
         internal void OpenImportsWindow() {

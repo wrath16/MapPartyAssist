@@ -45,7 +45,7 @@ namespace MapPartyAssist.Services {
             var currentPartySize = _plugin.PartyList.Length;
 
             if(!_plugin.Condition[ConditionFlag.BetweenAreas] && playerJob != null && currentPartySize != _lastPartySize) {
-                _plugin.Log.Verbose($"Party size has changed: {_lastPartySize} to {currentPartySize}");
+                _plugin.Log.Debug($"Party size has changed: {_lastPartySize} to {currentPartySize}");
                 _lastPartySize = currentPartySize;
                 _plugin.DataQueue.QueueDataOperation(() => {
                     BuildPartyLists();
@@ -93,7 +93,7 @@ namespace MapPartyAssist.Services {
 
         //builds current party list from scratch
         private void BuildCurrentPartyList(PartyMember[] partyMembers) {
-            _plugin.Log.Verbose("Rebuilding current party list.");
+            _plugin.Log.Debug("Rebuilding current party list.");
             string currentPlayerName = _plugin.ClientState.LocalPlayer!.Name.ToString()!;
             string currentPlayerWorld = _plugin.ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
             string currentPlayerKey = GetCurrentPlayer()!;
@@ -137,7 +137,7 @@ namespace MapPartyAssist.Services {
         }
 
         internal void BuildRecentPartyList() {
-            _plugin.Log.Verbose("Rebuilding recent party list.");
+            _plugin.Log.Debug("Rebuilding recent party list.");
             RecentPartyList = new();
             var allPlayers = _plugin.StorageManager.GetPlayers().Query().ToList();
             var currentMaps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted).ToList();
