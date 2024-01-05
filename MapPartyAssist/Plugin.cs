@@ -166,6 +166,7 @@ namespace MapPartyAssist {
 
 
                 PluginInterface.UiBuilder.Draw += DrawUI;
+                PluginInterface.UiBuilder.OpenMainUi += DrawMainUI;
                 PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
 
                 ChatGui.ChatMessage += OnChatMessage;
@@ -216,6 +217,7 @@ namespace MapPartyAssist {
             ChatGui.ChatMessage -= OnChatMessage;
 
             PluginInterface.UiBuilder.Draw -= DrawUI;
+            PluginInterface.UiBuilder.OpenMainUi -= DrawMainUI;
             PluginInterface.UiBuilder.OpenConfigUi -= DrawConfigUI;
 
             if(MapManager != null) {
@@ -264,6 +266,10 @@ namespace MapPartyAssist {
 
         private void DrawConfigUI() {
             ConfigWindow.IsOpen = true;
+        }
+
+        private void DrawMainUI() {
+            StatsWindow.IsOpen = true;
         }
 
         private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled) {
