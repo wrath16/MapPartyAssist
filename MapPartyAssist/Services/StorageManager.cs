@@ -104,34 +104,22 @@ namespace MapPartyAssist.Services {
 #pragma warning restore 612, 618
 
         internal void AddMap(MPAMap map, bool toSave = true) {
-#if DEBUG
-            var x = new StackFrame(1, true).GetMethod();
-            _plugin.Log.Debug($"Adding map: {map.Id} from {x.Name} {x.DeclaringType}");
-#endif
+            LogUpdate(map.Id.ToString());
             WriteToDatabase(() => GetMaps().Insert(map), toSave);
         }
 
         internal void AddMaps(IEnumerable<MPAMap> maps, bool toSave = true) {
-#if DEBUG
-            var x = new StackFrame(1, true).GetMethod();
-            _plugin.Log.Debug($"Adding maps, count: {maps.Count()} from {x.Name} {x.DeclaringType}");
-#endif
+            LogUpdate();
             WriteToDatabase(() => GetMaps().Insert(maps), toSave);
         }
 
         internal void UpdateMap(MPAMap map, bool toSave = true) {
-#if DEBUG
-            var x = new StackFrame(1, true).GetMethod();
-            _plugin.Log.Debug($"Updating map: {map.Id} from {x.Name} {x.DeclaringType}");
-#endif
+            LogUpdate(map.Id.ToString());
             WriteToDatabase(() => GetMaps().Update(map), toSave);
         }
 
         internal void UpdateMaps(IEnumerable<MPAMap> maps, bool toSave = true) {
-#if DEBUG
-            var x = new StackFrame(1, true).GetMethod();
-            _plugin.Log.Debug($"Updating maps, count: {maps.Count()} from {x.Name} {x.DeclaringType}");
-#endif
+            LogUpdate();
             WriteToDatabase(() => GetMaps().Update(maps.Where(m => m.Id != null)), toSave);
         }
 
@@ -140,18 +128,12 @@ namespace MapPartyAssist.Services {
         }
 
         internal void AddPlayer(MPAMember player, bool toSave = true) {
-#if DEBUG
-            var x = new StackFrame(1, true).GetMethod();
-            _plugin.Log.Debug($"Adding player: {player.Key} from {x.Name} {x.DeclaringType}");
-#endif
+            LogUpdate(player.Key);
             WriteToDatabase(() => GetPlayers().Insert(player), toSave);
         }
 
         internal void UpdatePlayer(MPAMember player, bool toSave = true) {
-#if DEBUG
-            var x = new StackFrame(1, true).GetMethod();
-            _plugin.Log.Debug($"Updating player: {player.Key} from {x.Name} {x.DeclaringType}");
-#endif
+            LogUpdate(player.Key);
             WriteToDatabase(() => GetPlayers().Update(player), toSave);
         }
 
@@ -160,34 +142,22 @@ namespace MapPartyAssist.Services {
         }
 
         internal void AddDutyResults(DutyResults results, bool toSave = true) {
-#if DEBUG
-            var x = new StackFrame(1, true).GetMethod();
-            _plugin.Log.Debug($"Adding duty results: {results.Id} from {x.Name} {x.DeclaringType}");
-#endif
+            LogUpdate(results.Id.ToString());
             WriteToDatabase(() => GetDutyResults().Insert(results), toSave);
         }
 
         internal void AddDutyResults(IEnumerable<DutyResults> results, bool toSave = true) {
-#if DEBUG
-            var x = new StackFrame(1, true).GetMethod();
-            _plugin.Log.Debug($"Adding duty results, count: {results.Count()} from {x.Name} {x.DeclaringType}");
-#endif
+            LogUpdate();
             WriteToDatabase(() => GetDutyResults().Insert(results), toSave);
         }
 
         internal void UpdateDutyResults(DutyResults results, bool toSave = true) {
-#if DEBUG
-            var x = new StackFrame(1, true).GetMethod();
-            _plugin.Log.Debug($"Updating duty results: {results.Id} from {x.Name} {x.DeclaringType}");
-#endif
+            LogUpdate(results.Id.ToString());
             WriteToDatabase(() => GetDutyResults().Update(results), toSave);
         }
 
         internal void UpdateDutyResults(IEnumerable<DutyResults> results, bool toSave = true) {
-#if DEBUG
-            var x = new StackFrame(1, true).GetMethod();
-            _plugin.Log.Debug($"Updating duty results, count: {results.Count()} from {x.Name} {x.DeclaringType}");
-#endif
+            LogUpdate();
             WriteToDatabase(() => GetDutyResults().Update(results), toSave);
         }
 
@@ -196,18 +166,12 @@ namespace MapPartyAssist.Services {
         }
 
         internal void AddDutyResultsImport(DutyResultsImport import, bool toSave = true) {
-#if DEBUG
-            var x = new StackFrame(1, true).GetMethod();
-            _plugin.Log.Debug($"Adding import: {import.Id} from {x.Name} {x.DeclaringType}");
-#endif
+            LogUpdate(import.Id.ToString());
             WriteToDatabase(() => GetDutyResultsImports().Insert(import), toSave);
         }
 
         internal void UpdateDutyResultsImport(DutyResultsImport import, bool toSave = true) {
-#if DEBUG
-            var x = new StackFrame(1, true).GetMethod();
-            _plugin.Log.Debug($"Updating import: {import.Id} from {x.Name} {x.DeclaringType}");
-#endif
+            LogUpdate(import.Id.ToString());
             WriteToDatabase(() => GetDutyResultsImports().Update(import), toSave);
         }
 
@@ -222,6 +186,15 @@ namespace MapPartyAssist.Services {
         //    }
         //}
 
+        private void LogUpdate(string? id = null) {
+            var callingMethod = new StackFrame(2, true).GetMethod();
+            var writeMethod = new StackFrame(1, true).GetMethod();
+
+            _plugin.Log.Debug(string.Format("Invoking {0,-25} Caller: {1,-70} ID: {2,-30}", 
+                writeMethod?.Name, $"{callingMethod?.DeclaringType?.ToString() ?? ""}.{callingMethod?.Name ?? ""}", id));
+
+            //_plugin.Log.Debug($"Invoking {writeMethod?.Name} from {callingMethod?.DeclaringType?.ToString() ?? ""}.{callingMethod?.Name ?? ""} ID: {id}");
+        }
 
         //synchronous write
         private void WriteToDatabase(Func<object> action, bool toSave = true) {

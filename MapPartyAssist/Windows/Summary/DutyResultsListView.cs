@@ -214,7 +214,7 @@ namespace MapPartyAssist.Windows.Summary {
                     ImGui.TableNextColumn();
                     ImGui.TextColored(ImGuiColors.DalamudGrey, "Completed: ");
                     ImGui.TableNextColumn();
-                    ImGui.Text($"{dutyResults.IsComplete}");
+                    ImGui.Text($"{(dutyResults.IsComplete ? "Yes" : "No")}");
 
                     ImGui.TableNextColumn();
                     ImGui.TextColored(ImGuiColors.DalamudGrey, "Duration: ");

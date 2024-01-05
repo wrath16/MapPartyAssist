@@ -69,24 +69,6 @@ namespace MapPartyAssist.Windows.Summary {
             _statsWindow = statsWindow;
         }
 
-        //public static void AddLootResult(Dictionary<LootResultKey, LootResultValue> lootDictionary, LootResult lootResult) {
-        //    var key = new LootResultKey { ItemId = lootResult.ItemId, IsHQ = lootResult.IsHQ };
-        //    bool selfObtained = lootResult.Recipient is not null && selfPlayers.Contains(lootResult.Recipient);
-        //    int obtainedQuantity = selfObtained ? lootResult.Quantity : 0;
-        //    if(newLootResults.ContainsKey(key)) {
-        //        newLootResults[key].ObtainedQuantity += obtainedQuantity;
-        //        newLootResults[key].DroppedQuantity += lootResult.Quantity;
-        //    } else {
-        //        var row = _plugin.DataManager.GetExcelSheet<Item>().GetRow(lootResult.ItemId);
-        //        newLootResults.Add(key, new LootResultValue {
-        //            DroppedQuantity = lootResult.Quantity,
-        //            ObtainedQuantity = obtainedQuantity,
-        //            Rarity = row.Rarity,
-        //            Category = row.ItemUICategory.Value.Name,
-        //        });
-        //    }
-        //}
-
         public void Refresh(List<DutyResults> dutyResults, List<MPAMap> maps) {
             Dictionary<LootResultKey, LootResultValue> newLootResults = new();
             int newLootEligibleRuns = 0;
@@ -157,7 +139,7 @@ namespace MapPartyAssist.Windows.Summary {
             }
             if(hasChange) {
 #if DEBUG
-                _plugin.Log.Debug($"changes detected!");
+                _plugin.Log.Debug($"loot changes detected!");
 #endif
                 _lootResults = newLootResults;
                 LootCSV = newLootCSV;
@@ -181,30 +163,12 @@ namespace MapPartyAssist.Windows.Summary {
                     ImGui.SetClipboardText(LootCSV);
                 });
             }
-            ImGui.SameLine();
-            if(ImGui.Button("Unpin All")) {
-                //only unpin visible?
-                _plugin.Configuration.LootPins = new();
-                _plugin.Configuration.Save();
-                //SortByColumn((SortableColumn)sortSpecs.Specs.ColumnUserID, sortSpecs.Specs.SortDirection);
-            }
-
-            //if(_currentPage > 0) {
-            //    ImGui.SameLine();
-            //    if(ImGui.Button($"Previous {_maxPageSize}")) {
-            //        _plugin.DataQueue.QueueDataOperation(() => {
-            //            GoToPage(_currentPage - 1);
-            //        });
-            //    }
-            //}
-
-            //if(_lootResultsPage.Count >= _maxPageSize) {
-            //    ImGui.SameLine();
-            //    if(ImGui.Button($"Next {_maxPageSize}")) {
-            //        _plugin.DataQueue.QueueDataOperation(() => {
-            //            GoToPage(_currentPage + 1);
-            //        });
-            //    }
+            //ImGui.SameLine();
+            //if(ImGui.Button("Unpin All")) {
+            //    //only unpin visible?
+            //    _plugin.Configuration.LootPins = new();
+            //    _plugin.Configuration.Save();
+            //    //SortByColumn((SortableColumn)sortSpecs.Specs.ColumnUserID, sortSpecs.Specs.SortDirection);
             //}
 
             ImGui.Text($"Eligible maps: {_lootEligibleMaps} Eligible duties: {_lootEligibleRuns}");

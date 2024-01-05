@@ -4,7 +4,6 @@ using Dalamud.Game.Command;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
-using Dalamud.Interface;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
@@ -79,7 +78,6 @@ namespace MapPartyAssist {
         internal MainWindow MainWindow;
         internal StatsWindow StatsWindow;
         internal ConfigWindow ConfigWindow;
-        internal DutyResultsWindow DutyResultsWindow;
 #if DEBUG
         internal TestFunctionWindow TestFunctionWindow;
 #endif
@@ -155,12 +153,6 @@ namespace MapPartyAssist {
                 });
 
 #if DEBUG
-                DutyResultsWindow = new DutyResultsWindow(this);
-                WindowSystem.AddWindow(DutyResultsWindow);
-                CommandManager.AddHandler(DutyResultsCommandName, new CommandInfo(OnDutyResultsCommand) {
-                    HelpMessage = "Edit duty results (Advanced)."
-                });
-
                 TestFunctionWindow = new TestFunctionWindow(this);
                 WindowSystem.AddWindow(TestFunctionWindow);
                 CommandManager.AddHandler(TestCommandName, new CommandInfo(OnTestCommand) {
@@ -218,7 +210,6 @@ namespace MapPartyAssist {
             CommandManager.RemoveHandler(EditCommandName);
 
 #if DEBUG
-            CommandManager.RemoveHandler(DutyResultsCommandName);
             CommandManager.RemoveHandler(TestCommandName);
 #endif
 
@@ -254,10 +245,6 @@ namespace MapPartyAssist {
 
         private void OnConfigCommand(string command, string args) {
             DrawConfigUI();
-        }
-
-        private void OnDutyResultsCommand(string command, string args) {
-            DutyResultsWindow.IsOpen = true;
         }
 
 #if DEBUG
@@ -299,10 +286,10 @@ namespace MapPartyAssist {
                 case (int)XivChatType.Party:
                 case (int)XivChatType.SystemMessage:
                     //Log.Verbose($"Message received: {type} {message} from {sender}");
-                    Log.Debug(String.Format("type: {0,-6} sender: {1,-20} message: {2}", type, sender, message));
+                    Log.Verbose(String.Format("type: {0,-6} sender: {1,-20} message: {2}", type, sender, message));
                     if(PrintPayloads) {
                         foreach(Payload payload in message.Payloads) {
-                            Log.Debug($"payload: {payload}");
+                            Log.Verbose($"payload: {payload}");
                         }
                     }
                     break;

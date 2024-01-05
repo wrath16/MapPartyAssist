@@ -241,6 +241,7 @@ namespace MapPartyAssist.Services {
             bool isPortal = false;
             //string key = "";
             string mapType = "";
+
             if((int)type == 2361) {
                 //party member opens portal while not blocked
                 if(EnterPortalRegex[_plugin.ClientState.ClientLanguage].IsMatch(message)) {

@@ -207,17 +207,17 @@ namespace MapPartyAssist.Windows.Summary {
                     ImGui.TableNextColumn();
                     ImGui.TextColored(ImGuiColors.DalamudGrey, "Deleted: ");
                     ImGui.TableNextColumn();
-                    ImGui.Text($"{map.IsDeleted}");
+                    ImGui.Text($"{(map.IsDeleted ? "Yes" : "No")}");
 
                     ImGui.TableNextColumn();
                     ImGui.TextColored(ImGuiColors.DalamudGrey, "Archived: ");
                     ImGui.TableNextColumn();
-                    ImGui.Text($"{map.IsArchived}");
+                    ImGui.Text($"{(map.IsArchived ? "Yes" : "No")}");
 
                     ImGui.TableNextColumn();
-                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Manual: ");
+                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Method: ");
                     ImGui.TableNextColumn();
-                    ImGui.Text($"{map.IsManual}");
+                    ImGui.Text($"{(map.IsManual ? "Manual" : "Auto")}");
 
                     ImGui.TableNextColumn();
                     ImGui.TextColored(ImGuiColors.DalamudGrey, "Owner: ");
