@@ -162,8 +162,8 @@ namespace MapPartyAssist.Services {
             if(addon == null) {
                 return;
             }
-            var dutyTimerNode = AtkNodeHelper.GetNodeByIDChain(addon, [1, 4, 5]);
-            var dutyNameNode = AtkNodeHelper.GetNodeByIDChain(addon, [1, 4, 3]);
+            var dutyTimerNode = AtkNodeHelper.GetNodeByIDChain(addon, 1, 4, 5);
+            var dutyNameNode = AtkNodeHelper.GetNodeByIDChain(addon, 1, 4, 3);
             var baseNode = addon->GetNodeById(4);
             if(dutyNameNode == null || baseNode == null) {
                 return;
