@@ -1,12 +1,12 @@
 # Map Party Assist
 
-Tool for automatically keeping track of treasure maps opened by players in your party. Also records treasure dungeon statistics.
+Tool for recording treasure map statistics and co-ordinating map parties.
 
 [![image](https://i.imgur.com/JeyAe7l.png) [![image](https://i.imgur.com/OMK8LPU.png)
 
 ## Installation
 
-1. Now available in the main Dalamud repository. No extra action needed!
+1. Available in the main Dalamud repository.
 
 ## Usage instructions 
 
@@ -28,7 +28,7 @@ Tool for automatically keeping track of treasure maps opened by players in your 
 ### Important notes:
 * Only works with the international client languages (EN/JP/FR/DE).
 * The plugin primarily works by parsing system chat messages. Sometimes it isn't always possible to know exactly who owns a map and the tracker can make mistakes (known cases are listed below), so stay vigilant and correct mistakes as necessary.
-* You can use '/mpartydutyresults' to amend the results of a dungeon in the case of a mistake by the tracker or you miss a checkpoint due to a disconnect. Do so at your own risk of creating inaccurate data!
+* Use '/mpartyedit' to toggle editing of maps and duties.
 * Use imports to add stats that were recorded when the plugin is unavailable!
 
 ## Known issues:
@@ -41,3 +41,7 @@ Tool for automatically keeping track of treasure maps opened by players in your 
 * If a party member goes offline just as you are entering a portal, this will cancel the portal and can lead to double-counting for Thief's Maps only.
 * A party member consuming a Thief's Map immediately after finishing another party member's regular map without entering a portal may result in it not being counted.
 * Waiting too long to enter a (non-Thief's Map, non-self-owned) portal can result in double counting, as can restarting the game or Dalamud.
+
+#### Loot tracker issues:
+* Gil earned from challenge logs will be counted.
+* Items dropped from non-treasure hunt monsters who are nearby will be counted.
