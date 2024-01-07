@@ -528,7 +528,7 @@ namespace MapPartyAssist.Services {
                         AddLootResults((uint)itemId, isHQ, quantity, currentPlayer);
                         isChange = true;
 #if DEBUG
-                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, currentPlayer));
+                        _plugin.Log.Verbose(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, currentPlayer));
 #endif
                     } else if(itemMatch.Success) {
                         //tomestones
@@ -553,7 +553,7 @@ namespace MapPartyAssist.Services {
                         AddLootResults((uint)itemId, isHQ, quantity, playerKey);
                         isChange = true;
 #if DEBUG
-                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, playerKey));
+                        _plugin.Log.Verbose(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, playerKey));
 #endif
                     }
                 }
@@ -569,7 +569,7 @@ namespace MapPartyAssist.Services {
                         AddLootResults((uint)itemId, isHQ, quantity);
                         isChange = true;
 #if DEBUG
-                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", itemId, isHQ, quantity));
+                        _plugin.Log.Verbose(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", itemId, isHQ, quantity));
 #endif
                     }
 

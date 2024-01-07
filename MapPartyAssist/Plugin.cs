@@ -69,6 +69,7 @@ namespace MapPartyAssist {
         internal StorageManager StorageManager { get; init; }
         internal ImportManager ImportManager { get; init; }
         internal DataQueueService DataQueue { get; init; }
+        internal PriceHistoryService PriceHistory { get; init; }
 
         public Configuration Configuration { get; init; }
         internal GameFunctions Functions { get; init; }
@@ -129,6 +130,7 @@ namespace MapPartyAssist {
                 DutyManager = new(this);
                 MapManager = new(this);
                 ImportManager = new(this);
+                PriceHistory = new(this);
 
                 //needs DutyManager to be initialized first
                 Configuration.Initialize(this);
@@ -234,6 +236,9 @@ namespace MapPartyAssist {
             }
             if(DataQueue != null) {
                 DataQueue.Dispose();
+            }
+            if(PriceHistory != null) {
+                PriceHistory.Dispose();
             }
         }
 

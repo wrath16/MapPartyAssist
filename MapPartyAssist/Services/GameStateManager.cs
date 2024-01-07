@@ -2,6 +2,7 @@
 using Dalamud.Game.ClientState.Party;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
+using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
@@ -84,6 +85,11 @@ namespace MapPartyAssist.Services {
                 return null;
             }
             return $"{currentPlayerName} {currentPlayerWorld}";
+        }
+
+        public Region GetCurrentRegion() {
+            var currentPlayerRegion = _plugin.ClientState.LocalPlayer?.CurrentWorld.GameData?.DataCenter.Value?.Region;
+            return PlayerHelper.GetRegion(currentPlayerRegion);
         }
 
         private void BuildPartyLists() {

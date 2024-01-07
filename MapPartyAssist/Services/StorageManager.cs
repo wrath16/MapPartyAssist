@@ -190,7 +190,7 @@ namespace MapPartyAssist.Services {
             var callingMethod = new StackFrame(2, true).GetMethod();
             var writeMethod = new StackFrame(1, true).GetMethod();
 
-            _plugin.Log.Debug(string.Format("Invoking {0,-25} Caller: {1,-70} ID: {2,-30}", 
+            _plugin.Log.Debug(string.Format("Invoking {0,-25} Caller: {1,-70} ID: {2,-30}",
                 writeMethod?.Name, $"{callingMethod?.DeclaringType?.ToString() ?? ""}.{callingMethod?.Name ?? ""}", id));
 
             //_plugin.Log.Debug($"Invoking {writeMethod?.Name} from {callingMethod?.DeclaringType?.ToString() ?? ""}.{callingMethod?.Name ?? ""} ID: {id}");
