@@ -1,6 +1,6 @@
 ﻿using LiteDB;
+using MapPartyAssist.Types;
 using System.Collections.Generic;
-using static MapPartyAssist.Windows.Summary.LootSummary;
 
 namespace MapPartyAssist.Windows.Summary {
     internal class CollapsibleListView<T> {

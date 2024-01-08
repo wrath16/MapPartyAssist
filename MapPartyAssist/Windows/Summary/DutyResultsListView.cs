@@ -11,7 +11,6 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
-using static MapPartyAssist.Windows.Summary.LootSummary;
 
 namespace MapPartyAssist.Windows.Summary {
     internal class DutyResultsListView {

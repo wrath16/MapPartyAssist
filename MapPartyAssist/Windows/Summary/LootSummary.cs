@@ -14,35 +14,6 @@ using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows.Summary {
     public class LootSummary {
-        public class LootResultKey : IEquatable<LootResultKey> {
-            public uint ItemId;
-            public bool IsHQ;
-
-            public bool Equals(LootResultKey? other) {
-                if(other is null) {
-                    return false;
-                }
-                return ItemId == other.ItemId && IsHQ == other.IsHQ;
-            }
-
-            public override int GetHashCode() {
-                return 0;
-            }
-        }
-
-        public class LootResultValue : IEquatable<LootResultValue> {
-            public int DroppedQuantity, ObtainedQuantity, Rarity;
-            public int? AveragePrice, DroppedValue, ObtainedValue;
-            public string ItemName = "", Category = "";
-
-            public bool Equals(LootResultValue? other) {
-                if(other is null) {
-                    return false;
-                }
-                return DroppedQuantity == other.DroppedQuantity && ObtainedQuantity == other.ObtainedQuantity && Rarity == other.Rarity
-                    && ItemName == other.ItemName && Category == other.Category && AveragePrice == other.AveragePrice;
-            }
-        }
 
         enum SortableColumn {
             Name,
@@ -196,8 +167,11 @@ namespace MapPartyAssist.Windows.Summary {
             }
             ImGui.Text($"Eligible maps: {_lootEligibleMaps} Eligible duties: {_lootEligibleRuns}");
             ImGui.SameLine();
-            ImGuiHelper.HelpMarker("Loot tracking introduced in version 2.0.0.0.");
+            ImGuiHelper.HelpMarker("Loot tracking introduced in version 2.0.0.0. Legacy maps/duties are not counted.");
             ImGui.Text($"Estimated total gil value obtained: {string.Format(_totalGilValueObtained.ToString("N0"))}");
+            ImGui.SameLine();
+            ImGuiHelper.HelpMarker("Enable market board pricing in settings window to see pricing data.\n\nRight-click table header to add more columns.");
+
             ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), false);
             ImGui.BeginTable($"loottable", 8, ImGuiTableFlags.Sortable | ImGuiTableFlags.Hideable | ImGuiTableFlags.Reorderable | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable
                 | ImGuiTableFlags.ScrollY, new Vector2(ImGui.GetContentRegionAvail().X, ImGui.GetContentRegionAvail().Y));

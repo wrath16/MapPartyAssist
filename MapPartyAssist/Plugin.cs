@@ -130,11 +130,11 @@ namespace MapPartyAssist {
                 DutyManager = new(this);
                 MapManager = new(this);
                 ImportManager = new(this);
-                PriceHistory = new(this);
 
                 //needs DutyManager to be initialized first
                 Configuration.Initialize(this);
                 GameStateManager = new(this);
+                PriceHistory = new(this);
 
                 MainWindow = new MainWindow(this);
                 WindowSystem.AddWindow(MainWindow);

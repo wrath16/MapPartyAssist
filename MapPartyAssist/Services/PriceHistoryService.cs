@@ -9,7 +9,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using static MapPartyAssist.Windows.Summary.LootSummary;
 
 namespace MapPartyAssist.Services {
     internal class PriceHistoryService : IDisposable {
@@ -37,7 +36,9 @@ namespace MapPartyAssist.Services {
 
         internal PriceHistoryService(Plugin plugin) {
             _plugin = plugin;
-            Enable();
+            if(_plugin.Configuration.EnablePriceCheck) {
+                Enable();
+            }
         }
 
         public void Dispose() {
@@ -119,10 +120,15 @@ namespace MapPartyAssist.Services {
                             //can only query 100 at a time
                             var toCheckPage = _toCheck.Take(100).ToArray();
                             await UpdatePrices(toCheckPage);
-                            if(_failCount  > _consecutiveFailCount) {
-                                _plugin.Log.Error("Unable to reach Universalis API...disabling price check.");
-                                Disable();
+                            if(_failCount > _consecutiveFailCount) {
+                                if(_failMultiplier < 100) {
+                                    _failMultiplier += 10f;
+                                }
+                                _plugin.Log.Error("Unable to reach Universalis API...increasing polling period.");
+                                //Disable();
                                 return;
+                            } else {
+                                _failMultiplier = 1;
                             }
                             //todo check for invalid items
                             _toCheck = _toCheck.Skip(100).ToList();
@@ -253,7 +259,7 @@ namespace MapPartyAssist.Services {
                     HistoryResponse? result = null;
                     try {
                         result = JsonConvert.DeserializeObject<HistoryResponse>(jsonResponse, new HistoryResponseConverter(itemIds.Length == 1));
-                    } catch (Exception e) {
+                    } catch(Exception e) {
                         _plugin.Log.Error("Deserialization failed!");
                         _plugin.Log.Error($"{e.Message} {e.Source}");
                     }
