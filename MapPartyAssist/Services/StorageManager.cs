@@ -1,5 +1,4 @@
-﻿using Dalamud.Utility;
-using LiteDB;
+﻿using LiteDB;
 using MapPartyAssist.Types;
 using MapPartyAssist.Types.Attributes;
 using System;
@@ -65,44 +64,6 @@ namespace MapPartyAssist.Services {
 #endif
             Database.Dispose();
         }
-
-
-#pragma warning disable 612, 618
-        internal void Import() {
-            _plugin.Log.Information("Importing data from config file into database...");
-
-            List<MPAMap> maps = new();
-
-            foreach(var player in _plugin.Configuration.RecentPartyList.Where(p => p.Value.Maps != null)) {
-                foreach(var map in player.Value.Maps!) {
-                    if(map.Owner.IsNullOrEmpty()) {
-                        map.Owner = player.Key;
-                    }
-                    maps.Add(map);
-                }
-                player.Value.Maps = null;
-                AddPlayer(player.Value);
-            }
-            AddMaps(maps);
-
-            foreach(var dutyResults in _plugin.Configuration.DutyResults) {
-                //find map...
-                var map = _plugin.MapManager.FindMapForDutyResults(dutyResults);
-                dutyResults.Map = map;
-                //if(map != null) {
-                //    map.DutyResults = dutyResults;
-                //}
-            }
-            AddDutyResults(_plugin.Configuration.DutyResults);
-
-            _plugin.Configuration.DutyResults = new();
-            _plugin.Configuration.RecentPartyList = new();
-
-            _plugin.Configuration.Version = 2;
-            _plugin.Save();
-        }
-#pragma warning restore 612, 618
-
         internal void AddMap(MPAMap map, bool toSave = true) {
             LogUpdate(map.Id.ToString());
             WriteToDatabase(() => GetMaps().Insert(map), toSave);

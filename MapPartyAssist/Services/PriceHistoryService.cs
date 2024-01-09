@@ -4,7 +4,6 @@ using MapPartyAssist.Types.REST.Universalis;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -154,7 +153,10 @@ namespace MapPartyAssist.Services {
             HistoryResponse? results = await QueryUniversalisHistory(itemIds, _plugin.GameStateManager.GetCurrentRegion());
             if(results is not null) {
                 foreach(var item in results.Value.Items) {
-                    string itemName = _plugin.DataManager.GetExcelSheet<Item>().GetRow((uint)item.Key).Name;
+                    string itemName = "";
+#if DEBUG
+                    itemName = _plugin.DataManager.GetExcelSheet<Item>().GetRow((uint)item.Key).Name;
+#endif
                     //int normalTotal = 0;
                     int normalCount = 0;
                     //int hqTotal = 0;

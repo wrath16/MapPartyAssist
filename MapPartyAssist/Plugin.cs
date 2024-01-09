@@ -68,6 +68,7 @@ namespace MapPartyAssist {
         internal MapManager MapManager { get; init; }
         internal StorageManager StorageManager { get; init; }
         internal ImportManager ImportManager { get; init; }
+        internal MigrationManager MigrationManager { get; init; }
         internal DataQueueService DataQueue { get; init; }
         internal PriceHistoryService PriceHistory { get; init; }
 
@@ -130,6 +131,7 @@ namespace MapPartyAssist {
                 DutyManager = new(this);
                 MapManager = new(this);
                 ImportManager = new(this);
+                MigrationManager = new(this);
 
                 //needs DutyManager to be initialized first
                 Configuration.Initialize(this);
@@ -173,10 +175,8 @@ namespace MapPartyAssist {
 
                 ChatGui.ChatMessage += OnChatMessage;
 
-                //import data from old configuration to database
-                if(Configuration.Version < 2) {
-                    StorageManager.Import();
-                }
+                //data migration
+                DataQueue.QueueDataOperation(MigrationManager.CheckAndMigrate);
 
             } catch(Exception e) {
                 //remove handlers and release database if we fail to start

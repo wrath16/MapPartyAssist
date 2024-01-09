@@ -146,9 +146,9 @@ namespace MapPartyAssist.Windows {
                     }
 
 
-                    if(ImGui.Button("Import Config")) {
-                        _plugin.StorageManager.Import();
-                    }
+                    //if(ImGui.Button("Import Config")) {
+                    //    _plugin.StorageManager.Import();
+                    //}
 
 
                     //if(ImGui.Button("Drop Import Table")) {

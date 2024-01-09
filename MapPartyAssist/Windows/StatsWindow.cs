@@ -14,15 +14,6 @@ using System.Threading;
 
 namespace MapPartyAssist.Windows {
 
-    public enum StatRange {
-        Current,
-        PastDay,
-        PastWeek,
-        SinceLastClear,
-        All,
-        AllLegacy
-    }
-
     internal class StatsWindow : Window {
 
         private Plugin _plugin;
@@ -173,6 +164,23 @@ namespace MapPartyAssist.Windows {
                                 case StatRange.PastWeek:
                                     dutyResults = dutyResults.Where(dr => (DateTime.Now - dr.Time).TotalDays < 7).ToList();
                                     maps = maps.Where(m => (DateTime.Now - m.Time).TotalDays < 7).ToList();
+                                    break;
+                                case StatRange.ThisMonth:
+                                    dutyResults = dutyResults.Where(dr => dr.Time.Month == DateTime.Now.Month && dr.Time.Year == DateTime.Now.Year).ToList();
+                                    maps = maps.Where(m => m.Time.Month == DateTime.Now.Month && m.Time.Year == DateTime.Now.Year).ToList();
+                                    break;
+                                case StatRange.LastMonth:
+                                    var lastMonth = DateTime.Now.AddMonths(-1);
+                                    dutyResults = dutyResults.Where(dr => dr.Time.Month == lastMonth.Month && dr.Time.Year == lastMonth.Year).ToList();
+                                    maps = maps.Where(m => m.Time.Month == lastMonth.Month && m.Time.Year == lastMonth.Year).ToList();
+                                    break;
+                                case StatRange.ThisYear:
+                                    dutyResults = dutyResults.Where(dr => dr.Time.Year == DateTime.Now.Year).ToList();
+                                    maps = maps.Where(m => m.Time.Year == DateTime.Now.Year).ToList();
+                                    break;
+                                case StatRange.LastYear:
+                                    dutyResults = dutyResults.Where(dr => dr.Time.Year == DateTime.Now.AddYears(-1).Year).ToList();
+                                    maps = maps.Where(m => m.Time.Year == DateTime.Now.AddYears(-1).Year).ToList();
                                     break;
                                 case StatRange.SinceLastClear:
                                     foreach(var duty in _plugin.DutyManager.Duties.Where(d => dutyFilter.FilterState[d.Key])) {
