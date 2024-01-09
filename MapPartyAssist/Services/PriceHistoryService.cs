@@ -4,6 +4,7 @@ using MapPartyAssist.Types.REST.Universalis;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -19,7 +20,7 @@ namespace MapPartyAssist.Services {
         private const int _maxSalesInAverage = 25;
         private const int _entriesToQuery = 100;
         private const int _maxSaleWindowDays = 90;
-        private const int _consecutiveFailCount = 3;
+        private const int _consecutiveFailCount = 5;
 
         private Plugin _plugin;
         private Dictionary<LootResultKey, int> _priceCache = new();
@@ -132,9 +133,11 @@ namespace MapPartyAssist.Services {
                             }
                             //todo check for invalid items
                             _toCheck = _toCheck.Skip(100).ToList();
-                        } catch(ArgumentException) {
+                        } catch(ArgumentException e) {
                             //invalid region or not logged in...
-                            _plugin.Log.Warning("argument exception on update prices");
+                            //_plugin.Log.Warning("argument exception on update prices");
+                            _plugin.Log.Error(e.Message);
+                            _plugin.Log.Error(e.StackTrace ?? "");
                             return;
                         }
                     }
@@ -152,53 +155,57 @@ namespace MapPartyAssist.Services {
             if(results is not null) {
                 foreach(var item in results.Value.Items) {
                     string itemName = _plugin.DataManager.GetExcelSheet<Item>().GetRow((uint)item.Key).Name;
-                    int normalTotal = 0;
+                    //int normalTotal = 0;
                     int normalCount = 0;
-                    int hqTotal = 0;
+                    //int hqTotal = 0;
                     int hqCount = 0;
-                    int averagePrice;
+                    //int averagePrice;
+                    List<int> normalSales = new();
+                    List<int> hqSales = new();
                     foreach(var sale in item.Value.Entries) {
                         if(sale.HQ && hqCount < _maxSalesInAverage) {
-                            hqTotal += sale.PricePerUnit;
+                            //hqTotal += sale.PricePerUnit;
                             hqCount++;
+                            hqSales.Add(sale.PricePerUnit);
                         } else if(normalCount < _maxSalesInAverage) {
-                            normalTotal += sale.PricePerUnit;
+                            //normalTotal += sale.PricePerUnit;
                             normalCount++;
+                            normalSales.Add(sale.PricePerUnit);
                         }
                     }
+
                     if(normalCount > 0) {
                         LootResultKey itemKey = new() {
                             ItemId = (uint)item.Key,
                             IsHQ = false,
                         };
-                        averagePrice = normalTotal / normalCount;
+                        int normalMedian = normalSales.Order().ElementAt(normalSales.Count / 2);
+                        //averagePrice = normalTotal / normalCount;
                         if(_priceCache.ContainsKey(itemKey)) {
-                            _priceCache[itemKey] = averagePrice;
+                            _priceCache[itemKey] = normalMedian;
                             _priceCacheUpdateTime[itemKey] = DateTime.Now;
                         } else {
-                            _priceCache.Add(itemKey, averagePrice);
+                            _priceCache.Add(itemKey, normalMedian);
                             _priceCacheUpdateTime.Add(itemKey, DateTime.Now);
                         }
-                        _plugin.Log.Verbose(string.Format("ID: {0,-8} HQ:{1,-5} Name: {2,-50} Average Price: {3,-9}", item.Key, itemKey.IsHQ, itemName, averagePrice));
+                        _plugin.Log.Verbose(string.Format("ID: {0,-8} HQ:{1,-5} Name: {2,-50} Median Price: {3,-9}", item.Key, itemKey.IsHQ, itemName, normalMedian));
                     }
                     if(hqCount > 0) {
                         LootResultKey itemKey = new() {
                             ItemId = (uint)item.Key,
                             IsHQ = true,
                         };
-                        averagePrice = hqTotal / hqCount;
+                        int hqMedian = hqSales.Order().ElementAt(hqSales.Count / 2);
+                        //averagePrice = hqTotal / hqCount;
                         if(_priceCache.ContainsKey(itemKey)) {
-                            _priceCache[itemKey] = averagePrice;
+                            _priceCache[itemKey] = hqMedian;
                             _priceCacheUpdateTime[itemKey] = DateTime.Now;
                         } else {
-                            _priceCache.Add(itemKey, averagePrice);
+                            _priceCache.Add(itemKey, hqMedian);
                             _priceCacheUpdateTime.Add(itemKey, DateTime.Now);
                         }
-                        _plugin.Log.Verbose(string.Format("ID: {0,-8} HQ:{1,-5} Name: {2,-50} Average Price: {3,-9}", item.Key, itemKey.IsHQ, itemName, averagePrice));
+                        _plugin.Log.Verbose(string.Format("ID: {0,-8} HQ:{1,-5} Name: {2,-50} Median Price: {3,-9}", item.Key, itemKey.IsHQ, itemName, hqMedian));
                     }
-                    //_toCheck.Remove((uint)item.Key);
-                    //string itemName = _plugin.DataManager.GetExcelSheet<Item>().GetRow((uint)item.Key).Name;
-                    //_plugin.Log.Debug($"itemId: {item.Key} name: {itemName} averagePrice: {averagePrice}");
                 }
 
             }
@@ -283,9 +290,6 @@ namespace MapPartyAssist.Services {
         public override HistoryResponse ReadJson(JsonReader reader, Type objectType, HistoryResponse existingValue, bool hasExistingValue, JsonSerializer serializer) {
             HistoryResponse historyResponse = new();
             historyResponse.Items = new();
-            bool firstProp = false;
-            bool isSingle = false;
-
             if(SingleExpected) {
                 //reader.Read();
                 var itemHistory = serializer.Deserialize<ItemHistory>(reader);
