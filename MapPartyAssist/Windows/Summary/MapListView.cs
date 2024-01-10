@@ -21,6 +21,7 @@ namespace MapPartyAssist.Windows.Summary {
         private List<MPAMap> _maps = new();
         private List<MPAMap> _mapsPage = new();
         private Dictionary<ObjectId, Dictionary<LootResultKey, LootResultValue>> _lootResults = new();
+        private Dictionary<ObjectId, int> _totalGilValue = new();
         private int _portalCount;
 
         private int _currentPage = 0;
@@ -36,6 +37,7 @@ namespace MapPartyAssist.Windows.Summary {
 
         public void Refresh(List<MPAMap> maps) {
             Dictionary<ObjectId, Dictionary<LootResultKey, LootResultValue>> lootResults = new();
+            Dictionary<ObjectId, int> totalGilValue = new();
             _portalCount = 0;
             //calculate loot results (this is largely duplicated from lootsummary)
             List<string> selfPlayers = new();
@@ -51,6 +53,7 @@ namespace MapPartyAssist.Windows.Summary {
                     continue;
                 }
                 Dictionary<LootResultKey, LootResultValue> newLootResults = new();
+                int newTotalGil = 0;
                 foreach(var lootResult in m.LootResults) {
                     var key = new LootResultKey { ItemId = lootResult.ItemId, IsHQ = lootResult.IsHQ };
                     bool selfObtained = lootResult.Recipient is not null && selfPlayers.Contains(lootResult.Recipient);
@@ -74,14 +77,22 @@ namespace MapPartyAssist.Windows.Summary {
                             });
                         }
                     }
+                    //multiply gil by total partymembers
+                    if(lootResult.ItemId == 1) {
+                        newTotalGil += m.Players?.Length * lootResult.Quantity ?? lootResult.Quantity;
+                    } else {
+                        newTotalGil += price * lootResult.Quantity ?? 0;
+                    }
                 }
                 newLootResults = newLootResults.OrderByDescending(lr => lr.Value.DroppedQuantity).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 lootResults.Add(m.Id, newLootResults);
+                totalGilValue.Add(m.Id, newTotalGil);
             }
             try {
                 _refreshLock.Wait();
                 _maps = maps;
                 _lootResults = lootResults;
+                _totalGilValue = totalGilValue;
             } finally {
                 _refreshLock.Release();
             }
@@ -103,7 +114,6 @@ namespace MapPartyAssist.Windows.Summary {
             if(!_refreshLock.Wait(0)) {
                 return;
             }
-
             try {
                 if(_plugin.AllowEdit) {
                     ImGui.PushFont(UiBuilder.IconFont);
@@ -261,6 +271,15 @@ namespace MapPartyAssist.Windows.Summary {
 
             if(map.LootResults != null) {
                 ImGui.TextColored(ImGuiColors.DalamudGrey, "Loot: ");
+                if(_totalGilValue.ContainsKey(map.Id)) {
+                    ImGui.SameLine();
+                    string text = $"Total Gil Value: {_totalGilValue[map.Id].ToString("N0")}";
+                    ImGuiHelper.RightAlignCursor(text);
+                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Total Gil Value: ");
+                    ImGui.SameLine();
+                    ImGui.Text($"{_totalGilValue[map.Id].ToString("N0")}");
+                }
+
                 ImGui.BeginTable($"loottable", 4, ImGuiTableFlags.None);
                 //ImGui.TableSetupColumn("Category", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f);
                 ImGui.TableSetupColumn("Quality", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f);
@@ -286,9 +305,9 @@ namespace MapPartyAssist.Windows.Summary {
                     ImGui.TableNextColumn();
                     ImGui.Text($"{lootResult.Value.ItemName}");
                     ImGui.TableNextColumn();
-                    ImGui.Text($"{lootResult.Value.DroppedQuantity}");
+                    ImGui.Text($"{lootResult.Value.DroppedQuantity.ToString("N0")}");
                     ImGui.TableNextColumn();
-                    ImGui.Text($"{lootResult.Value.ObtainedQuantity}");
+                    ImGui.Text($"{lootResult.Value.ObtainedQuantity.ToString("N0")}");
                 }
                 ImGui.EndTable();
             }
