@@ -67,7 +67,6 @@ namespace MapPartyAssist.Services {
         }
 #pragma warning restore 612, 618
 
-
         private void UpdateMapTypeAndTerritoryIdFromNameAndZone() {
             var allMaps = _plugin.StorageManager.GetMaps().Query().Where(m => m.MapType == null || m.TerritoryId == null).ToList();
             List<MPAMap> updatedMaps = new();

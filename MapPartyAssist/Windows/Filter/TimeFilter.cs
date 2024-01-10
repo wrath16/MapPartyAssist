@@ -1,5 +1,8 @@
-﻿using ImGuiNET;
+﻿using Dalamud.Interface.Components;
+using Dalamud.Interface.Utility;
+using ImGuiNET;
 using System;
+using static FFXIVClientStructs.FFXIV.Client.UI.AddonPartyList;
 
 namespace MapPartyAssist.Windows.Filter {
 
@@ -13,16 +16,21 @@ namespace MapPartyAssist.Windows.Filter {
         LastYear,
         SinceLastClear,
         All,
-        AllLegacy
+        Custom
     }
 
     public class TimeFilter : DataFilter {
 
         public override string Name => "Time";
-        public override string HelpMessage => "'Current' limits to maps and linked duties on the map tracker window.";
+        public override string HelpMessage => "'Current' limits to maps and linked duties on the map tracker.\nCustom time ranges input auto-formats using your local timezone.";
 
         public StatRange StatRange { get; set; } = StatRange.All;
-        public static string[] Range = { "Current", "Last 24 hours", "Last 7 days", "This month", "Last month", "This year", "Last year", "Since last clear", "All-Time", "All-Time with imported data" };
+        public static string[] Range = { "Current", "Past 24 hours", "Past 7 days", "This month", "Last month", "This year", "Last year", "Since last clear", "All-time", "Custom" };
+
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
+        private string _lastStartTime = "";
+        private string _lastEndTime = "";
 
         //public static string RangeToString(StatRange range) {
         //    return range switch {
@@ -46,12 +54,53 @@ namespace MapPartyAssist.Windows.Filter {
 
         internal override void Draw() {
             int statRangeToInt = (int)StatRange;
-            //ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X / 2f);
+            ImGui.SetNextItemWidth(float.Min(ImGui.GetContentRegionAvail().X / 3.8f, ImGuiHelpers.GlobalScale * 125f));
             if(ImGui.Combo($"##timeRangeCombo", ref statRangeToInt, Range, Range.Length)) {
                 _plugin!.DataQueue.QueueDataOperation(() => {
                     StatRange = (StatRange)statRangeToInt;
                     Refresh();
                 });
+            }
+            if(StatRange == StatRange.Custom) {
+                if(ImGui.BeginTable("timeFilterTable", 2)) {
+                    ImGui.TableSetupColumn($"c1", ImGuiTableColumnFlags.WidthStretch);
+                    ImGui.TableSetupColumn($"c2", ImGuiTableColumnFlags.WidthStretch);
+                    ImGui.TableNextRow();
+                    ImGui.TableNextColumn();
+                    ImGui.AlignTextToFramePadding();
+                    ImGui.Text("Start:");
+                    ImGui.SameLine();
+                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                    var startTime = StartTime.ToString();
+                    if(ImGui.InputText($"##startTime", ref startTime, 50, ImGuiInputTextFlags.None)) {
+                        if(startTime != _lastStartTime) {
+                            _lastStartTime = startTime;
+                            if(DateTime.TryParse(startTime, out DateTime newStartTime)) {
+                                _plugin!.DataQueue.QueueDataOperation(() => {
+                                    StartTime = newStartTime;
+                                    Refresh();
+                                });
+                            }
+                        }
+                    }
+                    ImGui.TableNextColumn();
+                    ImGui.Text("End:");
+                    ImGui.SameLine();
+                    ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                    var endTime = EndTime.ToString();
+                    if(ImGui.InputText($"##endTime", ref endTime, 50, ImGuiInputTextFlags.None)) {
+                        if(endTime != _lastEndTime) {
+                            _lastEndTime = endTime;
+                            if(DateTime.TryParse(endTime, out DateTime newEndTime)) {
+                                _plugin!.DataQueue.QueueDataOperation(() => {
+                                    EndTime = newEndTime;
+                                    Refresh();
+                                });
+                            }
+                        }
+                    }
+                    ImGui.EndTable();
+                }
             }
         }
     }

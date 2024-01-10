@@ -9,6 +9,7 @@ namespace MapPartyAssist.Settings {
         public PartyMemberFilter? PartyMemberFilter { get; set; }
         public TimeFilter? TimeFilter { get; set; }
         public ProgressFilter? ProgressFilter { get; set; }
+        public ImportFilter? ImportFilter { get; set; }
         public MiscFilter? MiscFilter { get; set; }
 
     }

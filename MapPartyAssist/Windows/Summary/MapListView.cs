@@ -54,6 +54,7 @@ namespace MapPartyAssist.Windows.Summary {
                 foreach(var lootResult in m.LootResults) {
                     var key = new LootResultKey { ItemId = lootResult.ItemId, IsHQ = lootResult.IsHQ };
                     bool selfObtained = lootResult.Recipient is not null && selfPlayers.Contains(lootResult.Recipient);
+                    var price = _plugin.PriceHistory.CheckPrice(key);
                     int obtainedQuantity = selfObtained ? lootResult.Quantity : 0;
                     if(newLootResults.ContainsKey(key)) {
                         newLootResults[key].ObtainedQuantity += obtainedQuantity;
@@ -67,6 +68,9 @@ namespace MapPartyAssist.Windows.Summary {
                                 Rarity = row.Rarity,
                                 ItemName = row.Name,
                                 Category = row.ItemUICategory.Value.Name,
+                                AveragePrice = price,
+                                DroppedValue = price * lootResult.Quantity,
+                                ObtainedValue = price * obtainedQuantity,
                             });
                         }
                     }
