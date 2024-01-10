@@ -49,6 +49,8 @@ namespace MapPartyAssist.Windows.Filter {
         internal TimeFilter(Plugin plugin, Action action, TimeFilter? filter = null) : base(plugin, action) {
             if(filter is not null) {
                 StatRange = filter.StatRange;
+                StartTime = filter.StartTime;
+                EndTime = filter.EndTime;
             }
         }
 
