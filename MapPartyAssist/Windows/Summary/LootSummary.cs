@@ -195,6 +195,7 @@ namespace MapPartyAssist.Windows.Summary {
             //column sorting
             ImGuiTableSortSpecsPtr sortSpecs = ImGui.TableGetSortSpecs();
             if(sortSpecs.SpecsDirty || _triggerSort) {
+                _triggerSort = false;
                 var columnIdDeRef = (SortableColumn)sortSpecs.Specs.ColumnUserID;
                 var sortDirectionDeRef = sortSpecs.Specs.SortDirection;
                 _plugin.DataQueue.QueueDataOperation(() => {
@@ -284,7 +285,6 @@ namespace MapPartyAssist.Windows.Summary {
                     });
                 }
             }
-            _triggerSort = false;
         }
 
         private void SortByColumn(SortableColumn column, ImGuiSortDirection direction) {
