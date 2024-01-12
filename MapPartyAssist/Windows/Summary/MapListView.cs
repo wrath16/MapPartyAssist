@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
+using static Dalamud.Interface.Windowing.Window;
 
 namespace MapPartyAssist.Windows.Summary {
     internal class MapListView {
@@ -115,6 +116,10 @@ namespace MapPartyAssist.Windows.Summary {
                 return;
             }
             try {
+                _statsWindow.SizeConstraints = new WindowSizeConstraints {
+                    MinimumSize = new Vector2(400, _statsWindow.SizeConstraints!.Value.MinimumSize.Y),
+                    MaximumSize = _statsWindow.SizeConstraints!.Value.MaximumSize,
+                };
                 if(_plugin.AllowEdit) {
                     ImGui.PushFont(UiBuilder.IconFont);
                     ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");

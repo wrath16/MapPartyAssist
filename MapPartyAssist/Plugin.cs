@@ -125,6 +125,7 @@ namespace MapPartyAssist {
                     Log.Warning("Client language unsupported, most functions will be unavailable.");
                 }
 
+                //order is important here
                 DataQueue = new(this);
                 StorageManager = new(this, $"{PluginInterface.GetPluginConfigDirectory()}\\{DatabaseName}");
                 Functions = new();
@@ -132,8 +133,6 @@ namespace MapPartyAssist {
                 MapManager = new(this);
                 ImportManager = new(this);
                 MigrationManager = new(this);
-
-                //needs DutyManager to be initialized first
                 Configuration.Initialize(this);
                 GameStateManager = new(this);
                 PriceHistory = new(this);
@@ -177,7 +176,7 @@ namespace MapPartyAssist {
 
                 //data migration
                 DataQueue.QueueDataOperation(MigrationManager.CheckAndMigrate);
-
+                Log.Information("Map Party Assist has started.");
             } catch(Exception e) {
                 //remove handlers and release database if we fail to start
                 Dispose();
@@ -316,7 +315,7 @@ namespace MapPartyAssist {
             GameGui.OpenMapWithMapLink(mapLink);
         }
 
-        public void Save() {
+        public void Refresh() {
             Configuration.Save();
             StatsWindow.Refresh();
             MainWindow.Refresh();

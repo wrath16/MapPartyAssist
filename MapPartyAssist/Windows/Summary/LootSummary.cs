@@ -11,6 +11,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using static Dalamud.Interface.Windowing.Window;
 
 namespace MapPartyAssist.Windows.Summary {
     public class LootSummary {
@@ -148,6 +149,10 @@ namespace MapPartyAssist.Windows.Summary {
         }
 
         public void Draw() {
+            _statsWindow.SizeConstraints = new WindowSizeConstraints {
+                MinimumSize = new Vector2(300, _statsWindow.SizeConstraints!.Value.MinimumSize.Y),
+                MaximumSize = _statsWindow.SizeConstraints!.Value.MaximumSize,
+            };
             if(ImGui.Button("Copy CSV")) {
                 Task.Run(() => {
                     ImGui.SetClipboardText(LootCSV);

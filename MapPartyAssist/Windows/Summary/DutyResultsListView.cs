@@ -1,6 +1,7 @@
 ﻿using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
+using Dalamud.Plugin.Services;
 using ImGuiNET;
 using LiteDB;
 using Lumina.Excel.GeneratedSheets;
@@ -11,6 +12,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using static Dalamud.Interface.Windowing.Window;
 
 namespace MapPartyAssist.Windows.Summary {
     internal class DutyResultsListView {
@@ -121,6 +123,10 @@ namespace MapPartyAssist.Windows.Summary {
                 return;
             }
             try {
+                _statsWindow.SizeConstraints = new WindowSizeConstraints {
+                    MinimumSize = new Vector2(400, _statsWindow.SizeConstraints!.Value.MinimumSize.Y),
+                    MaximumSize = _statsWindow.SizeConstraints!.Value.MaximumSize,
+                };
                 if(_plugin.AllowEdit) {
                     ImGui.PushFont(UiBuilder.IconFont);
                     ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");

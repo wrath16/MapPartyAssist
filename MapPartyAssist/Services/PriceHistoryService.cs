@@ -24,7 +24,6 @@ namespace MapPartyAssist.Services {
         private Plugin _plugin;
         private Dictionary<LootResultKey, int> _priceCache = new();
         private Dictionary<LootResultKey, DateTime> _priceCacheUpdateTime = new();
-        private List<LootResultKey> _invalidData = new();
         private List<uint> _toCheck = new();
         private DateTime _lastQuery;
         private CancellationTokenSource? _cancelUpdate;
@@ -33,18 +32,147 @@ namespace MapPartyAssist.Services {
         private float _failMultiplier = 1;
 
         public bool IsEnabled => _cancelUpdate != null && !_cancelUpdate.IsCancellationRequested;
+        public bool IsInitialized { get; private set; } = false;
 
         internal PriceHistoryService(Plugin plugin) {
             _plugin = plugin;
-            if(_plugin.Configuration.EnablePriceCheck) {
-                Enable();
+            if(_plugin.GameStateManager.GetCurrentRegion() != Region.Unknown) {
+                Initialize();
             }
         }
 
         public void Dispose() {
             if(IsEnabled) {
-                Disable();
+                DisablePolling();
             }
+        }
+
+        internal void Initialize() {
+            if(!IsInitialized) {
+                _plugin.DataQueue.QueueDataOperation(() => {
+                    RebuildCache();
+                    IsInitialized = true;
+                    if(_plugin.Configuration.EnablePriceCheck) {
+                        EnablePolling();
+                    }
+                    _plugin.Refresh();
+                });
+            }
+        }
+
+        internal void Shutdown() {
+            IsInitialized = false;
+            DisablePolling();
+        }
+
+        internal void DisablePolling() {
+            if(IsEnabled) {
+                _plugin.Log.Information("Disabling price updates.");
+                _cancelUpdate.Cancel();
+                _cancelUpdate.Dispose();
+            }
+        }
+
+        internal void EnablePolling() {
+            if(!IsEnabled && IsInitialized) {
+                _plugin.Log.Information("Enabling price updates.");
+                //CheckAndUpdate();
+                _ = StartUpdateCheck();
+            }
+        }
+
+        private async Task StartUpdateCheck() {
+            _cancelUpdate = new();
+            PeriodicTimer periodicTimer = new(TimeSpan.FromSeconds(_updateCheckSeconds));
+            while(true) {
+                CheckAndUpdate();
+                await periodicTimer.WaitForNextTickAsync(_cancelUpdate.Token);
+            }
+        }
+
+        private void RebuildCache() {
+            _plugin.Log.Information("Rebuilding price cache.");
+            _priceCache = new();
+            _priceCacheUpdateTime = new();
+            var storagePrices = _plugin.StorageManager.GetPrices().Query().Where(p => p.Region == _plugin.GameStateManager.GetCurrentRegion()).ToList();
+            foreach(var price in storagePrices) {
+                try {
+                    if(price.NQPrice != 0) {
+                        LootResultKey itemKey = new() {
+                            ItemId = price.ItemId,
+                            IsHQ = false,
+                        };
+                        _priceCache.Add(itemKey, (int)price.NQPrice);
+                        _priceCacheUpdateTime.Add(itemKey, price.LastChecked);
+                    }
+                    if(price.HQPrice != 0) {
+                        LootResultKey itemKey = new() {
+                            ItemId = price.ItemId,
+                            IsHQ = true,
+                        };
+                        _priceCache.Add(itemKey, (int)price.HQPrice);
+                        _priceCacheUpdateTime.Add(itemKey, price.LastChecked);
+                    }
+                } catch (ArgumentException) {
+                    _plugin.Log.Error("Price cache corruption detected...purging table.");
+                    _plugin.StorageManager.GetPrices().DeleteAll();
+                    return;
+                }
+            }
+        }
+
+        private void SaveCache() {
+            _plugin.Log.Verbose("Saving price cache...");
+            var storagePrices = _plugin.StorageManager.GetPrices().Query().Where(p => p.Region == _plugin.GameStateManager.GetCurrentRegion()).ToList();
+            List<PriceCheck> newPrices = new();
+            foreach(var cachePrice in _priceCache) {
+                try {
+                    bool isFound = false;
+                    foreach(var storagePrice in storagePrices) {
+                        if(storagePrice.ItemId == cachePrice.Key.ItemId) {
+                            isFound = true;
+                            if(cachePrice.Key.IsHQ) {
+                                storagePrice.HQPrice = (uint)cachePrice.Value;
+                            } else {
+                                storagePrice.NQPrice = (uint)cachePrice.Value;
+                            }
+                            storagePrice.LastChecked = _priceCacheUpdateTime[cachePrice.Key];
+                            storagePrice.Region = _plugin.GameStateManager.GetCurrentRegion();
+                            break;
+                        }
+                    }
+                    //check if it is in newPrices already
+                    foreach(var price in newPrices) {
+                        if(price.ItemId == cachePrice.Key.ItemId) {
+                            if(cachePrice.Key.IsHQ) {
+                                price.HQPrice = (uint)cachePrice.Value;
+                            } else {
+                                price.NQPrice = (uint)cachePrice.Value;
+                            }
+                            isFound = true;
+                            break;
+                        }
+                    }
+                    if(!isFound) {
+                        PriceCheck newPrice = new() {
+                            ItemId = cachePrice.Key.ItemId,
+                            LastChecked = _priceCacheUpdateTime[cachePrice.Key],
+                            Region = _plugin.GameStateManager.GetCurrentRegion()
+                        };
+                        if(cachePrice.Key.IsHQ) {
+                            newPrice.HQPrice = (uint)cachePrice.Value;
+                        } else {
+                            newPrice.NQPrice = (uint)cachePrice.Value;
+                        }
+                        newPrices.Add(newPrice);
+                    }
+                } catch(KeyNotFoundException e) {
+                    _plugin.Log.Error($"{e.Message}\n{e.StackTrace}");
+                }
+
+            }
+            _plugin.StorageManager.AddPrices(newPrices, false);
+            _plugin.StorageManager.UpdatePrices(storagePrices, false);
         }
 
         internal int? CheckPrice(uint itemId, bool isHQ) {
@@ -72,46 +200,25 @@ namespace MapPartyAssist.Services {
             }
 
             if(_priceCache.ContainsKey(itemKey)) {
-                if((DateTime.Now - _priceCacheUpdateTime[itemKey]).TotalHours > _staleDataHours && !_toCheck.Contains(itemKey.ItemId)) {
-                    _plugin.Log.Verbose($"Stale data! Adding {itemKey.ItemId} to price check queue.");
-                    _toCheck.Add(itemKey.ItemId);
-                } else if(_priceCache[itemKey] == 0) {
-                    _plugin.Log.Verbose($"Stale data! Adding {itemKey.ItemId} to price check queue.");
-                    _toCheck.Add(itemKey.ItemId);
+                if(IsInitialized) {
+                    if((DateTime.Now - _priceCacheUpdateTime[itemKey]).TotalHours > _staleDataHours && !_toCheck.Contains(itemKey.ItemId)) {
+                        _plugin.Log.Verbose($"Stale data! Adding {itemKey.ItemId} to price check queue.");
+                        _toCheck.Add(itemKey.ItemId);
+                    } else if(_priceCache[itemKey] == 0) {
+                        _plugin.Log.Verbose($"Stale data! Adding {itemKey.ItemId} to price check queue.");
+                        _toCheck.Add(itemKey.ItemId);
+                    }
+                    return _priceCache[itemKey];
                 }
-                return _priceCache[itemKey];
-            } else if(!_toCheck.Contains(itemKey.ItemId)) {
+            } else if(!_toCheck.Contains(itemKey.ItemId) && IsInitialized) {
                 _plugin.Log.Verbose($"Adding {itemKey.ItemId} to price check queue.");
                 _toCheck.Add(itemKey.ItemId);
             }
             return null;
         }
 
-        internal void Disable() {
-            _plugin.Log.Information("Disabling price updates.");
-            _cancelUpdate!.Cancel();
-            _cancelUpdate.Dispose();
-        }
-
-        internal void Enable() {
-            if(!IsEnabled) {
-                _plugin.Log.Information("Enabling price updates.");
-                CheckAndUpdate();
-                _ = StartUpdateCheck();
-            }
-        }
-
-        private async Task StartUpdateCheck() {
-            _cancelUpdate = new();
-            PeriodicTimer periodicTimer = new(TimeSpan.FromSeconds(_updateCheckSeconds));
-            while(true) {
-                CheckAndUpdate();
-                await periodicTimer.WaitForNextTickAsync(_cancelUpdate.Token);
-            }
-        }
-
         private async void CheckAndUpdate() {
-            _plugin.Log.Verbose("checking price validity...");
+            _plugin.Log.Verbose($"checking price validity...fail multiplier: {_failMultiplier}");
             if(_toCheck.Count > 0 && (DateTime.Now - _lastQuery).TotalMinutes > _queryThresholdMinutes * _failMultiplier && _plugin.ClientState.IsLoggedIn && _updateLock.Wait(0)) {
                 try {
                     _plugin.Log.Debug("Updating item prices from Universalis API.");
@@ -121,10 +228,10 @@ namespace MapPartyAssist.Services {
                             var toCheckPage = _toCheck.Take(100).ToArray();
                             await UpdatePrices(toCheckPage);
                             if(_failCount > _consecutiveFailCount) {
-                                if(_failMultiplier < 100) {
-                                    _failMultiplier += 10f;
+                                if(_failMultiplier < 100f) {
+                                    _plugin.Log.Error("Unable to reach Universalis API...increasing polling period.");
+                                    _failMultiplier += 5f;
                                 }
-                                _plugin.Log.Error("Unable to reach Universalis API...increasing polling period.");
                                 //Disable();
                                 return;
                             } else {
@@ -141,7 +248,8 @@ namespace MapPartyAssist.Services {
                         }
                     }
                     _ = _plugin.DataQueue.QueueDataOperation(() => {
-                        _plugin.Save();
+                        SaveCache();
+                        _plugin.Refresh();
                     });
                 } finally {
                     _updateLock.Release();
@@ -248,7 +356,7 @@ namespace MapPartyAssist.Services {
                 client.BaseAddress = new Uri(endpoint);
                 _plugin.Log.Debug($"Query: {endpoint}{searchParams}");
                 HttpResponseMessage response = await client.GetAsync(searchParams);
-
+                _lastQuery = DateTime.Now;
                 if(!response.IsSuccessStatusCode) {
                     _plugin.Log.Error($"Failed to query Universalis API. {(int)response.StatusCode} {response.StatusCode}\n{response.ReasonPhrase}");
                     _failCount++;
@@ -256,15 +364,16 @@ namespace MapPartyAssist.Services {
                 } else {
                     _failCount = 0;
                     var jsonResponse = await response.Content.ReadAsStringAsync();
-                    var stringReader = new StringReader(jsonResponse);
-                    var stringWriter = new StringWriter();
-                    var jsonReader = new JsonTextReader(stringReader);
-                    var jsonWriter = new JsonTextWriter(stringWriter) {
-                        Formatting = Formatting.Indented
-                    };
-                    jsonWriter.WriteToken(jsonReader);
-                    _plugin.Log.Verbose(stringWriter.ToString());
-
+#if DEBUG
+                    //var stringReader = new StringReader(jsonResponse);
+                    //var stringWriter = new StringWriter();
+                    //var jsonReader = new JsonTextReader(stringReader);
+                    //var jsonWriter = new JsonTextWriter(stringWriter) {
+                    //    Formatting = Formatting.Indented
+                    //};
+                    //jsonWriter.WriteToken(jsonReader);
+                    //_plugin.Log.Verbose(stringWriter.ToString());
+#endif
                     HistoryResponse? result = null;
                     try {
                         result = JsonConvert.DeserializeObject<HistoryResponse>(jsonResponse, new HistoryResponseConverter(itemIds.Length == 1));
@@ -272,7 +381,6 @@ namespace MapPartyAssist.Services {
                         _plugin.Log.Error("Deserialization failed!");
                         _plugin.Log.Error($"{e.Message} {e.Source}");
                     }
-                    _lastQuery = DateTime.Now;
                     return result;
                 }
             } finally {
@@ -299,12 +407,6 @@ namespace MapPartyAssist.Services {
             }
 
             while(reader.Read()) {
-                //if(reader.TokenType != JsonToken.PropertyName)
-                //    break;
-
-                //if(!reader.Read())
-                //    continue;
-
                 switch(reader.TokenType) {
                     case JsonToken.StartObject:
                         continue;

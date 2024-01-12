@@ -63,7 +63,7 @@ namespace MapPartyAssist.Services {
             _plugin.Configuration.RecentPartyList = new();
 
             _plugin.Configuration.Version = 2;
-            _plugin.Save();
+            _plugin.Refresh();
         }
 #pragma warning restore 612, 618
 
@@ -95,7 +95,7 @@ namespace MapPartyAssist.Services {
             }
             _plugin.StorageManager.UpdateMaps(updatedMaps, false);
             _plugin.Configuration.Version = 3;
-            _plugin.Save();
+            _plugin.Refresh();
         }
     }
 }

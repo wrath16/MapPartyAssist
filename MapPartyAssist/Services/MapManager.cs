@@ -140,9 +140,6 @@ namespace MapPartyAssist.Services {
         }
 
         public void Dispose() {
-#if DEBUG
-            _plugin.Log.Debug("disposing map manager");
-#endif
             _plugin.ChatGui.ChatMessage -= OnChatMessage;
             _plugin.ClientState.TerritoryChanged -= OnTerritoryChanged;
             //_plugin.AddonLifecycle.UnregisterListener(CheckForTreasureHunt);
@@ -469,7 +466,7 @@ namespace MapPartyAssist.Services {
             maps.ForEach(m => m.IsArchived = true);
             _plugin.StorageManager.UpdateMaps(maps, false);
             _plugin.GameStateManager.BuildRecentPartyList();
-            _plugin.Save();
+            _plugin.Refresh();
             ClearStatus();
         }
 
@@ -478,7 +475,7 @@ namespace MapPartyAssist.Services {
             maps.ToList().ForEach(m => m.IsArchived = true);
             _plugin.StorageManager.UpdateMaps(maps, false);
             _plugin.GameStateManager.BuildRecentPartyList();
-            _plugin.Save();
+            _plugin.Refresh();
         }
 
         public void DeleteMaps(IEnumerable<MPAMap> maps) {
@@ -486,7 +483,7 @@ namespace MapPartyAssist.Services {
             maps.ToList().ForEach(m => m.IsDeleted = true);
             _plugin.StorageManager.UpdateMaps(maps, false);
             _plugin.GameStateManager.BuildRecentPartyList();
-            _plugin.Save();
+            _plugin.Refresh();
         }
 
         public void CheckAndArchiveMaps() {
@@ -499,7 +496,7 @@ namespace MapPartyAssist.Services {
             }
             _plugin.StorageManager.UpdateMaps(storageMaps, false);
             _plugin.GameStateManager.BuildRecentPartyList();
-            _plugin.Save();
+            _plugin.Refresh();
         }
 
         public void ClearMapLink(MPAMember player) {

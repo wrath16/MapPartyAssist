@@ -115,6 +115,17 @@ namespace MapPartyAssist.Windows {
                         ShowImportTable();
                     }
 
+                    if(ImGui.Button("Drop Price Table")) {
+                        var prices = _plugin.StorageManager.GetPrices().DeleteAll();
+                        _plugin.Log.Debug($"Dropped {prices} records");
+                    }
+
+                    if(ImGui.Button("Price Table")) {
+                        var prices = _plugin.StorageManager.GetPrices().Query().ToList();
+                        foreach(var price in prices) {
+                            _plugin.Log.Debug(String.Format("itemID: {0,-8} NQ: {1,-12} HQ: {4,-12} region: {3,-15} lastChecked: {2,-25}", price.ItemId, price.NQPrice, price.LastChecked, price.Region, price.HQPrice));
+                        }
+                    }
 
                     if(ImGui.Button("Last 3 DutyResults")) {
                         var dutyResults = _plugin.StorageManager.GetDutyResults().Query().OrderByDescending(dr => dr.Time).Limit(3).ToList();
@@ -138,7 +149,7 @@ namespace MapPartyAssist.Windows {
 
 
                     if(ImGui.Button("Save+Refresh")) {
-                        _plugin.Save();
+                        _plugin.Refresh();
                     }
 
                     if(ImGui.Button("GetCurrentPlayer()")) {
@@ -350,24 +361,24 @@ namespace MapPartyAssist.Windows {
                     bool printAllMessages = _plugin.PrintAllMessages;
                     if(ImGui.Checkbox("Print all messages", ref printAllMessages)) {
                         _plugin.PrintAllMessages = printAllMessages;
-                        _plugin.Save();
+                        _plugin.Refresh();
                     }
                     bool printPayloads = _plugin.PrintPayloads;
                     if(ImGui.Checkbox("Print payloads", ref printPayloads)) {
                         _plugin.PrintPayloads = printPayloads;
-                        _plugin.Save();
+                        _plugin.Refresh();
                     }
                     bool editMode = _plugin.AllowEdit;
                     if(ImGui.Checkbox("Edit Mode", ref editMode)) {
                         _plugin.AllowEdit = editMode;
-                        _plugin.Save();
+                        _plugin.Refresh();
                     }
                     if(ImGui.Button("Enable Universalis Price Check")) {
-                        _plugin.PriceHistory.Enable();
+                        _plugin.PriceHistory.EnablePolling();
                     }
                     ImGui.SameLine();
                     if(ImGui.Button("Disable Universalis Price Check")) {
-                        _plugin.PriceHistory.Disable();
+                        _plugin.PriceHistory.DisablePolling();
                     }
                     ImGui.EndTabItem();
                 }

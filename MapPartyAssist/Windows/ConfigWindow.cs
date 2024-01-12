@@ -186,7 +186,8 @@ namespace MapPartyAssist.Windows {
             if(ImGui.Checkbox("Only include stats for current character", ref separateStatsByPlayer)) {
                 _plugin.DataQueue.QueueDataOperation(() => {
                     _plugin.Configuration.CurrentCharacterStatsOnly = separateStatsByPlayer;
-                    _plugin.Save();
+                    _plugin.Configuration.Save();
+                    _plugin.Refresh();
                 });
             }
             ImGui.SameLine();
@@ -196,8 +197,13 @@ namespace MapPartyAssist.Windows {
             if(ImGui.Checkbox("Enable market board pricing", ref enablePriceCheck)) {
                 _plugin.DataQueue.QueueDataOperation(() => {
                     _plugin.Configuration.EnablePriceCheck = enablePriceCheck;
-                    _plugin.Save();
-                    _plugin.PriceHistory.Enable();
+                    if(enablePriceCheck) {
+                        _plugin.PriceHistory.EnablePolling();
+                    } else {
+                        _plugin.PriceHistory.DisablePolling();
+                    }
+                    _plugin.Configuration.Save();
+                    _plugin.Refresh();
                 });
             }
             ImGui.SameLine();

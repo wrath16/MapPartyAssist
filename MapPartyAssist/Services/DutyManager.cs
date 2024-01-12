@@ -289,9 +289,6 @@ namespace MapPartyAssist.Services {
         }
 
         public void Dispose() {
-#if DEBUG
-            _plugin.Log.Debug("disposing duty manager");
-#endif
             _plugin.DutyState.DutyStarted -= OnDutyStart;
             _plugin.DutyState.DutyCompleted -= OnDutyCompleted;
             _plugin.DutyState.DutyWiped -= OnDutyWiped;

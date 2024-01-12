@@ -16,6 +16,7 @@ namespace MapPartyAssist.Services {
         internal const string DutyResultsTable = "dutyresults";
         internal const string StatsImportTable = "dutyresultsimport";
         internal const string PlayerTable = "player";
+        internal const string PriceTable = "price";
 
         private Plugin _plugin;
         private SemaphoreSlim _dbLock = new SemaphoreSlim(1, 1);
@@ -56,12 +57,12 @@ namespace MapPartyAssist.Services {
             playerCollection.EnsureIndex(p => p.Name);
             playerCollection.EnsureIndex(p => p.HomeWorld);
             playerCollection.EnsureIndex(p => p.Key);
+
+            GetPrices().EnsureIndex(p => p.ItemId);
+            GetPrices().EnsureIndex(p => p.Region);
         }
 
         public void Dispose() {
-#if DEBUG
-            _plugin.Log.Debug("disposing storage manager");
-#endif
             Database.Dispose();
         }
         internal void AddMap(MPAMap map, bool toSave = true) {
@@ -70,7 +71,7 @@ namespace MapPartyAssist.Services {
         }
 
         internal void AddMaps(IEnumerable<MPAMap> maps, bool toSave = true) {
-            LogUpdate();
+            LogUpdate(null, maps.Count());
             WriteToDatabase(() => GetMaps().Insert(maps), toSave);
         }
 
@@ -80,7 +81,7 @@ namespace MapPartyAssist.Services {
         }
 
         internal void UpdateMaps(IEnumerable<MPAMap> maps, bool toSave = true) {
-            LogUpdate();
+            LogUpdate(null, maps.Count());
             WriteToDatabase(() => GetMaps().Update(maps.Where(m => m.Id != null)), toSave);
         }
 
@@ -108,7 +109,7 @@ namespace MapPartyAssist.Services {
         }
 
         internal void AddDutyResults(IEnumerable<DutyResults> results, bool toSave = true) {
-            LogUpdate();
+            LogUpdate(null, results.Count());
             WriteToDatabase(() => GetDutyResults().Insert(results), toSave);
         }
 
@@ -118,7 +119,7 @@ namespace MapPartyAssist.Services {
         }
 
         internal void UpdateDutyResults(IEnumerable<DutyResults> results, bool toSave = true) {
-            LogUpdate();
+            LogUpdate(null, results.Count());
             WriteToDatabase(() => GetDutyResults().Update(results), toSave);
         }
 
@@ -140,21 +141,26 @@ namespace MapPartyAssist.Services {
             return Database.GetCollection<DutyResultsImport>(StatsImportTable);
         }
 
-        //private void HandleTaskExceptions(Task task) {
-        //    var aggException = task.Exception.Flatten();
-        //    foreach(var exception in aggException.InnerExceptions) {
-        //        _plugin.Log.Error($"{exception.Message}");
-        //    }
-        //}
+        internal void AddPrices(IEnumerable<PriceCheck> prices, bool toSave = true) {
+            LogUpdate(null, prices.Count());
+            WriteToDatabase(() => GetPrices().Insert(prices), toSave);
+        }
 
-        private void LogUpdate(string? id = null) {
+        internal void UpdatePrices(IEnumerable<PriceCheck> prices, bool toSave = true) {
+            LogUpdate(null, prices.Count());
+            WriteToDatabase(() => GetPrices().Update(prices), toSave);
+        }
+
+        internal ILiteCollection<PriceCheck> GetPrices() {
+            return Database.GetCollection<PriceCheck>(PriceTable);
+        }
+
+        private void LogUpdate(string? id = null, int count = 0) {
             var callingMethod = new StackFrame(2, true).GetMethod();
             var writeMethod = new StackFrame(1, true).GetMethod();
 
-            _plugin.Log.Debug(string.Format("Invoking {0,-25} Caller: {1,-70} ID: {2,-30}",
-                writeMethod?.Name, $"{callingMethod?.DeclaringType?.ToString() ?? ""}.{callingMethod?.Name ?? ""}", id));
-
-            //_plugin.Log.Debug($"Invoking {writeMethod?.Name} from {callingMethod?.DeclaringType?.ToString() ?? ""}.{callingMethod?.Name ?? ""} ID: {id}");
+            _plugin.Log.Debug(string.Format("Invoking {0,-25} {2,-30}{3,-30} Caller: {1,-70}",
+                writeMethod?.Name, $"{callingMethod?.DeclaringType?.ToString() ?? ""}.{callingMethod?.Name ?? ""}", id != null ? $"ID: {id}" : "", count != 0 ? $"Count: {count}" : ""));
         }
 
         //synchronous write
@@ -163,7 +169,7 @@ namespace MapPartyAssist.Services {
                 _dbLock.Wait();
                 action.Invoke();
                 if(toSave) {
-                    _plugin.Save();
+                    _plugin.Refresh();
                 }
             } finally {
                 _dbLock.Release();
