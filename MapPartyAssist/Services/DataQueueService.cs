@@ -31,8 +31,8 @@ namespace MapPartyAssist.Services {
 
         internal Task QueueDataOperation(Action action) {
 #if DEBUG
-            //var x = new StackFrame(1, true).GetMethod();
-            //_plugin.Log.Debug($"adding data operation from: {x.Name} {x.DeclaringType} tasks queued: {DataTaskQueue.Count + 1}");
+            var x = new StackFrame(1, true).GetMethod();
+            _plugin.Log.Verbose($"adding data operation from: {x.Name} {x.DeclaringType} tasks queued: {DataTaskQueue.Count + 1}");
 #endif
             Task t = new(action);
             return AddToTaskQueue(t);

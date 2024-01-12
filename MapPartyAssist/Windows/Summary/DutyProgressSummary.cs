@@ -126,6 +126,10 @@ namespace MapPartyAssist.Windows.Summary {
                             } else {
                                 dutyStat.ClearSequence.Add(curSequenceValue);
                             }
+                            dutyStat.ClearDuties.Add(new DutyResults() {
+                                CompletionTime = import.Time,
+                                Owner = "Imported clear"
+                            });
                         }
                         dutyStat.RunsSinceLastClear += (int)import.RunsSinceLastClear!;
                     } else {
@@ -135,7 +139,7 @@ namespace MapPartyAssist.Windows.Summary {
 
                 foreach(var result in onlyDutyResults) {
                     //add import data
-                    while(_timeFilter.StatRange == StatRange.AllLegacy && currentImportIndex < onlyImports.Count && onlyImports[currentImportIndex].Time < result.Time) {
+                    while(currentImportIndex < onlyImports.Count && onlyImports[currentImportIndex].Time < result.Time) {
                         processImport(onlyImports[currentImportIndex]);
                         currentImportIndex++;
                     }
@@ -196,7 +200,7 @@ namespace MapPartyAssist.Windows.Summary {
                     }
                 }
                 //check for remaining imports
-                if(_timeFilter.StatRange == StatRange.AllLegacy && currentImportIndex != onlyImports.Count) {
+                if(currentImportIndex != onlyImports.Count) {
                     while(currentImportIndex < onlyImports.Count) {
                         processImport(onlyImports[currentImportIndex]);
                         currentImportIndex++;
@@ -226,15 +230,13 @@ namespace MapPartyAssist.Windows.Summary {
                 //summon data
                 if(duty.Structure == DutyStructure.Roulette) {
                     //check import data
-                    if(_timeFilter.StatRange == StatRange.AllLegacy) {
-                        foreach(var import in onlyImports) {
-                            if(import.SummonTotals != null) {
-                                foreach(var summonTotal in import.SummonTotals) {
-                                    dutyStat.SummonTotals[summonTotal.Key] += (int)import.SummonTotals[summonTotal.Key];
-                                }
-                            } else {
-                                dutyStat.HasSummons = false;
+                    foreach(var import in onlyImports) {
+                        if(import.SummonTotals != null) {
+                            foreach(var summonTotal in import.SummonTotals) {
+                                dutyStat.SummonTotals[summonTotal.Key] += (int)import.SummonTotals[summonTotal.Key];
                             }
+                        } else {
+                            dutyStat.HasSummons = false;
                         }
                     }
 
@@ -337,7 +339,7 @@ namespace MapPartyAssist.Windows.Summary {
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
 
-                if(_timeFilter.StatRange != StatRange.AllLegacy || dutyStat.HasGil) {
+                if(dutyStat.HasGil) {
                     ImGui.Text("Total gil earned: ");
                     ImGui.TableNextColumn();
                     ImGui.Text($"{dutyStat.TotalGil.ToString("N0")}");
@@ -354,7 +356,7 @@ namespace MapPartyAssist.Windows.Summary {
                     }
                     ImGui.TableNextColumn();
                 }
-                if(_timeFilter.StatRange != StatRange.AllLegacy && _plugin.Configuration.DutyConfigurations[dutyId].DisplayDeaths) {
+                if(_plugin.Configuration.DutyConfigurations[dutyId].DisplayDeaths) {
                     ImGui.Text("Total wipes:");
                     Tooltip("Inferred from last checkpoint.");
                     ImGui.TableNextColumn();
@@ -368,7 +370,7 @@ namespace MapPartyAssist.Windows.Summary {
                 ImGui.TableNextColumn();
                 ImGui.TableNextColumn();
 
-                if(_timeFilter.StatRange != StatRange.AllLegacy || dutyStat.HasFloors) {
+                if(dutyStat.HasFloors) {
                     if(_plugin.Configuration.ProgressTableCount == ProgressTableCount.Last) {
                         for(int i = 0; i < dutyStat.EndChambers.Length; i++) {
                             if(i == numChambers - 1) {
@@ -417,7 +419,7 @@ namespace MapPartyAssist.Windows.Summary {
                 ImGui.TableNextColumn();
                 ImGui.TableNextColumn();
 
-                if(_timeFilter.StatRange != StatRange.AllLegacy || dutyStat.HasSequence) {
+                if(dutyStat.HasSequence) {
                     //todo make this a configuration variable
                     if(_plugin.Configuration.DutyConfigurations[dutyId].DisplayClearSequence) {
                         for(int i = 0; i < dutyStat.ClearSequence.Count; i++) {
@@ -434,14 +436,11 @@ namespace MapPartyAssist.Windows.Summary {
                                 dutyStat.ClearSequence.GetRange(0, i).ForEach(x => clearTotal += x);
                                 ImGui.Text($"{clearTotal.ToString().PadRight(3)}");
                             }
-
-                            if(_timeFilter.StatRange != StatRange.AllLegacy) {
-                                if(ImGui.IsItemHovered()) {
-                                    ImGui.BeginTooltip();
-                                    ImGui.Text($"{dutyStat.ClearDuties[i].CompletionTime.ToString()}");
-                                    ImGui.Text($"{dutyStat.ClearDuties[i].Owner}");
-                                    ImGui.EndTooltip();
-                                }
+                            if(ImGui.IsItemHovered()) {
+                                ImGui.BeginTooltip();
+                                ImGui.Text($"{dutyStat.ClearDuties[i].CompletionTime.ToString()}");
+                                ImGui.Text($"{dutyStat.ClearDuties[i].Owner}");
+                                ImGui.EndTooltip();
                             }
                             ImGui.TableNextColumn();
                             ImGui.TableNextColumn();

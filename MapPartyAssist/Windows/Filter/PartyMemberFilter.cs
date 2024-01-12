@@ -40,7 +40,7 @@ namespace MapPartyAssist.Windows.Filter {
                 }
             }
 
-            if(ImGui.Checkbox("Solo-only", ref onlySolo)) {
+            if(ImGui.Checkbox("Solo only", ref onlySolo)) {
                 _plugin!.DataQueue.QueueDataOperation(() => {
                     OnlySolo = onlySolo;
                     Refresh();

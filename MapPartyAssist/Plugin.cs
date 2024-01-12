@@ -68,7 +68,9 @@ namespace MapPartyAssist {
         internal MapManager MapManager { get; init; }
         internal StorageManager StorageManager { get; init; }
         internal ImportManager ImportManager { get; init; }
+        internal MigrationManager MigrationManager { get; init; }
         internal DataQueueService DataQueue { get; init; }
+        internal PriceHistoryService PriceHistory { get; init; }
 
         public Configuration Configuration { get; init; }
         internal GameFunctions Functions { get; init; }
@@ -123,16 +125,17 @@ namespace MapPartyAssist {
                     Log.Warning("Client language unsupported, most functions will be unavailable.");
                 }
 
+                //order is important here
                 DataQueue = new(this);
                 StorageManager = new(this, $"{PluginInterface.GetPluginConfigDirectory()}\\{DatabaseName}");
                 Functions = new();
                 DutyManager = new(this);
                 MapManager = new(this);
                 ImportManager = new(this);
-
-                //needs DutyManager to be initialized first
+                MigrationManager = new(this);
                 Configuration.Initialize(this);
                 GameStateManager = new(this);
+                PriceHistory = new(this);
 
                 MainWindow = new MainWindow(this);
                 WindowSystem.AddWindow(MainWindow);
@@ -171,11 +174,9 @@ namespace MapPartyAssist {
 
                 ChatGui.ChatMessage += OnChatMessage;
 
-                //import data from old configuration to database
-                if(Configuration.Version < 2) {
-                    StorageManager.Import();
-                }
-
+                //data migration
+                DataQueue.QueueDataOperation(MigrationManager.CheckAndMigrate);
+                Log.Information("Map Party Assist has started.");
             } catch(Exception e) {
                 //remove handlers and release database if we fail to start
                 Dispose();
@@ -234,6 +235,9 @@ namespace MapPartyAssist {
             }
             if(DataQueue != null) {
                 DataQueue.Dispose();
+            }
+            if(PriceHistory != null) {
+                PriceHistory.Dispose();
             }
         }
 
@@ -311,7 +315,7 @@ namespace MapPartyAssist {
             GameGui.OpenMapWithMapLink(mapLink);
         }
 
-        public void Save() {
+        public void Refresh() {
             Configuration.Save();
             StatsWindow.Refresh();
             MainWindow.Refresh();

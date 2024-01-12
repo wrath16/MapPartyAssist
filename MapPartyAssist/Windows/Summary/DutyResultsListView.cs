@@ -11,7 +11,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
-using static MapPartyAssist.Windows.Summary.LootSummary;
+using static Dalamud.Interface.Windowing.Window;
 
 namespace MapPartyAssist.Windows.Summary {
     internal class DutyResultsListView {
@@ -23,6 +23,7 @@ namespace MapPartyAssist.Windows.Summary {
         private List<DutyResults> _dutyResults = new();
         private List<DutyResults> _dutyResultsPage = new();
         private Dictionary<ObjectId, Dictionary<LootResultKey, LootResultValue>> _lootResults = new();
+        private Dictionary<ObjectId, int> _totalGilValue = new();
 
         private int _currentPage = 0;
         private bool _collapseAll = false;
@@ -37,6 +38,7 @@ namespace MapPartyAssist.Windows.Summary {
 
         public void Refresh(List<DutyResults> dutyResults) {
             Dictionary<ObjectId, Dictionary<LootResultKey, LootResultValue>> lootResults = new();
+            Dictionary<ObjectId, int> totalGilValue = new();
             //calculate loot results (this is largely duplicated from lootsummary)
             List<string> selfPlayers = new();
             _plugin.StorageManager.GetPlayers().Query().Where(p => p.IsSelf).ToList().ForEach(p => {
@@ -48,10 +50,12 @@ namespace MapPartyAssist.Windows.Summary {
                     continue;
                 }
                 Dictionary<LootResultKey, LootResultValue> newLootResults = new();
+                int newTotalGil = 0;
                 foreach(var checkpointResult in dr.CheckpointResults) {
                     foreach(var lootResult in checkpointResult.LootResults!) {
                         var key = new LootResultKey { ItemId = lootResult.ItemId, IsHQ = lootResult.IsHQ };
                         bool selfObtained = lootResult.Recipient is not null && selfPlayers.Contains(lootResult.Recipient);
+                        var price = _plugin.PriceHistory.CheckPrice(key);
                         int obtainedQuantity = selfObtained ? lootResult.Quantity : 0;
                         if(newLootResults.ContainsKey(key)) {
                             newLootResults[key].ObtainedQuantity += obtainedQuantity;
@@ -65,18 +69,29 @@ namespace MapPartyAssist.Windows.Summary {
                                     Rarity = row.Rarity,
                                     ItemName = row.Name,
                                     Category = row.ItemUICategory.Value.Name,
+                                    AveragePrice = price,
+                                    DroppedValue = price * lootResult.Quantity,
+                                    ObtainedValue = price * obtainedQuantity,
                                 });
                             }
+                        }
+                        //multiply gil by total partymembers
+                        if(lootResult.ItemId == 1) {
+                            newTotalGil += dr.Players.Length * lootResult.Quantity;
+                        } else {
+                            newTotalGil += price * lootResult.Quantity ?? 0;
                         }
                     }
                 }
                 newLootResults = newLootResults.OrderByDescending(lr => lr.Value.DroppedQuantity).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 lootResults.Add(dr.Id, newLootResults);
+                totalGilValue.Add(dr.Id, newTotalGil);
             }
             try {
                 _refreshLock.Wait();
                 _dutyResults = dutyResults;
                 _lootResults = lootResults;
+                _totalGilValue = totalGilValue;
             } finally {
                 _refreshLock.Release();
             }
@@ -107,6 +122,10 @@ namespace MapPartyAssist.Windows.Summary {
                 return;
             }
             try {
+                _statsWindow.SizeConstraints = new WindowSizeConstraints {
+                    MinimumSize = new Vector2(400, _statsWindow.SizeConstraints!.Value.MinimumSize.Y),
+                    MaximumSize = _statsWindow.SizeConstraints!.Value.MaximumSize,
+                };
                 if(_plugin.AllowEdit) {
                     ImGui.PushFont(UiBuilder.IconFont);
                     ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
@@ -280,6 +299,17 @@ namespace MapPartyAssist.Windows.Summary {
             }
             if(dutyResults.HasLootResults()) {
                 ImGui.TextColored(ImGuiColors.DalamudGrey, "Loot: ");
+                if(_totalGilValue.ContainsKey(dutyResults.Id)) {
+                    ImGui.SameLine();
+                    string text = $"Total Gil Value: {_totalGilValue[dutyResults.Id].ToString("N0")} (?)";
+                    ImGuiHelper.RightAlignCursor(text);
+                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Total Gil Value: ");
+                    ImGui.SameLine();
+                    ImGui.Text($"{_totalGilValue[dutyResults.Id].ToString("N0")}");
+                    ImGui.SameLine();
+                    ImGuiHelper.HelpMarker("Total market value of all drops plus gil multiplied by number of players.");
+                }
+
                 if(ImGui.BeginTable($"loottable", 4, ImGuiTableFlags.None)) {
                     //ImGui.TableSetupColumn("Category", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f);
                     ImGui.TableSetupColumn("Quality", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f);
@@ -304,9 +334,9 @@ namespace MapPartyAssist.Windows.Summary {
                         ImGui.TableNextColumn();
                         ImGui.Text($"{lootResult.Value.ItemName}");
                         ImGui.TableNextColumn();
-                        ImGui.Text($"{lootResult.Value.DroppedQuantity}");
+                        ImGui.Text($"{lootResult.Value.DroppedQuantity.ToString("N0")}");
                         ImGui.TableNextColumn();
-                        ImGui.Text($"{lootResult.Value.ObtainedQuantity}");
+                        ImGui.Text($"{lootResult.Value.ObtainedQuantity.ToString("N0")}");
                     }
                     ImGui.EndTable();
                 }

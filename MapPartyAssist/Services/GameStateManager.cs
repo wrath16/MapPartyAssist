@@ -2,6 +2,7 @@
 using Dalamud.Game.ClientState.Party;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
+using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
@@ -29,7 +30,7 @@ namespace MapPartyAssist.Services {
                 if(_plugin.ClientState.IsLoggedIn) {
                     BuildPartyLists();
                 }
-                _plugin.Save();
+                _plugin.Refresh();
             });
         }
 
@@ -49,7 +50,7 @@ namespace MapPartyAssist.Services {
                 _lastPartySize = currentPartySize;
                 _plugin.DataQueue.QueueDataOperation(() => {
                     BuildPartyLists();
-                    _plugin.Save();
+                    _plugin.Refresh();
                 });
             }
         }
@@ -62,6 +63,7 @@ namespace MapPartyAssist.Services {
 
         private void OnLogin() {
             _plugin.DataQueue.QueueDataOperation(() => {
+                _plugin.PriceHistory.Initialize();
                 BuildPartyLists();
                 _plugin.MapManager.CheckAndArchiveMaps();
             });
@@ -69,9 +71,9 @@ namespace MapPartyAssist.Services {
 
         private void OnLogout() {
             _plugin.DataQueue.QueueDataOperation(() => {
-                //remove all party members
+                _plugin.PriceHistory.Shutdown();
                 CurrentPartyList = new();
-                _plugin.Save();
+                _plugin.Refresh();
             });
         }
 
@@ -84,6 +86,11 @@ namespace MapPartyAssist.Services {
                 return null;
             }
             return $"{currentPlayerName} {currentPlayerWorld}";
+        }
+
+        public Region GetCurrentRegion() {
+            var currentPlayerRegion = _plugin.ClientState.LocalPlayer?.CurrentWorld.GameData?.DataCenter.Value?.Region;
+            return PlayerHelper.GetRegion(currentPlayerRegion);
         }
 
         private void BuildPartyLists() {

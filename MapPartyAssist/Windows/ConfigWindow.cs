@@ -1,5 +1,4 @@
-﻿using Dalamud.Interface.Colors;
-using Dalamud.Interface.Utility;
+﻿using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
 using MapPartyAssist.Helper;
@@ -21,9 +20,26 @@ namespace MapPartyAssist.Windows {
         }
 
         public override void Draw() {
-            ImGui.TextColored(ImGuiColors.DalamudViolet, "Map Tracker");
-            ImGui.Separator();
 
+            if(ImGui.BeginTabBar("SettingsTabBar")) {
+                if(ImGui.BeginTabItem("General Stats")) {
+                    DrawStatsSettings();
+                    ImGui.EndTabItem();
+                }
+                if(ImGui.BeginTabItem("Map Tracker")) {
+                    DrawMapSettings();
+                    ImGui.EndTabItem();
+                }
+                if(ImGui.BeginTabItem("Duty Progress")) {
+                    DrawDutySettings();
+                    ImGui.EndTabItem();
+                }
+
+                ImGui.EndTabBar();
+            }
+        }
+
+        private void DrawMapSettings() {
             bool requireDoubleTap = _plugin.Configuration.RequireDoubleClickOnClearAll;
             if(ImGui.Checkbox("Require double click on 'Clear All'", ref requireDoubleTap)) {
                 _plugin.Configuration.RequireDoubleClickOnClearAll = requireDoubleTap;
@@ -63,41 +79,14 @@ namespace MapPartyAssist.Windows {
                 _plugin.Configuration.HighlightClosestLink = highlightClosestLink;
                 _plugin.Configuration.Save();
             }
+        }
 
-            ImGui.Spacing();
-            ImGui.Spacing();
-
-            ImGui.TextColored(ImGuiColors.DalamudViolet, "Duty Progress Summary");
-            ImGui.Separator();
-
+        private void DrawDutySettings() {
             bool showTooltips = _plugin.Configuration.ShowStatsWindowTooltips;
             if(ImGui.Checkbox("Show explanatory tooltips", ref showTooltips)) {
                 _plugin.Configuration.ShowStatsWindowTooltips = showTooltips;
                 _plugin.Configuration.Save();
             }
-
-            //bool showAdvancedFilters = _plugin.Configuration.ShowAdvancedFilters;
-            //if(ImGui.Checkbox("Show more filters", ref showAdvancedFilters)) {
-            //    _plugin.Configuration.ShowAdvancedFilters = showAdvancedFilters;
-            //    _plugin.Save();
-            //}
-            ImGui.SameLine();
-            ImGuiHelper.HelpMarker("Filter stats by party members and map owner.");
-
-            bool separateStatsByPlayer = _plugin.Configuration.CurrentCharacterStatsOnly;
-            if(ImGui.Checkbox("Only include stats for current character", ref separateStatsByPlayer)) {
-                _plugin.DataQueue.QueueDataOperation(() => {
-                    _plugin.Configuration.CurrentCharacterStatsOnly = separateStatsByPlayer;
-                    _plugin.Save();
-                });
-            }
-
-            //bool showKicks = Plugin.Configuration.KicksProgressTable;
-            //if(ImGui.Checkbox("Calculate progress table by failed checkpoint", ref showKicks)) {
-            //    Plugin.Configuration.KicksProgressTable = showKicks;
-            //    Plugin.Save();
-            //}
-            //ImGuiComponents.HelpMarker("If unchecked, will include all ");
 
             int progressCountToInt = (int)_plugin.Configuration.ProgressTableCount;
             string[] progressCountOptions = { "By all occurences", "By last checkpoint only" };
@@ -190,6 +179,35 @@ namespace MapPartyAssist.Windows {
                     ImGui.EndTable();
                 }
             }
+        }
+
+        private void DrawStatsSettings() {
+            bool separateStatsByPlayer = _plugin.Configuration.CurrentCharacterStatsOnly;
+            if(ImGui.Checkbox("Only include stats for current character", ref separateStatsByPlayer)) {
+                _plugin.DataQueue.QueueDataOperation(() => {
+                    _plugin.Configuration.CurrentCharacterStatsOnly = separateStatsByPlayer;
+                    _plugin.Configuration.Save();
+                    _plugin.Refresh();
+                });
+            }
+            ImGui.SameLine();
+            ImGuiHelper.HelpMarker("Only counts maps/duties in stats where the currently logged-in character was present, name-changes not-withstanding.");
+
+            bool enablePriceCheck = _plugin.Configuration.EnablePriceCheck;
+            if(ImGui.Checkbox("Enable market board pricing", ref enablePriceCheck)) {
+                _plugin.DataQueue.QueueDataOperation(() => {
+                    _plugin.Configuration.EnablePriceCheck = enablePriceCheck;
+                    if(enablePriceCheck) {
+                        _plugin.PriceHistory.EnablePolling();
+                    } else {
+                        _plugin.PriceHistory.DisablePolling();
+                    }
+                    _plugin.Configuration.Save();
+                    _plugin.Refresh();
+                });
+            }
+            ImGui.SameLine();
+            ImGuiHelper.HelpMarker("Uses Universalis API.");
         }
     }
 }

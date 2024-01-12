@@ -13,6 +13,8 @@ using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
 using MapPartyAssist.Types;
+using MapPartyAssist.Types.REST.Universalis;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,7 +26,7 @@ using System.Threading.Tasks;
 namespace MapPartyAssist.Windows {
     //for testing purposes only
 
-    public class TestFunctionWindow : Window {
+    internal class TestFunctionWindow : Window {
 
         private Plugin _plugin;
         private readonly string[] _languageCombo = { "Japanese", "English", "German", "French" };
@@ -43,6 +45,8 @@ namespace MapPartyAssist.Windows {
 
         private string _toTranslateText = "";
         private string _translateResult = "";
+
+        private string _itemIds = "30266,25187,19981";
 
         public TestFunctionWindow(Plugin plugin) : base("MPA Test Functions") {
             this.SizeConstraints = new WindowSizeConstraints {
@@ -111,6 +115,17 @@ namespace MapPartyAssist.Windows {
                         ShowImportTable();
                     }
 
+                    if(ImGui.Button("Drop Price Table")) {
+                        var prices = _plugin.StorageManager.GetPrices().DeleteAll();
+                        _plugin.Log.Debug($"Dropped {prices} records");
+                    }
+
+                    if(ImGui.Button("Price Table")) {
+                        var prices = _plugin.StorageManager.GetPrices().Query().ToList();
+                        foreach(var price in prices) {
+                            _plugin.Log.Debug(String.Format("itemID: {0,-8} NQ: {1,-12} HQ: {4,-12} region: {3,-15} lastChecked: {2,-25}", price.ItemId, price.NQPrice, price.LastChecked, price.Region, price.HQPrice));
+                        }
+                    }
 
                     if(ImGui.Button("Last 3 DutyResults")) {
                         var dutyResults = _plugin.StorageManager.GetDutyResults().Query().OrderByDescending(dr => dr.Time).Limit(3).ToList();
@@ -134,7 +149,7 @@ namespace MapPartyAssist.Windows {
 
 
                     if(ImGui.Button("Save+Refresh")) {
-                        _plugin.Save();
+                        _plugin.Refresh();
                     }
 
                     if(ImGui.Button("GetCurrentPlayer()")) {
@@ -142,9 +157,9 @@ namespace MapPartyAssist.Windows {
                     }
 
 
-                    if(ImGui.Button("Import Config")) {
-                        _plugin.StorageManager.Import();
-                    }
+                    //if(ImGui.Button("Import Config")) {
+                    //    _plugin.StorageManager.Import();
+                    //}
 
 
                     //if(ImGui.Button("Drop Import Table")) {
@@ -346,18 +361,65 @@ namespace MapPartyAssist.Windows {
                     bool printAllMessages = _plugin.PrintAllMessages;
                     if(ImGui.Checkbox("Print all messages", ref printAllMessages)) {
                         _plugin.PrintAllMessages = printAllMessages;
-                        _plugin.Save();
+                        _plugin.Refresh();
                     }
                     bool printPayloads = _plugin.PrintPayloads;
                     if(ImGui.Checkbox("Print payloads", ref printPayloads)) {
                         _plugin.PrintPayloads = printPayloads;
-                        _plugin.Save();
+                        _plugin.Refresh();
                     }
                     bool editMode = _plugin.AllowEdit;
                     if(ImGui.Checkbox("Edit Mode", ref editMode)) {
                         _plugin.AllowEdit = editMode;
-                        _plugin.Save();
+                        _plugin.Refresh();
                     }
+                    if(ImGui.Button("Enable Universalis Price Check")) {
+                        _plugin.PriceHistory.EnablePolling();
+                    }
+                    ImGui.SameLine();
+                    if(ImGui.Button("Disable Universalis Price Check")) {
+                        _plugin.PriceHistory.DisablePolling();
+                    }
+                    ImGui.EndTabItem();
+                }
+
+                if(ImGui.BeginTabItem("API")) {
+                    if(ImGui.InputText("ItemIDs", ref _itemIds, 100)) {
+
+                    }
+                    if(ImGui.Button("Get Price Data")) {
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            string[] stringIDs = _itemIds.Trim().Split(",");
+                            List<uint> intIDs = new();
+                            foreach(var id in stringIDs) {
+                                if(uint.TryParse(id, out uint intID)) {
+                                    intIDs.Add(intID);
+                                    //_plugin.PriceHistory.QueryUniversalisHistory(intIDs.ToArray(), Region.NorthAmerica);
+                                    //var price = _plugin.PriceHistory.CheckPrice(intID, false);
+                                    //if(price != null) {
+                                    //    _plugin.Log.Debug($"itemID: {id} price: {price}");
+                                    //}
+                                }
+                            }
+                            //_plugin.PriceHistory.UpdatePrices(intIDs.ToArray());
+                        });
+                    }
+
+                    if(ImGui.Button("Test JSON: Sale Entry")) {
+                        string sale = "{ \"hq\": true, \"pricePerUnit\": 800,\"quantity\": 2,\"buyerName\": \"Jackie Caravella\",\"onMannequin\": false,\"timestamp\": 1704498382,\"worldName\": \"Seraph\",\"worldID\": 405}";
+                        SaleEntry s = JsonConvert.DeserializeObject<SaleEntry>(sale);
+
+                        _plugin.Log.Debug($"price per unit: {s.PricePerUnit}");
+                    }
+
+                    if(ImGui.Button("Test JSON: Item History")) {
+                        string history = "{\r\n      \"itemID\": 19981,\r\n      \"lastUploadTime\": 1704506463055,\r\n      \"entries\": [\r\n        {\r\n          \"hq\": true,\r\n          \"pricePerUnit\": 274,\r\n          \"quantity\": 1,\r\n          \"buyerName\": \"Johnnie Foreshin\",\r\n          \"onMannequin\": false,\r\n          \"timestamp\": 1704495551,\r\n          \"worldName\": \"Excalibur\",\r\n          \"worldID\": 93\r\n        },\r\n        {\r\n          \"hq\": false,\r\n          \"pricePerUnit\": 391,\r\n          \"quantity\": 1,\r\n          \"buyerName\": \"Rai Borel\",\r\n          \"onMannequin\": false,\r\n          \"timestamp\": 1704494227,\r\n          \"worldName\": \"Cactuar\",\r\n          \"worldID\": 79\r\n        },\r\n        {\r\n          \"hq\": true,\r\n          \"pricePerUnit\": 281,\r\n          \"quantity\": 27,\r\n          \"buyerName\": \"Bazelle Dromeda\",\r\n          \"onMannequin\": false,\r\n          \"timestamp\": 1704485002,\r\n          \"worldName\": \"Famfrit\",\r\n          \"worldID\": 35\r\n        }\r\n      ],\r\n      \"regionName\": \"North-America\",\r\n      \"stackSizeHistogram\": { \"1\": 11, \"2\": 3, \"3\": 2, \"4\": 1, \"27\": 1, \"40\": 1, \"53\": 1 },\r\n      \"stackSizeHistogramNQ\": { \"1\": 7, \"2\": 1, \"3\": 2, \"4\": 1, \"40\": 1, \"53\": 1 },\r\n      \"stackSizeHistogramHQ\": { \"1\": 4, \"2\": 2, \"27\": 1 },\r\n      \"regularSaleVelocity\": 21,\r\n      \"nqSaleVelocity\": 16,\r\n      \"hqSaleVelocity\": 5\r\n}";
+                        ItemHistory s = JsonConvert.DeserializeObject<ItemHistory>(history);
+
+                        _plugin.Log.Debug($"2nd world id: {s.Entries[1].WorldID}");
+                    }
+
+                    ImGui.EndTabItem();
                 }
             }
         }

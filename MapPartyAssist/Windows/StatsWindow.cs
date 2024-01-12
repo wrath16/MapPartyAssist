@@ -14,15 +14,6 @@ using System.Threading;
 
 namespace MapPartyAssist.Windows {
 
-    public enum StatRange {
-        Current,
-        PastDay,
-        PastWeek,
-        SinceLastClear,
-        All,
-        AllLegacy
-    }
-
     internal class StatsWindow : Window {
 
         private Plugin _plugin;
@@ -53,6 +44,7 @@ namespace MapPartyAssist.Windows {
             Filters.Add(new OwnerFilter(plugin, Refresh, _plugin.Configuration.StatsWindowFilters.OwnerFilter));
             Filters.Add(new PartyMemberFilter(plugin, Refresh, _plugin.Configuration.StatsWindowFilters.PartyMemberFilter));
             Filters.Add(new ProgressFilter(plugin, Refresh, _plugin.Configuration.StatsWindowFilters.ProgressFilter));
+            Filters.Add(new ImportFilter(plugin, Refresh, _plugin.Configuration.StatsWindowFilters.ImportFilter));
             Filters.Add(new MiscFilter(plugin, Refresh, _plugin.Configuration.StatsWindowFilters.MiscFilter));
             _lootSummary = new(plugin, this);
             _dutySummary = new(plugin, this);
@@ -69,7 +61,7 @@ namespace MapPartyAssist.Windows {
                 RefreshLock.Wait();
                 var dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).OrderBy(dr => dr.Time).ToList();
                 var maps = _plugin.StorageManager.GetMaps().Query().OrderBy(m => m.Time).ToList();
-                var imports = new List<DutyResultsImport>();
+                var imports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted).OrderBy(i => i.Time).ToList();
 
                 //DateTime dt2 = DateTime.Now;
                 //_plugin.Log.Debug($"from db: {(dt2 - dt).TotalMilliseconds}ms");
@@ -87,6 +79,7 @@ namespace MapPartyAssist.Windows {
                             dutyResults = dutyResults.Where(dr => dutyFilter.FilterState[dr.DutyId]).ToList();
                             //apply omit zero checkpoints
                             dutyResults = dutyResults.Where(dr => !_plugin.Configuration.DutyConfigurations[dr.DutyId].OmitZeroCheckpoints || dr.CheckpointResults.Count > 0).ToList();
+                            imports = imports.Where(i => dutyFilter.FilterState[i.DutyId]).ToList();
                             _plugin.Configuration.StatsWindowFilters.DutyFilter = dutyFilter;
                             break;
                         case Type _ when filter.GetType() == typeof(MapFilter):
@@ -104,8 +97,11 @@ namespace MapPartyAssist.Windows {
                         case Type _ when filter.GetType() == typeof(OwnerFilter):
                             var ownerFilter = (OwnerFilter)filter;
                             string trimmedOwner = ownerFilter.Owner.Trim();
-                            dutyResults = dutyResults.Where(dr => dr.Owner.Contains(trimmedOwner, StringComparison.OrdinalIgnoreCase)).ToList();
-                            maps = maps.Where(m => m.Owner is not null && m.Owner.Contains(trimmedOwner, StringComparison.OrdinalIgnoreCase)).ToList();
+                            if(!trimmedOwner.IsNullOrEmpty()) {
+                                dutyResults = dutyResults.Where(dr => dr.Owner.Contains(trimmedOwner, StringComparison.OrdinalIgnoreCase)).ToList();
+                                maps = maps.Where(m => m.Owner is not null && m.Owner.Contains(trimmedOwner, StringComparison.OrdinalIgnoreCase)).ToList();
+                                imports = new();
+                            }
                             _plugin.Configuration.StatsWindowFilters.OwnerFilter = ownerFilter;
                             break;
                         case Type _ when filter.GetType() == typeof(PartyMemberFilter):
@@ -113,6 +109,7 @@ namespace MapPartyAssist.Windows {
                             if(partyMemberFilter.OnlySolo) {
                                 dutyResults = dutyResults.Where(dr => dr.Players.Length == 1).ToList();
                                 maps = maps.Where(m => m.Players != null && m.Players.Length == 1).ToList();
+                                imports = new();
                             }
 
                             if(partyMemberFilter.PartyMembers.Length <= 0) {
@@ -157,6 +154,7 @@ namespace MapPartyAssist.Windows {
                                 }
                                 return allMatch;
                             }).ToList();
+                            imports = new();
                             _plugin.Configuration.StatsWindowFilters.PartyMemberFilter = partyMemberFilter;
                             break;
                         case Type _ when filter.GetType() == typeof(TimeFilter):
@@ -165,14 +163,38 @@ namespace MapPartyAssist.Windows {
                                 case StatRange.Current:
                                     dutyResults = dutyResults.Where(dr => dr.Map != null && !dr.Map.IsArchived).ToList();
                                     maps = maps.Where(m => !m.IsArchived).ToList();
+                                    imports = new();
                                     break;
                                 case StatRange.PastDay:
                                     dutyResults = dutyResults.Where(dr => (DateTime.Now - dr.Time).TotalHours < 24).ToList();
                                     maps = maps.Where(m => (DateTime.Now - m.Time).TotalHours < 24).ToList();
+                                    imports = imports.Where(i => (DateTime.Now - i.Time).TotalHours < 24).ToList();
                                     break;
                                 case StatRange.PastWeek:
                                     dutyResults = dutyResults.Where(dr => (DateTime.Now - dr.Time).TotalDays < 7).ToList();
                                     maps = maps.Where(m => (DateTime.Now - m.Time).TotalDays < 7).ToList();
+                                    imports = imports.Where(i => (DateTime.Now - i.Time).TotalDays < 7).ToList();
+                                    break;
+                                case StatRange.ThisMonth:
+                                    dutyResults = dutyResults.Where(dr => dr.Time.Month == DateTime.Now.Month && dr.Time.Year == DateTime.Now.Year).ToList();
+                                    maps = maps.Where(m => m.Time.Month == DateTime.Now.Month && m.Time.Year == DateTime.Now.Year).ToList();
+                                    imports = imports.Where(i => i.Time.Month == DateTime.Now.Month && i.Time.Year == DateTime.Now.Year).ToList();
+                                    break;
+                                case StatRange.LastMonth:
+                                    var lastMonth = DateTime.Now.AddMonths(-1);
+                                    dutyResults = dutyResults.Where(dr => dr.Time.Month == lastMonth.Month && dr.Time.Year == lastMonth.Year).ToList();
+                                    maps = maps.Where(m => m.Time.Month == lastMonth.Month && m.Time.Year == lastMonth.Year).ToList();
+                                    imports = imports.Where(i => i.Time.Month == lastMonth.Month && i.Time.Year == lastMonth.Year).ToList();
+                                    break;
+                                case StatRange.ThisYear:
+                                    dutyResults = dutyResults.Where(dr => dr.Time.Year == DateTime.Now.Year).ToList();
+                                    maps = maps.Where(m => m.Time.Year == DateTime.Now.Year).ToList();
+                                    imports = imports.Where(i => i.Time.Year == DateTime.Now.Year).ToList();
+                                    break;
+                                case StatRange.LastYear:
+                                    dutyResults = dutyResults.Where(dr => dr.Time.Year == DateTime.Now.AddYears(-1).Year).ToList();
+                                    maps = maps.Where(m => m.Time.Year == DateTime.Now.AddYears(-1).Year).ToList();
+                                    imports = imports.Where(i => i.Time.Year == DateTime.Now.AddYears(-1).Year).ToList();
                                     break;
                                 case StatRange.SinceLastClear:
                                     foreach(var duty in _plugin.DutyManager.Duties.Where(d => dutyFilter.FilterState[d.Key])) {
@@ -180,15 +202,17 @@ namespace MapPartyAssist.Windows {
                                             .Where(dr => dr.CheckpointResults.Count == _plugin.DutyManager.Duties[dr.DutyId].Checkpoints!.Count && dr.CheckpointResults.Last().IsReached).LastOrDefault();
                                         if(lastClear != null) {
                                             dutyResults = dutyResults.Where(dr => dr.DutyId != duty.Key || dr.Time > lastClear.Time).ToList();
-                                            //this will default to the latest clear...
+                                            imports = imports.Where(i => i.DutyId != duty.Key || i.Time > lastClear.Time).ToList();
+                                            //this will default to the latest clear of last dungeon...
                                             maps = maps.Where(m => m.Time > lastClear.Time).ToList();
                                         }
                                     }
                                     break;
-                                case StatRange.AllLegacy:
-                                    imports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted).OrderBy(i => i.Time).ToList().Where(i => dutyFilter.FilterState[i.DutyId]).ToList();
+                                case StatRange.Custom:
+                                    dutyResults = dutyResults.Where(dr => dr.Time > timeFilter.StartTime && dr.Time < timeFilter.EndTime).ToList();
+                                    maps = maps.Where(m => m.Time > timeFilter.StartTime && m.Time < timeFilter.EndTime).ToList();
+                                    imports = imports.Where(i => i.Time > timeFilter.StartTime && i.Time < timeFilter.EndTime).ToList();
                                     break;
-
                                 case StatRange.All:
                                 default:
                                     break;
@@ -201,6 +225,13 @@ namespace MapPartyAssist.Windows {
                                 dutyResults = dutyResults.Where(dr => dr.CheckpointResults.Count == _plugin.DutyManager.Duties[dr.DutyId].Checkpoints!.Count && dr.CheckpointResults.Last().IsReached).ToList();
                             }
                             _plugin.Configuration.StatsWindowFilters.ProgressFilter = progressFilter;
+                            break;
+                        case Type _ when filter.GetType() == typeof(ImportFilter):
+                            var importFilter = (ImportFilter)filter;
+                            if(!importFilter.IncludeImports) {
+                                imports = new();
+                            }
+                            _plugin.Configuration.StatsWindowFilters.ImportFilter = importFilter;
                             break;
                         case Type _ when filter.GetType() == typeof(MiscFilter):
                             var miscFilter = (MiscFilter)filter;
