@@ -14,7 +14,7 @@ namespace MapPartyAssist.Services {
 
         private const int _queryThresholdMinutes = 2;
         private const int _updateCheckSeconds = 15;
-        private const int _staleDataHours = 24;
+        private const int _staleDataHours = 48;
         private const int _maxSalesInAverage = 25;
         private const int _entriesToQuery = 100;
         private const int _maxSaleWindowDays = 90;
