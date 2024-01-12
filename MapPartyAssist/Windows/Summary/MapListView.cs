@@ -278,11 +278,13 @@ namespace MapPartyAssist.Windows.Summary {
                 ImGui.TextColored(ImGuiColors.DalamudGrey, "Loot: ");
                 if(_totalGilValue.ContainsKey(map.Id)) {
                     ImGui.SameLine();
-                    string text = $"Total Gil Value: {_totalGilValue[map.Id].ToString("N0")}";
+                    string text = $"Total Gil Value: {_totalGilValue[map.Id].ToString("N0")} (?)";
                     ImGuiHelper.RightAlignCursor(text);
                     ImGui.TextColored(ImGuiColors.DalamudGrey, "Total Gil Value: ");
                     ImGui.SameLine();
                     ImGui.Text($"{_totalGilValue[map.Id].ToString("N0")}");
+                    ImGui.SameLine();
+                    ImGuiHelper.HelpMarker("Total market value of all drops plus gil multiplied by number of players.");
                 }
 
                 ImGui.BeginTable($"loottable", 4, ImGuiTableFlags.None);
