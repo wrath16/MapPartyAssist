@@ -1,8 +1,6 @@
-﻿using Dalamud.Interface.Components;
-using Dalamud.Interface.Utility;
+﻿using Dalamud.Interface.Utility;
 using ImGuiNET;
 using System;
-using static FFXIVClientStructs.FFXIV.Client.UI.AddonPartyList;
 
 namespace MapPartyAssist.Windows.Filter {
 

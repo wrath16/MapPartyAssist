@@ -4,7 +4,6 @@ using MapPartyAssist.Types.REST.Universalis;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -113,7 +112,7 @@ namespace MapPartyAssist.Services {
                         _priceCache.Add(itemKey, (int)price.HQPrice);
                         _priceCacheUpdateTime.Add(itemKey, price.LastChecked);
                     }
-                } catch (ArgumentException) {
+                } catch(ArgumentException) {
                     _plugin.Log.Error("Price cache corruption detected...purging table.");
                     _plugin.StorageManager.GetPrices().DeleteAll();
                     return;
@@ -218,7 +217,9 @@ namespace MapPartyAssist.Services {
         }
 
         private async void CheckAndUpdate() {
+#if DEBUG
             _plugin.Log.Verbose($"checking price validity...fail multiplier: {_failMultiplier}");
+#endif
             if(_toCheck.Count > 0 && (DateTime.Now - _lastQuery).TotalMinutes > _queryThresholdMinutes * _failMultiplier && _plugin.ClientState.IsLoggedIn && _updateLock.Wait(0)) {
                 try {
                     _plugin.Log.Debug("Updating item prices from Universalis API.");

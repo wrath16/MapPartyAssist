@@ -1,7 +1,6 @@
 ﻿using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
-using Dalamud.Plugin.Services;
 using ImGuiNET;
 using LiteDB;
 using Lumina.Excel.GeneratedSheets;
