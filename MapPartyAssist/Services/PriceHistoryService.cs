@@ -422,7 +422,12 @@ namespace MapPartyAssist.Services {
                             if(propertyName1 == "unresolvedItems") {
                                 reader.Read();
                                 int[]? unresolvedItems = serializer.Deserialize<int[]>(reader);
-                                historyResponse.UnresolvedItems = new(unresolvedItems ?? []);
+                                //historyResponse.UnresolvedItems = new(unresolvedItems ?? []);
+                                if(unresolvedItems != null) {
+                                    historyResponse.UnresolvedItems = new(unresolvedItems);
+                                } else {
+                                    historyResponse.UnresolvedItems = new();
+                                }
                             }
                         }
                         break;
