@@ -78,7 +78,7 @@ namespace MapPartyAssist.Services {
         };
 
         private static readonly Dictionary<ClientLanguage, Regex> MapNameRegex = new() {
-            { ClientLanguage.English, new Regex(@"\w* [\w']* map(?=\scrumbles into dust)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.English, new Regex(@"(?<=The ).* map(?=\scrumbles into dust)", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"(?<=(La |Le |L'))carte .*(?=\stombe en poussière)", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"(?<=(Der |Die |Das )).*(-)?(schatz)?karte(?=\szerfällt zu Staub)", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"(?<=「).*地図.*(?=」は消失した……)", RegexOptions.IgnoreCase) }
@@ -132,7 +132,7 @@ namespace MapPartyAssist.Services {
 
         public MapManager(Plugin plugin) {
             _plugin = plugin;
-            _plugin.ChatGui.ChatMessage += OnChatMessage;
+            _plugin.ChatGui.CheckMessageHandled += OnChatMessage;
             _plugin.ClientState.TerritoryChanged += OnTerritoryChanged;
             //_plugin.AddonLifecycle.RegisterListener(AddonEvent.PreUpdate, "_ToDoList", CheckForTreasureHunt);
 
@@ -140,7 +140,7 @@ namespace MapPartyAssist.Services {
         }
 
         public void Dispose() {
-            _plugin.ChatGui.ChatMessage -= OnChatMessage;
+            _plugin.ChatGui.CheckMessageHandled -= OnChatMessage;
             _plugin.ClientState.TerritoryChanged -= OnTerritoryChanged;
             //_plugin.AddonLifecycle.UnregisterListener(CheckForTreasureHunt);
         }

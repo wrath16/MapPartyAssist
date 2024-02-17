@@ -369,7 +369,7 @@ namespace MapPartyAssist {
             var translatedRow = DataManager.GetExcelSheet<T>(destinationLanguage)!.Where(r => r.RowId == rowId).FirstOrDefault();
             string? translatedString = columnProperty!.GetValue(translatedRow)?.ToString() ?? throw new ArgumentException($"row id {rowId} not found in table {type.Name} for language: {destinationLanguage}");
 
-            //add German declensions. Assume nominative case
+            //add German declensions.
             if(destinationLanguage == ClientLanguage.German) {
                 var pronounProperty = type.GetProperty("Pronoun");
                 if(pronounProperty != null) {

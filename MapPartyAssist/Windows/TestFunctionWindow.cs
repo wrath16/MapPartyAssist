@@ -323,10 +323,10 @@ namespace MapPartyAssist.Windows {
                             //var genericMethod = method.MakeGenericMethod(_selectedDataType);
                             //var results = genericMethod.Invoke(_plugin, new object[] { _toTranslateText, _selectedProperty.Name, (ClientLanguage)_destinationLanguage, (ClientLanguage)_originLanguage });
                             var rowId = (uint?)typeof(Plugin).GetMethod("GetRowId").MakeGenericMethod(_selectedDataType)
-                            .Invoke(_plugin, new object[] { _toTranslateText, _selectedProperty.Name, (ClientLanguage)_originLanguage });
+                            .Invoke(_plugin, new object[] { _toTranslateText, _selectedProperty.Name, GrammarCase.Nominative, (ClientLanguage)_originLanguage });
                             _translateResult = rowId != null ? rowId.ToString() : "";
                             _translateResult += " " + (string)typeof(Plugin).GetMethod("TranslateDataTableEntry").MakeGenericMethod(_selectedDataType)
-                            .Invoke(_plugin, new object[] { _toTranslateText, _selectedProperty.Name, (ClientLanguage)_destinationLanguage, (ClientLanguage)_originLanguage });
+                            .Invoke(_plugin, new object[] { _toTranslateText, _selectedProperty.Name, GrammarCase.Nominative, (ClientLanguage)_destinationLanguage, (ClientLanguage)_originLanguage });
                         } catch(Exception e) {
                             _translateResult = "Translate error!";
                             while(e.InnerException != null && e.GetType() != typeof(ArgumentException)) {

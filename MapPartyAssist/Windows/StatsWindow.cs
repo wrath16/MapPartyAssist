@@ -68,6 +68,7 @@ namespace MapPartyAssist.Windows {
 
                 if(_plugin.Configuration.CurrentCharacterStatsOnly && !_plugin.GameStateManager.GetCurrentPlayer().IsNullOrEmpty()) {
                     dutyResults = dutyResults.Where(dr => dr.Players.Contains(_plugin.GameStateManager.GetCurrentPlayer())).ToList();
+                    maps = maps.Where(m => m.Players == null || m.Players.Contains(_plugin.GameStateManager.GetCurrentPlayer())).ToList();
                 }
 
                 //apply filters
@@ -350,9 +351,9 @@ namespace MapPartyAssist.Windows {
                     //ImGui.PopStyleVar();
                     //ImGui.GetStyle().FramePadding.X = ImGui.GetStyle().FramePadding.X + 2f;
                     ImGui.TableNextColumn();
-                    if(filter.GetType() == typeof(TimeFilter)) {
-                        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X / 2f);
-                    }
+                    //if(filter.GetType() == typeof(TimeFilter)) {
+                    //    ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X / 2f);
+                    //}
                     filter.Draw();
                 }
                 ImGui.EndTable();

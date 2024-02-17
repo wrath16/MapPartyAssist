@@ -152,8 +152,6 @@ namespace MapPartyAssist.Windows.Summary {
                     _collapseAll = true;
                 }
 
-
-
                 ImGui.Text($"Total maps: {_maps.Count} Total portals: {_portalCount}");
 
                 ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true);

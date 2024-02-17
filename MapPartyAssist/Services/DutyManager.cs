@@ -278,7 +278,7 @@ namespace MapPartyAssist.Services {
             _plugin.DutyState.DutyWiped += OnDutyWiped;
             _plugin.DutyState.DutyCompleted += OnDutyRecommenced;
             _plugin.ClientState.TerritoryChanged += OnTerritoryChanged;
-            _plugin.ChatGui.ChatMessage += OnChatMessage;
+            _plugin.ChatGui.CheckMessageHandled += OnChatMessage;
 
             //attempt to pickup
             if(_plugin.ClientState.IsLoggedIn && _plugin.IsLanguageSupported() && !IsDutyInProgress()) {
@@ -294,7 +294,7 @@ namespace MapPartyAssist.Services {
             _plugin.DutyState.DutyWiped -= OnDutyWiped;
             _plugin.DutyState.DutyCompleted -= OnDutyRecommenced;
             _plugin.ClientState.TerritoryChanged -= OnTerritoryChanged;
-            _plugin.ChatGui.ChatMessage -= OnChatMessage;
+            _plugin.ChatGui.CheckMessageHandled -= OnChatMessage;
         }
 
         //attempt to start new duty results

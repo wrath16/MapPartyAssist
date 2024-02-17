@@ -54,7 +54,7 @@ namespace MapPartyAssist.Windows.Filter {
 
         internal override void Draw() {
             int statRangeToInt = (int)StatRange;
-            ImGui.SetNextItemWidth(float.Min(ImGui.GetContentRegionAvail().X / 3.8f, ImGuiHelpers.GlobalScale * 125f));
+            ImGui.SetNextItemWidth(float.Max(ImGui.GetContentRegionAvail().X / 2f, ImGuiHelpers.GlobalScale * 100f));
             if(ImGui.Combo($"##timeRangeCombo", ref statRangeToInt, Range, Range.Length)) {
                 _plugin!.DataQueue.QueueDataOperation(() => {
                     StatRange = (StatRange)statRangeToInt;
