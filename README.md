@@ -12,7 +12,7 @@ Tool for recording treasure map statistics and co-ordinating map parties.
 
 ### Map tracking:
 
-* Enter '/mparty' into chat to open the window.
+* Enter `/mparty` into chat to open the tracker window.
 * When a player uses a map by touching a treasure chest or entering a portal, it will be automatically recorded with a checkmark.
 * Maps can be manually added and removed by right-clicking on each party member's name or checkmarks.
 * If someone links a waymark in party chat, it will be noted with a magnifying glass next to their name that you can hover over or click on to open your map with the waymark.
@@ -22,13 +22,13 @@ Tool for recording treasure map statistics and co-ordinating map parties.
 
 ### Treasure dungeon stats:
 
-* Enter '/mpartystats' to open the stats window.
+* Enter `/mpartystats` to open the stats window.
 * The "Current" filter only includes duties resulting from maps currently recorded on the main window.
 
 ### Important notes:
 * Only works with the international client languages (EN/JP/FR/DE).
 * The plugin primarily works by parsing system chat messages. Sometimes it isn't always possible to know exactly who owns a map and the tracker can make mistakes (known cases are listed below), so stay vigilant and correct mistakes as necessary.
-* Use '/mpartyedit' to toggle editing of maps and duties.
+* Use `/mpartyedit` to toggle editing of maps and duties for error correction.
 * Use imports to add stats that were recorded when the plugin is unavailable!
 
 ## Known issues:
