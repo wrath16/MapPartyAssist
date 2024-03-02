@@ -4,6 +4,9 @@ Tool for recording treasure map statistics and co-ordinating map parties.
 
 [![image](https://i.imgur.com/JeyAe7l.png) [![image](https://i.imgur.com/OMK8LPU.png)
 
+[![Download count](https://img.shields.io/endpoint?url=https://qzysathwfhebdai6xgauhz4q7m0mzmrf.lambda-url.us-east-1.on.aws/MapPartyAssist)](https://github.com/wrath16/MapPartyAssist)
+
+
 ## Installation
 
 1. Available in the main Dalamud repository.
