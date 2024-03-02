@@ -15,6 +15,7 @@ namespace MapPartyAssist.Services {
         private const int _queryThresholdMinutes = 2;
         private const int _updateCheckSeconds = 15;
         private const int _staleDataHours = 48;
+        private const int _concurrentItemsMax = 25;
         private const int _maxSalesInAverage = 25;
         private const int _entriesToQuery = 100;
         private const int _maxSaleWindowDays = 90;
@@ -121,7 +122,7 @@ namespace MapPartyAssist.Services {
         }
 
         private void SaveCache() {
-            _plugin.Log.Verbose("Saving price cache...");
+            _plugin.Log.Debug("Saving price cache...");
             var storagePrices = _plugin.StorageManager.GetPrices().Query().Where(p => p.Region == _plugin.GameStateManager.GetCurrentRegion()).ToList();
             List<PriceCheck> newPrices = new();
             foreach(var cachePrice in _priceCache) {
@@ -225,8 +226,8 @@ namespace MapPartyAssist.Services {
                     _plugin.Log.Debug("Updating item prices from Universalis API.");
                     while(_toCheck.Count > 0) {
                         try {
-                            //can only query 100 at a time
-                            var toCheckPage = _toCheck.Take(100).ToArray();
+                            //max is 100 at a time, but tend to get 504 errors with large queries, so limit this number
+                            var toCheckPage = _toCheck.Take(_concurrentItemsMax).ToArray();
                             await UpdatePrices(toCheckPage);
                             if(_failCount > _consecutiveFailCount) {
                                 if(_failMultiplier < 100f) {
@@ -239,7 +240,7 @@ namespace MapPartyAssist.Services {
                                 _failMultiplier = 1;
                             }
                             //todo check for invalid items
-                            _toCheck = _toCheck.Skip(100).ToList();
+                            _toCheck = _toCheck.Skip(_concurrentItemsMax).ToList();
                         } catch(ArgumentException e) {
                             //invalid region or not logged in...
                             //_plugin.Log.Warning("argument exception on update prices");
