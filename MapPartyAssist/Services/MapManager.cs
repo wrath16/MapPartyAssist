@@ -208,6 +208,9 @@ namespace MapPartyAssist.Services {
                 case (int)XivChatType.Party:
                 case (int)XivChatType.Alliance:
                 case (int)XivChatType.Say:
+                case (int)XivChatType.Yell:
+                case (int)XivChatType.Shout:
+                case (int)XivChatType.TellIncoming:
                     var senderPayload = (PlayerPayload?)sender.Payloads.FirstOrDefault(p => p.Type == PayloadType.Player);
                     if(senderPayload is null) {
                         //from same world as player
@@ -325,7 +328,7 @@ namespace MapPartyAssist.Services {
                         _diggers.Add(_plugin.GameStateManager.GetCurrentPlayer(), messageTime);
                     }
                 }
-            } else if(type == XivChatType.Party || type == XivChatType.Say || type == XivChatType.Alliance) {
+            } else if(type == XivChatType.Party || type == XivChatType.Say || type == XivChatType.Alliance || type == XivChatType.Shout || type == XivChatType.Yell || type == XivChatType.TellIncoming) {
                 //getting map links
                 if(playerKey != null && mapLink != null && _plugin.GameStateManager.CurrentPartyList.ContainsKey(playerKey) && (_plugin.GameStateManager.CurrentPartyList[playerKey].MapLink == null || !_plugin.Configuration.NoOverwriteMapLink)) {
                     _plugin.GameStateManager.CurrentPartyList[playerKey].MapLink = mapLink;
