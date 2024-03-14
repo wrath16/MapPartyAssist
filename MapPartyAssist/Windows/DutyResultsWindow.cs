@@ -154,17 +154,21 @@ namespace MapPartyAssist.Windows {
                 Refresh(0);
             }
             ImGuiComponents.HelpMarker("Party members present during run. \nSeparate party members by commas.");
-
-            ImGui.PushFont(UiBuilder.IconFont);
-            ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
-            ImGui.PopFont();
+            try {
+                ImGui.PushFont(UiBuilder.IconFont);
+                ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
+            } finally {
+                ImGui.PopFont();
+            }
             ImGui.SameLine();
             ImGui.TextColored(ImGuiColors.DalamudRed, $"EDIT AT YOUR OWN RISK");
             ImGui.SameLine();
-            ImGui.PushFont(UiBuilder.IconFont);
-            ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
-            ImGui.PopFont();
-
+            try {
+                ImGui.PushFont(UiBuilder.IconFont);
+                ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
+            } finally {
+                ImGui.PopFont();
+            }
             ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true);
             foreach(var results in _dutyResults) {
                 if(_collapseAll) {

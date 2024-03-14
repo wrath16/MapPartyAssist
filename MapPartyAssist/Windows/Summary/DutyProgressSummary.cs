@@ -75,6 +75,7 @@ namespace MapPartyAssist.Windows.Summary {
                 int numChambers = duty.ChamberCount;
                 string successVerb = isRoulette ? "Complete" : "Open";
                 string passiveSuccessVerb = isRoulette ? "Completed" : "Reached";
+                string fightVerb = isRoulette ? "Defeat" : "Clear";
                 string stageNoun = isRoulette ? "summon" : "chamber";
                 string gateNoun = isRoulette ? "summon" : "gate";
                 string chamberPattern = @"(?<=(Open|Complete) )[\d|final]+(?=(st|nd|rd|th)? (chamber|summon|trial))";
@@ -109,6 +110,17 @@ namespace MapPartyAssist.Windows.Summary {
                                 } else if(importChamberMatch.Value.Equals("final", StringComparison.OrdinalIgnoreCase)) {
                                     dutyStat.OpenChambers[dutyStat.OpenChambers.Length - 1] += (int)currentCheckpointTotal;
                                 }
+                            }
+
+                            //check for wipes
+                            if(duty.Checkpoints![i].Name.Contains(fightVerb, StringComparison.OrdinalIgnoreCase)) {
+                                uint wipes = 0;
+                                if(i == 0) {
+                                    wipes = import.TotalRuns - currentCheckpointTotal;
+                                } else {
+                                    wipes = import.CheckpointTotals[i - 1] - currentCheckpointTotal;
+                                }
+                                dutyStat.TotalWipes += (int)wipes;
                             }
                         }
                     } else {

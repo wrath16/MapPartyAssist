@@ -211,16 +211,19 @@ namespace MapPartyAssist.Windows {
                     var clear = _model.ClearSequence[i];
                     var clearString = clear.ToString();
                     //ImGui.SameLine();
-                    ImGui.PushFont(UiBuilder.IconFont);
-                    if(i != 0) {
-                        if(ImGui.Button($"{FontAwesomeIcon.TrashAlt.ToIconString()}##{i}--DeleteClear")) {
-                            _model.ClearSequence.RemoveAt(i);
-                            //if(_model.ClearSequence.Count <= 0) {
-                            //    _model.ClearSequence = null;
-                            //}
+                    try {
+                        ImGui.PushFont(UiBuilder.IconFont);
+                        if(i != 0) {
+                            if(ImGui.Button($"{FontAwesomeIcon.TrashAlt.ToIconString()}##{i}--DeleteClear")) {
+                                _model.ClearSequence.RemoveAt(i);
+                                //if(_model.ClearSequence.Count <= 0) {
+                                //    _model.ClearSequence = null;
+                                //}
+                            }
                         }
+                    } finally {
+                        ImGui.PopFont();
                     }
-                    ImGui.PopFont();
                     ImGui.TableNextColumn();
                     ImGui.SetNextItemWidth(_inputWidth);
                     if(ImGui.InputText($"##{i}--ClearInput", ref clearString, 9, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.CharsDecimal)) {

@@ -1,4 +1,5 @@
-﻿using Dalamud.Interface.Utility;
+﻿using Dalamud.Interface;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using ImGuiNET;
@@ -23,6 +24,7 @@ namespace MapPartyAssist.Windows {
         private DutyProgressSummary _dutySummary;
         private DutyResultsListView _dutyResultsList;
         private MapListView _mapList;
+        private bool _collapseFilters;
         internal List<DataFilter> Filters { get; private set; } = new();
 
         internal SemaphoreSlim RefreshLock { get; init; } = new SemaphoreSlim(1, 1);
@@ -325,40 +327,53 @@ namespace MapPartyAssist.Windows {
                 ImGui.EndMenuBar();
             }
 
-            ImGui.BeginChild("FilterChild", new Vector2(ImGui.GetContentRegionAvail().X, float.Max(ImGuiHelpers.GlobalScale * 150, ImGui.GetWindowHeight() / 4f)), true, ImGuiWindowFlags.AlwaysAutoResize);
+            if(!_collapseFilters && ImGui.BeginChild("FilterChild", new Vector2(ImGui.GetContentRegionAvail().X, float.Max(ImGuiHelpers.GlobalScale * 150, ImGui.GetWindowHeight() / 4f)), true, ImGuiWindowFlags.AlwaysAutoResize)) {
+                if(ImGui.BeginTable("FilterTable", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.BordersInnerH)) {
+                    ImGui.BeginTable("FilterTable", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.BordersInner);
+                    ImGui.TableSetupColumn("filterName", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 110f);
+                    ImGui.TableSetupColumn($"filters", ImGuiTableColumnFlags.WidthStretch);
+                    //ImGui.TableNextRow();
 
-            if(ImGui.BeginTable("FilterTable", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.BordersInnerH)) {
-                ImGui.BeginTable("FilterTable", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.BordersInner);
-                ImGui.TableSetupColumn("filterName", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 110f);
-                ImGui.TableSetupColumn($"filters", ImGuiTableColumnFlags.WidthStretch);
-                //ImGui.TableNextRow();
+                    foreach(var filter in Filters) {
+                        //ImGui.PushStyleVar(ImGuiStyleVar.CellPadding, 4);
+                        ImGui.TableNextColumn();
 
-                foreach(var filter in Filters) {
-                    //ImGui.PushStyleVar(ImGuiStyleVar.CellPadding, 4);
-                    ImGui.TableNextColumn();
-
-                    if(filter.HelpMessage != null) {
+                        if(filter.HelpMessage != null) {
+                            ImGui.AlignTextToFramePadding();
+                            ImGuiHelper.HelpMarker(filter.HelpMessage);
+                            ImGui.SameLine();
+                        }
+                        //ImGui.GetStyle().FramePadding.X = ImGui.GetStyle().FramePadding.X - 2f;
+                        string nameText = $"{filter.Name}:";
+                        ImGuiHelper.RightAlignCursor(nameText);
                         ImGui.AlignTextToFramePadding();
-                        ImGuiHelper.HelpMarker(filter.HelpMessage);
-                        ImGui.SameLine();
+                        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + float.Max(0, 16f - 4f * ImGuiHelpers.GlobalScale));
+                        ImGui.Text($"{nameText}");
+                        //ImGui.PopStyleVar();
+                        //ImGui.GetStyle().FramePadding.X = ImGui.GetStyle().FramePadding.X + 2f;
+                        ImGui.TableNextColumn();
+                        //if(filter.GetType() == typeof(TimeFilter)) {
+                        //    ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X / 2f);
+                        //}
+                        filter.Draw();
                     }
-                    //ImGui.GetStyle().FramePadding.X = ImGui.GetStyle().FramePadding.X - 2f;
-                    string nameText = $"{filter.Name}:";
-                    ImGuiHelper.RightAlignCursor(nameText);
-                    ImGui.AlignTextToFramePadding();
-                    ImGui.SetCursorPosX(ImGui.GetCursorPosX() + float.Max(0, 16f - 4f * ImGuiHelpers.GlobalScale));
-                    ImGui.Text($"{nameText}");
-                    //ImGui.PopStyleVar();
-                    //ImGui.GetStyle().FramePadding.X = ImGui.GetStyle().FramePadding.X + 2f;
-                    ImGui.TableNextColumn();
-                    //if(filter.GetType() == typeof(TimeFilter)) {
-                    //    ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X / 2f);
-                    //}
-                    filter.Draw();
+                    ImGui.EndTable();
                 }
-                ImGui.EndTable();
+                ImGui.EndChild();
             }
-            ImGui.EndChild();
+            //hide filter button
+            try {
+                ImGui.PushFont(UiBuilder.IconFont);
+                ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(0, -5 * ImGui.GetIO().FontGlobalScale));
+                ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
+                if(ImGui.Button($"{(_collapseFilters ? (char)FontAwesomeIcon.CaretDown : (char)FontAwesomeIcon.CaretUp)}", new Vector2(-1, 10 * ImGui.GetIO().FontGlobalScale))) {
+                    _collapseFilters = !_collapseFilters;
+                }
+                ImGui.PopStyleVar(2);
+            } finally {
+                ImGui.PopFont();
+            }
+            ImGuiHelper.WrappedTooltip($"{(_collapseFilters ? "Show filters" : "Hide filters")}");
 
             if(ImGui.BeginTabBar("TabBar", ImGuiTabBarFlags.None)) {
                 if(ImGui.BeginTabItem("Duty Progress Summary")) {

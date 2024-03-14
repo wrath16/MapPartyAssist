@@ -127,16 +127,21 @@ namespace MapPartyAssist.Windows.Summary {
                     MaximumSize = _statsWindow.SizeConstraints!.Value.MaximumSize,
                 };
                 if(_plugin.AllowEdit) {
-                    ImGui.PushFont(UiBuilder.IconFont);
-                    ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
-                    ImGui.PopFont();
+                    try {
+                        ImGui.PushFont(UiBuilder.IconFont);
+                        ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
+                    } finally {
+                        ImGui.PopFont();
+                    }
                     ImGui.SameLine();
                     ImGui.TextColored(ImGuiColors.DalamudRed, $"EDIT MODE ENABLED");
                     ImGui.SameLine();
-                    ImGui.PushFont(UiBuilder.IconFont);
-                    ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
-                    ImGui.PopFont();
-
+                    try {
+                        ImGui.PushFont(UiBuilder.IconFont);
+                        ImGui.TextColored(ImGuiColors.DalamudRed, $"{FontAwesomeIcon.ExclamationTriangle.ToIconString()}");
+                    } finally {
+                        ImGui.PopFont();
+                    }
                     if(ImGui.Button("Save")) {
                         _plugin.DataQueue.QueueDataOperation(() => {
                             _plugin.StorageManager.UpdateDutyResults(_dutyResultsPage.Where(dr => dr.IsEdited));

@@ -339,11 +339,14 @@ namespace MapPartyAssist.Windows {
 
                     }
                     ImGui.SetNextItemWidth(32);
-                    ImGui.PushFont(UiBuilder.IconFont);
-                    if(ImGui.Button(FontAwesomeIcon.Copy.ToIconString())) {
-                        ImGui.SetClipboardText(_translateResult);
+                    try {
+                        ImGui.PushFont(UiBuilder.IconFont);
+                        if(ImGui.Button(FontAwesomeIcon.Copy.ToIconString())) {
+                            ImGui.SetClipboardText(_translateResult);
+                        }
+                    } finally {
+                        ImGui.PopFont();
                     }
-                    ImGui.PopFont();
                     ImGui.SameLine();
 
                     ImGui.Text("Result: ");

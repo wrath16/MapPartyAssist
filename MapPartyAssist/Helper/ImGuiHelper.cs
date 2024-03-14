@@ -1,4 +1,5 @@
-﻿using ImGuiNET;
+﻿using Dalamud.Interface.Utility;
+using ImGuiNET;
 
 namespace MapPartyAssist.Helper {
     internal static class ImGuiHelper {
@@ -22,6 +23,34 @@ namespace MapPartyAssist.Helper {
             if(ImGui.IsItemHovered()) {
                 ImGui.BeginTooltip();
                 ImGui.Text(text);
+                ImGui.EndTooltip();
+            }
+        }
+
+        internal static void WrappedTooltip(string text, float width = 400f) {
+            width *= ImGuiHelpers.GlobalScale;
+            string[] splitStrings = text.Split(" ");
+            string wrappedString = "";
+            string currentLine = "";
+
+            foreach(var word in splitStrings) {
+                if(ImGui.CalcTextSize($"{currentLine} {word}").X > width) {
+                    wrappedString += $"\n{word}";
+                    currentLine = word;
+                } else {
+                    if(currentLine == "") {
+                        wrappedString += $"{word}";
+                        currentLine += $"{word}";
+                    } else {
+                        wrappedString += $" {word}";
+                        currentLine += $" {word}";
+                    }
+                }
+            }
+
+            if(ImGui.IsItemHovered()) {
+                ImGui.BeginTooltip();
+                ImGui.Text(wrappedString);
                 ImGui.EndTooltip();
             }
         }
