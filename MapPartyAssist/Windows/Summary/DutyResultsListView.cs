@@ -52,7 +52,8 @@ namespace MapPartyAssist.Windows.Summary {
                 Dictionary<LootResultKey, LootResultValue> newLootResults = new();
                 int newTotalGil = 0;
                 foreach(var checkpointResult in dr.CheckpointResults) {
-                    foreach(var lootResult in checkpointResult.LootResults!) {
+                    if(checkpointResult.LootResults == null) continue;
+                    foreach(var lootResult in checkpointResult.LootResults) {
                         var key = new LootResultKey { ItemId = lootResult.ItemId, IsHQ = lootResult.IsHQ };
                         bool selfObtained = lootResult.Recipient is not null && selfPlayers.Contains(lootResult.Recipient);
                         var price = _plugin.PriceHistory.CheckPrice(key);
