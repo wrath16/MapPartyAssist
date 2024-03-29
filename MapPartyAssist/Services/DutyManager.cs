@@ -717,8 +717,8 @@ namespace MapPartyAssist.Services {
                 };
                 if(LastCheckpoint is null) {
                     _firstLootResults.Add(lootResult);
-                } else {
-                    LastCheckpoint.LootResults!.Add(lootResult);
+                } else if(LastCheckpoint.LootResults != null) {
+                    LastCheckpoint.LootResults.Add(lootResult);
                 }
             } else {
                 matchingLootResults.Recipient = recipient;

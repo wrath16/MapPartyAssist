@@ -96,7 +96,7 @@ namespace MapPartyAssist.Services {
         private static readonly Dictionary<ClientLanguage, Regex> OpenCofferRegex = new() {
             { ClientLanguage.English, new Regex(@"releasing a powerful musk into the air!$", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"libérant un musc très fort", RegexOptions.IgnoreCase) },
-            { ClientLanguage.German, new Regex(@"(Eine Falle! Das wird nicht ohne Blutvergießen vonstatten gehen\.|Eine Falle wurde ausgelöst, die einen starken Lockduft versprüht!)$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"(Eine Falle! Das wird nicht ohne Blutvergießen vonstattengehen|Eine Falle wurde ausgelöst, die einen starken Lockduft versprüht!)$", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"魔物を誘引する臭いが立ちこめた！$", RegexOptions.IgnoreCase) }
         };
 
