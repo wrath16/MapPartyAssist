@@ -230,7 +230,7 @@ namespace MapPartyAssist.Services {
         internal static readonly Dictionary<ClientLanguage, Regex> FinalChamberRegex = new() {
             { ClientLanguage.English, new Regex(@"(The gate to Condemnation( is)? open(s)?|The gate to the final chamber opens)", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"Vous avez ouvert la porte menant (vers|à) la dernière salle", RegexOptions.IgnoreCase) },
-            { ClientLanguage.German, new Regex(@"Das Tor zur (letzten|Verdammnis) Kammer (öffnet sich|steht offen!)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"Das Tor zur (letzten Kammer|Verdammnis) (öffnet sich|steht offen!)", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"「最終区画」への扉が開いた！", RegexOptions.IgnoreCase) }
         };
 
