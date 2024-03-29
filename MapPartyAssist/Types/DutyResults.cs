@@ -69,11 +69,11 @@ namespace MapPartyAssist.Types {
 
         public bool HasLootResults() {
             foreach(var cpr in CheckpointResults) {
-                if(cpr.LootResults is not null) {
-                    return true;
+                if(cpr.LootResults is null) {
+                    return false;
                 }
             }
-            return false;
+            return true;
         }
 
         public List<LootResult> GetSummarizeLootResults(bool separateHQ = false) {
