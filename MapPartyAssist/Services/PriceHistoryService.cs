@@ -1,10 +1,11 @@
-﻿using Lumina.Excel.GeneratedSheets;
+﻿using Lumina.Excel.GeneratedSheets2;
 using MapPartyAssist.Types;
 using MapPartyAssist.Types.REST.Universalis;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,9 +13,9 @@ using System.Threading.Tasks;
 namespace MapPartyAssist.Services {
     internal class PriceHistoryService : IDisposable {
 
-        private const int _queryThresholdMinutes = 2;
+        private const float _queryThresholdMinutes = 2f;
         private const int _updateCheckSeconds = 15;
-        private const int _staleDataHours = 48;
+        private const float _staleDataHours = 72f;
         private const int _concurrentItemsMax = 100;
         private const int _maxSalesInAverage = 25;
         private const int _entriesToQuery = 100;
@@ -25,6 +26,7 @@ namespace MapPartyAssist.Services {
         private Dictionary<LootResultKey, int> _priceCache = new();
         private Dictionary<LootResultKey, DateTime> _priceCacheUpdateTime = new();
         private List<uint> _toCheck = new();
+        private List<uint> _blacklist = new();
         private DateTime _lastQuery;
         private CancellationTokenSource? _cancelUpdate;
         private SemaphoreSlim _updateLock = new(1, 1);
@@ -68,8 +70,8 @@ namespace MapPartyAssist.Services {
         internal void DisablePolling() {
             if(IsEnabled) {
                 _plugin.Log.Information("Disabling price updates.");
-                _cancelUpdate.Cancel();
-                _cancelUpdate.Dispose();
+                _cancelUpdate?.Cancel();
+                _cancelUpdate?.Dispose();
             }
         }
 
@@ -94,6 +96,7 @@ namespace MapPartyAssist.Services {
             _plugin.Log.Information("Rebuilding price cache.");
             _priceCache = new();
             _priceCacheUpdateTime = new();
+            _blacklist = new();
             var storagePrices = _plugin.StorageManager.GetPrices().Query().Where(p => p.Region == _plugin.GameStateManager.GetCurrentRegion()).ToList();
             foreach(var price in storagePrices) {
                 try {
@@ -194,6 +197,10 @@ namespace MapPartyAssist.Services {
                 return null;
             }
 
+            if(_blacklist.Contains(itemKey.ItemId)) {
+                return null;
+            }
+
             var row = _plugin.DataManager.GetExcelSheet<Item>()?.GetRow(itemKey.ItemId);
             if(row is null || !row.CanBeHq && itemKey.IsHQ || row.IsUntradable) {
                 return null;
@@ -219,7 +226,7 @@ namespace MapPartyAssist.Services {
 
         private async void CheckAndUpdate() {
 #if DEBUG
-            _plugin.Log.Verbose($"checking price validity...fail multiplier: {_failMultiplier}");
+            _plugin.Log.Verbose($"checking price validity ...fail count: {_failCount} ...fail multiplier: {_failMultiplier}");
 #endif
             if(_toCheck.Count > 0 && (DateTime.Now - _lastQuery).TotalMinutes > _queryThresholdMinutes * _failMultiplier && _plugin.ClientState.IsLoggedIn && _updateLock.Wait(0)) {
                 try {
@@ -265,7 +272,7 @@ namespace MapPartyAssist.Services {
                 foreach(var item in results.Value.Items) {
                     string itemName = "";
 #if DEBUG
-                    itemName = _plugin.DataManager.GetExcelSheet<Item>().GetRow((uint)item.Key).Name;
+                    itemName = _plugin.DataManager.GetExcelSheet<Item>().GetRow(item.Key).Name;
 #endif
                     //int normalTotal = 0;
                     int normalCount = 0;
@@ -278,11 +285,11 @@ namespace MapPartyAssist.Services {
                         if(sale.HQ && hqCount < _maxSalesInAverage) {
                             //hqTotal += sale.PricePerUnit;
                             hqCount++;
-                            hqSales.Add(sale.PricePerUnit);
+                            hqSales.Add((int)sale.PricePerUnit);
                         } else if(normalCount < _maxSalesInAverage) {
                             //normalTotal += sale.PricePerUnit;
                             normalCount++;
-                            normalSales.Add(sale.PricePerUnit);
+                            normalSales.Add((int)sale.PricePerUnit);
                         }
                     }
 
@@ -319,7 +326,14 @@ namespace MapPartyAssist.Services {
                         _plugin.Log.Verbose(string.Format("ID: {0,-8} HQ:{1,-5} Name: {2,-50} Median Price: {3,-9}", item.Key, itemKey.IsHQ, itemName, hqMedian));
                     }
                 }
+                results.Value.UnresolvedItems.ForEach(AddToBlacklist);
+            }
+        }
 
+        private void AddToBlacklist(uint itemId) {
+            if(!_blacklist.Contains(itemId)) {
+                _plugin.Log.Verbose($"Adding {itemId} to price blacklist");
+                _blacklist.Add(itemId);
             }
         }
 
@@ -359,9 +373,17 @@ namespace MapPartyAssist.Services {
                 _plugin.Log.Debug($"Query: {endpoint}{searchParams}");
                 HttpResponseMessage response = await client.GetAsync(searchParams);
                 _lastQuery = DateTime.Now;
+
                 if(!response.IsSuccessStatusCode) {
                     _plugin.Log.Error($"Failed to query Universalis API. {(int)response.StatusCode} {response.StatusCode}\n{response.ReasonPhrase}");
                     _failCount++;
+                    //single invalid items will generate 404 errors
+                    if(response.StatusCode == HttpStatusCode.NotFound && itemIds.Length == 1) {
+                        //return new HistoryResponse() {
+                        //    UnresolvedItems = [itemIds[0]]
+                        //};
+                        AddToBlacklist(itemIds[0]);
+                    }
                     return null;
                 } else {
                     _failCount = 0;
@@ -414,7 +436,7 @@ namespace MapPartyAssist.Services {
                         continue;
                     case JsonToken.PropertyName:
                         var propertyName1 = (string?)reader.Value;
-                        if(int.TryParse(propertyName1, out var value)) {
+                        if(uint.TryParse(propertyName1, out var value)) {
                             reader.Read();
                             var x = serializer.Deserialize<ItemHistory>(reader);
                             //PluginLog.Debug($"found item: {x.ItemID}");
@@ -422,7 +444,7 @@ namespace MapPartyAssist.Services {
                         } else {
                             if(propertyName1 == "unresolvedItems") {
                                 reader.Read();
-                                int[]? unresolvedItems = serializer.Deserialize<int[]>(reader);
+                                uint[]? unresolvedItems = serializer.Deserialize<uint[]>(reader);
                                 //historyResponse.UnresolvedItems = new(unresolvedItems ?? []);
                                 if(unresolvedItems != null) {
                                     historyResponse.UnresolvedItems = new(unresolvedItems);

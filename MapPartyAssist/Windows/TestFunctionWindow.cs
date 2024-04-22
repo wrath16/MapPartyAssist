@@ -288,6 +288,13 @@ namespace MapPartyAssist.Windows {
                         //SeString message = new([new RawPayload("")])
                     }
 
+                    if(ImGui.Button("Get Wipes")) {
+                        var maps = _plugin.StorageManager.GetDutyResults().Query().Where(x => x.DutyId == 276).ToList().Where(x => x.CheckpointResults.Count % 2 == 0);
+                        foreach(var map in maps) {
+                            _plugin.Log.Debug(map.Time.ToString());
+                        }
+                    }
+
 
                     ImGui.EndTabItem();
                 }
@@ -396,12 +403,14 @@ namespace MapPartyAssist.Windows {
                             List<uint> intIDs = new();
                             foreach(var id in stringIDs) {
                                 if(uint.TryParse(id, out uint intID)) {
-                                    intIDs.Add(intID);
+                                    _plugin.PriceHistory.CheckPrice(new() { ItemId = intID });
+                                    
+                                    //intIDs.Add(intID);
                                     //_plugin.PriceHistory.QueryUniversalisHistory(intIDs.ToArray(), Region.NorthAmerica);
-                                    //var price = _plugin.PriceHistory.CheckPrice(intID, false);
-                                    //if(price != null) {
-                                    //    _plugin.Log.Debug($"itemID: {id} price: {price}");
-                                    //}
+                                    ////var price = _plugin.PriceHistory.CheckPrice(intID, false);
+                                    ////if(price != null) {
+                                    ////    _plugin.Log.Debug($"itemID: {id} price: {price}");
+                                    ////}
                                 }
                             }
                             //_plugin.PriceHistory.UpdatePrices(intIDs.ToArray());

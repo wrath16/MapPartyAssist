@@ -2,12 +2,12 @@
 
 namespace MapPartyAssist.Types.REST.Universalis {
     public struct HistoryResponse {
-        public Dictionary<int, ItemHistory> Items;
-        public List<int> ItemIDs, UnresolvedItems;
+        public Dictionary<uint, ItemHistory> Items;
+        public List<uint> ItemIDs, UnresolvedItems;
     }
 
     public struct ItemHistory {
-        public int ItemID;
+        public uint ItemID;
         public float RegularSaleVelocity, NQSaleVelocity, HQSaleVelocity;
         public string RegionName;
         public long LastUploadTime;
@@ -16,7 +16,7 @@ namespace MapPartyAssist.Types.REST.Universalis {
 
     public struct SaleEntry {
         public bool HQ, OnMannequin;
-        public int Quantity, PricePerUnit, WorldID;
+        public uint Quantity, PricePerUnit, WorldID;
         public string BuyerName, WorldName;
         public long Timestamp;
     }
