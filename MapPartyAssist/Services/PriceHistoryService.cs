@@ -267,66 +267,70 @@ namespace MapPartyAssist.Services {
         }
 
         private async Task UpdatePrices(uint[] itemIds) {
-            HistoryResponse? results = await QueryUniversalisHistory(itemIds, _plugin.GameStateManager.GetCurrentRegion());
-            if(results is not null) {
-                foreach(var item in results.Value.Items) {
-                    string itemName = "";
+            try {
+                HistoryResponse? results = await QueryUniversalisHistory(itemIds, _plugin.GameStateManager.GetCurrentRegion());
+                if(results is not null) {
+                    foreach(var item in results.Value.Items) {
+                        string itemName = "";
 #if DEBUG
-                    itemName = _plugin.DataManager.GetExcelSheet<Item>().GetRow(item.Key).Name;
+                        itemName = _plugin.DataManager.GetExcelSheet<Item>().GetRow(item.Key).Name;
 #endif
-                    //int normalTotal = 0;
-                    int normalCount = 0;
-                    //int hqTotal = 0;
-                    int hqCount = 0;
-                    //int averagePrice;
-                    List<int> normalSales = new();
-                    List<int> hqSales = new();
-                    foreach(var sale in item.Value.Entries) {
-                        if(sale.HQ && hqCount < _maxSalesInAverage) {
-                            //hqTotal += sale.PricePerUnit;
-                            hqCount++;
-                            hqSales.Add((int)sale.PricePerUnit);
-                        } else if(normalCount < _maxSalesInAverage) {
-                            //normalTotal += sale.PricePerUnit;
-                            normalCount++;
-                            normalSales.Add((int)sale.PricePerUnit);
+                        //int normalTotal = 0;
+                        int normalCount = 0;
+                        //int hqTotal = 0;
+                        int hqCount = 0;
+                        //int averagePrice;
+                        List<int> normalSales = new();
+                        List<int> hqSales = new();
+                        foreach(var sale in item.Value.Entries) {
+                            if(sale.HQ && hqCount < _maxSalesInAverage) {
+                                //hqTotal += sale.PricePerUnit;
+                                hqCount++;
+                                hqSales.Add((int)sale.PricePerUnit);
+                            } else if(normalCount < _maxSalesInAverage) {
+                                //normalTotal += sale.PricePerUnit;
+                                normalCount++;
+                                normalSales.Add((int)sale.PricePerUnit);
+                            }
                         }
-                    }
 
-                    if(normalCount > 0) {
-                        LootResultKey itemKey = new() {
-                            ItemId = (uint)item.Key,
-                            IsHQ = false,
-                        };
-                        int normalMedian = normalSales.Order().ElementAt(normalSales.Count / 2);
-                        //averagePrice = normalTotal / normalCount;
-                        if(_priceCache.ContainsKey(itemKey)) {
-                            _priceCache[itemKey] = normalMedian;
-                            _priceCacheUpdateTime[itemKey] = DateTime.Now;
-                        } else {
-                            _priceCache.Add(itemKey, normalMedian);
-                            _priceCacheUpdateTime.Add(itemKey, DateTime.Now);
+                        if(normalCount > 0) {
+                            LootResultKey itemKey = new() {
+                                ItemId = (uint)item.Key,
+                                IsHQ = false,
+                            };
+                            int normalMedian = normalSales.Order().ElementAt(normalSales.Count / 2);
+                            //averagePrice = normalTotal / normalCount;
+                            if(_priceCache.ContainsKey(itemKey)) {
+                                _priceCache[itemKey] = normalMedian;
+                                _priceCacheUpdateTime[itemKey] = DateTime.Now;
+                            } else {
+                                _priceCache.Add(itemKey, normalMedian);
+                                _priceCacheUpdateTime.Add(itemKey, DateTime.Now);
+                            }
+                            _plugin.Log.Verbose(string.Format("ID: {0,-8} HQ:{1,-5} Name: {2,-50} Median Price: {3,-9}", item.Key, itemKey.IsHQ, itemName, normalMedian));
                         }
-                        _plugin.Log.Verbose(string.Format("ID: {0,-8} HQ:{1,-5} Name: {2,-50} Median Price: {3,-9}", item.Key, itemKey.IsHQ, itemName, normalMedian));
-                    }
-                    if(hqCount > 0) {
-                        LootResultKey itemKey = new() {
-                            ItemId = (uint)item.Key,
-                            IsHQ = true,
-                        };
-                        int hqMedian = hqSales.Order().ElementAt(hqSales.Count / 2);
-                        //averagePrice = hqTotal / hqCount;
-                        if(_priceCache.ContainsKey(itemKey)) {
-                            _priceCache[itemKey] = hqMedian;
-                            _priceCacheUpdateTime[itemKey] = DateTime.Now;
-                        } else {
-                            _priceCache.Add(itemKey, hqMedian);
-                            _priceCacheUpdateTime.Add(itemKey, DateTime.Now);
+                        if(hqCount > 0) {
+                            LootResultKey itemKey = new() {
+                                ItemId = (uint)item.Key,
+                                IsHQ = true,
+                            };
+                            int hqMedian = hqSales.Order().ElementAt(hqSales.Count / 2);
+                            //averagePrice = hqTotal / hqCount;
+                            if(_priceCache.ContainsKey(itemKey)) {
+                                _priceCache[itemKey] = hqMedian;
+                                _priceCacheUpdateTime[itemKey] = DateTime.Now;
+                            } else {
+                                _priceCache.Add(itemKey, hqMedian);
+                                _priceCacheUpdateTime.Add(itemKey, DateTime.Now);
+                            }
+                            _plugin.Log.Verbose(string.Format("ID: {0,-8} HQ:{1,-5} Name: {2,-50} Median Price: {3,-9}", item.Key, itemKey.IsHQ, itemName, hqMedian));
                         }
-                        _plugin.Log.Verbose(string.Format("ID: {0,-8} HQ:{1,-5} Name: {2,-50} Median Price: {3,-9}", item.Key, itemKey.IsHQ, itemName, hqMedian));
                     }
+                    results.Value.UnresolvedItems.ForEach(AddToBlacklist);
                 }
-                results.Value.UnresolvedItems.ForEach(AddToBlacklist);
+            } catch(Exception e) {
+                _plugin.Log.Error($"Failed to update prices: {e.GetType()} {e.Message}\n{e.StackTrace}");
             }
         }
 
