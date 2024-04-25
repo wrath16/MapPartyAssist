@@ -400,7 +400,7 @@ namespace MapPartyAssist.Services {
                     //    Formatting = Formatting.Indented
                     //};
                     //jsonWriter.WriteToken(jsonReader);
-                    //_plugin.Log.Verbose(stringWriter.ToString());
+                    //_plugin.Log.Debug(stringWriter.ToString());
 #endif
                     HistoryResponse? result = null;
                     try {
@@ -432,6 +432,7 @@ namespace MapPartyAssist.Services {
                 //reader.Read();
                 var itemHistory = serializer.Deserialize<ItemHistory>(reader);
                 historyResponse.Items.Add(itemHistory.ItemID, itemHistory);
+                historyResponse.UnresolvedItems = new();
             }
 
             while(reader.Read()) {
