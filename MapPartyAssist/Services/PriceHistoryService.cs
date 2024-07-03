@@ -16,7 +16,7 @@ namespace MapPartyAssist.Services {
         private const float _queryThresholdMinutes = 2f;
         private const int _updateCheckSeconds = 15;
         private const float _staleDataHours = 72f;
-        private const int _concurrentItemsMax = 100;
+        private const int _concurrentItemsMax = 50;
         private const int _maxSalesInAverage = 25;
         private const int _entriesToQuery = 100;
         private const int _maxSaleWindowDays = 90;
@@ -296,7 +296,7 @@ namespace MapPartyAssist.Services {
 
                         if(normalCount > 0) {
                             LootResultKey itemKey = new() {
-                                ItemId = (uint)item.Key,
+                                ItemId = item.Key,
                                 IsHQ = false,
                             };
                             int normalMedian = normalSales.Order().ElementAt(normalSales.Count / 2);
@@ -312,7 +312,7 @@ namespace MapPartyAssist.Services {
                         }
                         if(hqCount > 0) {
                             LootResultKey itemKey = new() {
-                                ItemId = (uint)item.Key,
+                                ItemId = item.Key,
                                 IsHQ = true,
                             };
                             int hqMedian = hqSales.Order().ElementAt(hqSales.Count / 2);

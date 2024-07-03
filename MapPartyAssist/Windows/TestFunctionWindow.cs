@@ -1,6 +1,6 @@
 ﻿#pragma warning disable
 #if DEBUG
-using Dalamud;
+using Dalamud.Game;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface;
@@ -404,7 +404,7 @@ namespace MapPartyAssist.Windows {
                             foreach(var id in stringIDs) {
                                 if(uint.TryParse(id, out uint intID)) {
                                     _plugin.PriceHistory.CheckPrice(new() { ItemId = intID });
-                                    
+
                                     //intIDs.Add(intID);
                                     //_plugin.PriceHistory.QueryUniversalisHistory(intIDs.ToArray(), Region.NorthAmerica);
                                     ////var price = _plugin.PriceHistory.CheckPrice(intID, false);

@@ -1,4 +1,4 @@
-﻿using Dalamud;
+﻿using Dalamud.Game;
 using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 using Dalamud.Game.Text;
@@ -169,7 +169,7 @@ namespace MapPartyAssist.Services {
             var dutyName = dutyNameNode->GetAsAtkTextNode()->NodeText.ToString();
             //var rowId = _plugin.GetRowId<Addon>(dutyNameNode->GetAsAtkTextNode()->NodeText.ToString(), "Text");
 
-            if(baseNode->IsVisible && TreasureHuntRegex[_plugin.ClientState.ClientLanguage].IsMatch(dutyName)) {
+            if(baseNode->IsVisible() && TreasureHuntRegex[_plugin.ClientState.ClientLanguage].IsMatch(dutyName)) {
                 if(!_boundByMapDuty) {
                     _plugin.Log.Verbose($"Bound by map duty!");
                 }
@@ -185,7 +185,7 @@ namespace MapPartyAssist.Services {
             }
         }
 
-        private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled) {
+        private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled) {
             //refuse to process if not a supported language
             if(!_plugin.IsLanguageSupported()) {
                 return;

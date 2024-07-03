@@ -20,5 +20,4 @@ namespace MapPartyAssist.Types.REST.Universalis {
         public string BuyerName, WorldName;
         public long Timestamp;
     }
-
 }

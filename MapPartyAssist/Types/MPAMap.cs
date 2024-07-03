@@ -124,7 +124,9 @@ namespace MapPartyAssist.Types {
         Kumbhiraskin,
         Ophiotauroskin,
         PotentiallySpecial,
-        ConceivablySpecial
+        ConceivablySpecial,
+        Loboskin,
+        Braaxskin
     }
 
     public enum TreasureMapCategory {
@@ -134,6 +136,7 @@ namespace MapPartyAssist.Types {
         Stormblood,
         Shadowbringers,
         Endwalker,
-        Elpis
+        Elpis,
+        Dawntrail
     }
 }

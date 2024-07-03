@@ -11,7 +11,7 @@ namespace MapPartyAssist.Helper {
         internal static IPluginLog? Log;
 
         internal static unsafe AtkResNode* GetNodeByIDChain(string addon, params uint[] ids) {
-            AtkUnitBase* addonNode = AtkStage.GetSingleton()->RaptureAtkUnitManager->GetAddonByName(addon);
+            AtkUnitBase* addonNode = AtkStage.Instance()->RaptureAtkUnitManager->GetAddonByName(addon);
             if(addonNode == null || ids.Length <= 0) {
                 return null;
             }
@@ -30,7 +30,7 @@ namespace MapPartyAssist.Helper {
                 return null;
             }
 
-            if(node->NodeID == ids[0]) {
+            if(node->NodeId == ids[0]) {
                 if(ids.Length == 1) {
                     return node;
                 }
@@ -75,10 +75,10 @@ namespace MapPartyAssist.Helper {
             if(Log is null) {
                 return;
             }
-            AtkUnitBase* addonNode = AtkStage.GetSingleton()->RaptureAtkUnitManager->GetAddonByName(addon);
+            AtkUnitBase* addonNode = AtkStage.Instance()->RaptureAtkUnitManager->GetAddonByName(addon);
             if(addonNode != null) {
                 //Log.Debug($"addon name: {Marshal.PtrToStringUTF8((nint)addonNode->Name)} ptr: {string.Format("0x{0:X8}", new IntPtr(addonNode).ToString())}");
-                Log.Debug($"addon name: {Marshal.PtrToStringUTF8((nint)addonNode->Name)} ptr: 0x{new IntPtr(addonNode).ToString("X8")}");
+                Log.Debug($"addon name: {addonNode->NameString} ptr: 0x{new IntPtr(addonNode).ToString("X8")}");
                 PrintTextNodes(addonNode->RootNode);
             } else {
                 Log.Debug($"{addon} is null!");
@@ -96,12 +96,12 @@ namespace MapPartyAssist.Helper {
             int type = (int)node->Type;
             int childCount = node->ChildCount;
             var parentNode = node->ParentNode;
-            uint parentNodeId = parentNode != null ? parentNode->NodeID : 0;
+            uint parentNodeId = parentNode != null ? parentNode->NodeId : 0;
 
             string parentNodeIDString = "";
             string parentNodeTypeString = "";
             while(parentNode != null) {
-                parentNodeIDString += parentNode->NodeID;
+                parentNodeIDString += parentNode->NodeId;
                 parentNodeTypeString += parentNode->Type;
                 parentNode = parentNode->ParentNode;
                 if(parentNode != null) {
@@ -117,8 +117,8 @@ namespace MapPartyAssist.Helper {
                 var tNode = node->GetAsAtkTextNode();
                 if(tNode != null) {
                     string nodeText = tNode->NodeText.ToString();
-                    if(!nodeText.IsNullOrEmpty() && (node->IsVisible || !onlyVisible)) {
-                        Log.Debug(string.Format("Visible: {5,-6} ID: {0,-8} type: {1,-6} childCount: {2,-4} parentID: {3,-25} parentType: {4}", node->NodeID, type, childCount, parentNodeIDString, parentNodeTypeString, node->IsVisible));
+                    if(!nodeText.IsNullOrEmpty() && (node->IsVisible() || !onlyVisible)) {
+                        Log.Debug(string.Format("Visible: {5,-6} ID: {0,-8} type: {1,-6} childCount: {2,-4} parentID: {3,-25} parentType: {4}", node->NodeId, type, childCount, parentNodeIDString, parentNodeTypeString, node->IsVisible));
                         Log.Debug($"Text: {tNode->NodeText}");
                     }
                 }
@@ -135,7 +135,7 @@ namespace MapPartyAssist.Helper {
                 var component = componentNode->Component;
                 var uldManager = component->UldManager;
 
-                if(node->IsVisible || !onlyVisible) {
+                if(node->IsVisible() || !onlyVisible) {
                     for(int i = 0; i < uldManager.NodeListCount; i++) {
                         var childNode = uldManager.NodeList[i];
                         PrintTextNodes(childNode, false);
@@ -145,7 +145,7 @@ namespace MapPartyAssist.Helper {
 
             //check child nodes
             var child = node->ChildNode;
-            if(child != null || (!node->IsVisible && onlyVisible)) {
+            if(child != null || (!node->IsVisible() && onlyVisible)) {
                 PrintTextNodes(child, checkSiblings);
             }
 
@@ -183,7 +183,8 @@ namespace MapPartyAssist.Helper {
                 case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.Bool:
                     return (value.Int != 0).ToString();
                 case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.String:
-                case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.AllocatedString:
+                case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.ManagedString:
+                case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.WideString:
                 case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.String8:
                     return Marshal.PtrToStringUTF8((nint)value.String) ?? "";
                 default:
@@ -200,7 +201,7 @@ namespace MapPartyAssist.Helper {
             //var stringArray = AtkStage.GetSingleton()->GetStringArrayData()[index];
 
             int count = 0;
-            var stringArray = AtkStage.GetSingleton()->GetStringArrayData()[0];
+            var stringArray = AtkStage.Instance()->GetStringArrayData()[0];
             while(stringArray != null) {
 
                 int internalCount = 0;
@@ -225,7 +226,7 @@ namespace MapPartyAssist.Helper {
                 Log.Debug($"{count} Total strings: {internalCount}");
 
                 count++;
-                stringArray = AtkStage.GetSingleton()->GetStringArrayData()[count];
+                stringArray = AtkStage.Instance()->GetStringArrayData()[count];
             }
 
             Log.Debug($"Total AtkStageStringArrays: {count}");

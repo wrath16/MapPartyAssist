@@ -27,6 +27,8 @@ namespace MapPartyAssist.Helper {
             {2003455,  TreasureMap.PotentiallySpecial},
             {2003457,  TreasureMap.Ophiotauroskin},
             {2003463,  TreasureMap.ConceivablySpecial},
+            {2003562,  TreasureMap.Loboskin},
+            {2003563,  TreasureMap.Braaxskin},
         };
 
         public static string GetMapName(TreasureMap map) {
@@ -53,6 +55,8 @@ namespace MapPartyAssist.Helper {
                 TreasureMap.Ophiotauroskin => "Ophiotauroskin Treasure Map",
                 TreasureMap.PotentiallySpecial => "Potentially Special Treasure Map",
                 TreasureMap.ConceivablySpecial => "Conceivably Special Treasure Map",
+                TreasureMap.Loboskin => "Loboskin Treasure Map",
+                TreasureMap.Braaxskin => "Br'aaxskin Treasure Map",
                 _ => "Unknown"
             };
         }
@@ -65,13 +69,13 @@ namespace MapPartyAssist.Helper {
                 TreasureMapCategory.Shadowbringers => "Shadowbringers",
                 TreasureMapCategory.Endwalker => "Endwalker",
                 TreasureMapCategory.Elpis => "Elpis",
+                TreasureMapCategory.Dawntrail => "Dawntrail",
                 TreasureMapCategory.Unknown => "Unknown/Unrecorded",
                 _ => "Unknown/Unrecorded",
             };
         }
 
         public static TreasureMapCategory GetCategory(int territoryId) {
-
             if(territoryId == 0) {
                 return TreasureMapCategory.Unknown;
             } else if(territoryId < 397) {
@@ -84,8 +88,10 @@ namespace MapPartyAssist.Helper {
                 return TreasureMapCategory.Shadowbringers;
             } else if(territoryId == 961) {
                 return TreasureMapCategory.Elpis;
-            } else {
+            } else if(territoryId <= 1185) {
                 return TreasureMapCategory.Endwalker;
+            } else {
+                return TreasureMapCategory.Dawntrail;
             }
             //switch(territoryId) {
             //    case 612:

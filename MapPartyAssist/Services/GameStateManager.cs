@@ -99,7 +99,7 @@ namespace MapPartyAssist.Services {
         }
 
         //builds current party list from scratch
-        private void BuildCurrentPartyList(PartyMember[] partyMembers) {
+        private void BuildCurrentPartyList(IPartyMember[] partyMembers) {
             _plugin.Log.Debug("Rebuilding current party list.");
             string currentPlayerName = _plugin.ClientState.LocalPlayer!.Name.ToString()!;
             string currentPlayerWorld = _plugin.ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
@@ -120,7 +120,7 @@ namespace MapPartyAssist.Services {
                     _plugin.StorageManager.UpdatePlayer(currentPlayer, false);
                 }
             } else {
-                foreach(PartyMember p in partyMembers) {
+                foreach(IPartyMember p in partyMembers) {
                     string partyMemberName = p.Name.ToString();
                     string partyMemberWorld = p.World.GameData!.Name.ToString();
                     var key = $"{partyMemberName} {partyMemberWorld}";

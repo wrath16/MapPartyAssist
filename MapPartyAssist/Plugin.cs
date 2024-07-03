@@ -1,11 +1,10 @@
-﻿using Dalamud;
-using Dalamud.Configuration;
+﻿using Dalamud.Configuration;
+using Dalamud.Game;
 using Dalamud.Game.Command;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface.Windowing;
-using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using Lumina.Excel;
@@ -49,7 +48,7 @@ namespace MapPartyAssist {
         private const string EditCommandName = "/mpartyedit";
 
         //Dalamud services
-        internal DalamudPluginInterface PluginInterface { get; init; }
+        internal IDalamudPluginInterface PluginInterface { get; init; }
         private ICommandManager CommandManager { get; init; }
         internal IDataManager DataManager { get; init; }
         internal IClientState ClientState { get; init; }
@@ -89,18 +88,18 @@ namespace MapPartyAssist {
         internal bool AllowEdit { get; set; } = false;
 
         public Plugin(
-            [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
-            [RequiredVersion("1.0")] ICommandManager commandManager,
-            [RequiredVersion("1.0")] IDataManager dataManager,
-            [RequiredVersion("1.0")] IClientState clientState,
-            [RequiredVersion("1.0")] ICondition condition,
-            [RequiredVersion("1.0")] IDutyState dutyState,
-            [RequiredVersion("1.0")] IPartyList partyList,
-            [RequiredVersion("1.0")] IChatGui chatGui,
-            [RequiredVersion("1.0")] IGameGui gameGui,
-            [RequiredVersion("1.0")] IFramework framework,
-            [RequiredVersion("1.0")] IAddonLifecycle addonLifecycle,
-            [RequiredVersion("1.0")] IPluginLog log) {
+            IDalamudPluginInterface pluginInterface,
+            ICommandManager commandManager,
+            IDataManager dataManager,
+            IClientState clientState,
+            ICondition condition,
+            IDutyState dutyState,
+            IPartyList partyList,
+            IChatGui chatGui,
+            IGameGui gameGui,
+            IFramework framework,
+            IAddonLifecycle addonLifecycle,
+            IPluginLog log) {
             try {
                 PluginInterface = pluginInterface;
                 CommandManager = commandManager;
@@ -276,7 +275,7 @@ namespace MapPartyAssist {
             StatsWindow.IsOpen = true;
         }
 
-        private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled) {
+        private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled) {
             //filter nuisance combat messages...
             switch((int)type) {
                 case 2091:  //self actions

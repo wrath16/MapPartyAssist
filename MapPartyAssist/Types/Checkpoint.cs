@@ -1,4 +1,4 @@
-﻿using Dalamud;
+﻿using Dalamud.Game;
 using LiteDB;
 using MapPartyAssist.Types.Attributes;
 using System;

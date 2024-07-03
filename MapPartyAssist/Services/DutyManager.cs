@@ -1,4 +1,4 @@
-﻿using Dalamud;
+﻿using Dalamud.Game;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
@@ -466,7 +466,7 @@ namespace MapPartyAssist.Services {
             });
         }
 
-        private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled) {
+        private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled) {
 
             //refuse to process if not a supported language
             if(!_plugin.IsLanguageSupported()) {

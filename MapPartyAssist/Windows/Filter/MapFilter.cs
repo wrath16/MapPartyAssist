@@ -25,6 +25,7 @@ namespace MapPartyAssist.Windows.Filter {
                 {TreasureMapCategory.Shadowbringers, true },
                 {TreasureMapCategory.Endwalker, true },
                 {TreasureMapCategory.Elpis, true },
+                {TreasureMapCategory.Dawntrail, true },
                 {TreasureMapCategory.Unknown, true },
             };
 
