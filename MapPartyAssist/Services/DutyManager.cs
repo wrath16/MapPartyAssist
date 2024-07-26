@@ -21,7 +21,6 @@ namespace MapPartyAssist.Services {
         [Signature("48 89 5C 24 ?? 57 48 83 EC ?? 41 0F B6 D9 48 8B F9 E8", DetourName = nameof(TreasureDungeonDirectorCtorDetour))]
         private readonly Hook<TreasureDungeonDirectorCtorDelegate> _treasureDungeonDirectorCtorHook;
 
-
         private Plugin _plugin;
         private bool _firstTerritoryChange;
         //this is because there might be no checkpoints yet -_-
