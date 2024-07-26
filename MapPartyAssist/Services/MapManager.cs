@@ -248,10 +248,14 @@ namespace MapPartyAssist.Services {
                     if(_portalBlockUntil <= messageTime) {
                         //thief's maps
                         //key = playerKey ?? "";
-                        newMapFound = true;
                         isPortal = true;
+                        newMapFound = true;
                     } else {
                         //TODO compare to last map to verify ownership
+                        if(LastMap != null) {
+                            isChange = true;
+                            LastMap.IsPortal = true;
+                        }
                     }
                 }
             } else if((int)type == 2105 || (int)type == 2233) {
