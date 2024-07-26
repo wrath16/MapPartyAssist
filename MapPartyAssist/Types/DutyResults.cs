@@ -29,7 +29,13 @@ namespace MapPartyAssist.Types {
         public bool IsPickup { get; set; }
         public bool IsEdited { get; set; }
 
+        //this sux
+        public List<LootResult> FirstLootResults { get; set; } = new();
+
         public List<CheckpointResults> CheckpointResults { get; set; } = new();
+
+        [BsonIgnore]
+        internal CheckpointResults? LastCheckpoint => CheckpointResults.LastOrDefault();
 
         [BsonCtor]
         public DutyResults() {

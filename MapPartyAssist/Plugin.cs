@@ -59,6 +59,7 @@ namespace MapPartyAssist {
         internal IGameGui GameGui { get; init; }
         internal IFramework Framework { get; init; }
         internal IAddonLifecycle AddonLifecycle { get; init; }
+        internal IGameInteropProvider InteropProvider { get; init; }
         internal IPluginLog Log { get; init; }
 
         //Custom services
@@ -99,6 +100,7 @@ namespace MapPartyAssist {
             IGameGui gameGui,
             IFramework framework,
             IAddonLifecycle addonLifecycle,
+            IGameInteropProvider interopProvider,
             IPluginLog log) {
             try {
                 PluginInterface = pluginInterface;
@@ -112,6 +114,7 @@ namespace MapPartyAssist {
                 GameGui = gameGui;
                 Framework = framework;
                 AddonLifecycle = addonLifecycle;
+                InteropProvider = interopProvider;
                 Log = log;
 
                 AtkNodeHelper.Log = Log;

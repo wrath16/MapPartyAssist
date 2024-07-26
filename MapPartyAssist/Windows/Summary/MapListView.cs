@@ -170,7 +170,8 @@ namespace MapPartyAssist.Windows.Summary {
                     float targetWidth3 = 215f * ImGuiHelpers.GlobalScale;
                     var text1 = map.Time.ToString();
                     var text2 = map.Zone;
-                    var text3 = map.DutyName ?? "";
+                    _plugin.DutyManager.Duties.TryGetValue(map.DutyId ?? 0, out var duty);
+                    var text3 = duty?.GetDisplayName() ?? map.DutyName ?? "";
                     while(ImGui.CalcTextSize(text1).X < targetWidth1) {
                         text1 += " ";
                     }
@@ -255,7 +256,9 @@ namespace MapPartyAssist.Windows.Summary {
                     ImGui.TableNextColumn();
                     ImGui.TextColored(ImGuiColors.DalamudGrey, "Portal: ");
                     ImGui.TableNextColumn();
-                    string portalString = map.IsPortal ? map.DutyName! : "No";
+                    _plugin.DutyManager.Duties.TryGetValue(map.DutyId ?? 0, out var duty);
+                    string portalString = map.IsPortal ? duty?.GetDisplayName() ?? map.DutyName ?? "???" : "No";
+
                     ImGui.Text($"{portalString}");
 
                     ImGui.EndTable();

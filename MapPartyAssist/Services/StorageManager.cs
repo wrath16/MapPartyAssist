@@ -14,6 +14,7 @@ namespace MapPartyAssist.Services {
 
         internal const string MapTable = "map";
         internal const string DutyResultsTable = "dutyresults";
+        internal const string DutyResultsRawTable = "dutyresults_raw";
         internal const string StatsImportTable = "dutyresultsimport";
         internal const string PlayerTable = "player";
         internal const string PriceTable = "price";
@@ -125,6 +126,20 @@ namespace MapPartyAssist.Services {
 
         internal ILiteCollection<DutyResults> GetDutyResults() {
             return Database.GetCollection<DutyResults>(DutyResultsTable);
+        }
+
+        internal void AddDutyResultsRaw(DutyResultsRaw results, bool toSave = true) {
+            LogUpdate(results.Id.ToString());
+            WriteToDatabase(() => GetDutyResultsRaw().Insert(results), toSave);
+        }
+
+        internal void UpdateDutyResultsRaw(DutyResultsRaw results, bool toSave = true) {
+            LogUpdate(results.Id.ToString());
+            WriteToDatabase(() => GetDutyResultsRaw().Update(results), toSave);
+        }
+
+        internal ILiteCollection<DutyResultsRaw> GetDutyResultsRaw() {
+            return Database.GetCollection<DutyResultsRaw>(DutyResultsRawTable);
         }
 
         internal void AddDutyResultsImport(DutyResultsImport import, bool toSave = true) {
