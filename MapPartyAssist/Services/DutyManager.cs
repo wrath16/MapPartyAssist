@@ -151,7 +151,18 @@ namespace MapPartyAssist.Services {
                 new string[] {"gymnasiou megakantha", "gymnasiou triton", "gymnasiou satyros", "gymnasiou leon", "gymnasiou pithekos", "gymnasiou tigris" },
                 new string[] {"gymnasiou styphnolobion", "gymnasiou meganereis", "gymnasiou sphinx", "gymnasiou acheloios" },
                 new string[] {"lyssa chrysine", "lampas chrysine", "gymnasiou mandragoras" },
-                new string[] {"hippomenes", "phaethon", "narkissos" }) }
+                new string[] {"hippomenes", "phaethon", "narkissos" }) },
+            { 993 , new Duty(993, "cenote ja ja gural", DutyStructure.Doors, 5, new() {
+                new Checkpoint("Clear 1st chamber", EmptyCagesRegex),
+                new Checkpoint("Open 2nd chamber", SecondChamberRegex),
+                new Checkpoint("Clear 2nd chamber", EmptyCagesRegex),
+                new Checkpoint("Open 3rd chamber", ThirdChamberRegex),
+                new Checkpoint("Clear 3rd chamber", EmptyCagesRegex),
+                new Checkpoint("Open 4th chamber", FourthChamberRegex),
+                new Checkpoint("Clear 4th chamber", EmptyCagesRegex),
+                new Checkpoint("Open final chamber", FinalChamberRegex),
+                new Checkpoint("Clear final chamber", EmptyCagesRegex)
+            }, new Checkpoint("Failure", "Cenote Ja Ja Gural has ended")) },
         };
 
         internal static readonly Dictionary<ClientLanguage, Regex> GilObtainedRegex = new() {
@@ -438,14 +449,14 @@ namespace MapPartyAssist.Services {
         }
 
         private void OnDutyStart(object? sender, ushort territoryId) {
-            _plugin.Log.Verbose($"Duty has started with territory id: {territoryId} name: {_plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId)?.PlaceName.Value?.Name} ");
+            _plugin.Log.Debug($"Duty has started with territory id: {territoryId} name: {_plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId)?.PlaceName.Value?.Name} ");
             var dutyId = _plugin.Functions.GetCurrentDutyId();
-            _plugin.Log.Verbose($"Current duty ID: {dutyId}");
+            _plugin.Log.Debug($"Current duty ID: {dutyId}");
             var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
-            _plugin.Log.Verbose($"Duty Name: {duty?.Name}");
+            _plugin.Log.Debug($"Duty Name: {duty?.Name}");
 
             //check if duty is ongoing to attempt to pickup...
-            _plugin.Log.Verbose($"Current duty ongoing? {CurrentDutyResults != null}");
+            _plugin.Log.Debug($"Current duty ongoing? {CurrentDutyResults != null}");
         }
 
         private void OnDutyCompleted(object? sender, ushort param1) {
@@ -560,7 +571,7 @@ namespace MapPartyAssist.Services {
                         AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity, currentPlayer);
                         isChange = true;
 #if DEBUG
-                        _plugin.Log.Verbose(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", message.ItemId, message.IsHq, quantity, currentPlayer));
+                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", message.ItemId, message.IsHq, quantity, currentPlayer));
 #endif
                     } else if(itemMatch.Success) {
                         //tomestones
@@ -585,7 +596,7 @@ namespace MapPartyAssist.Services {
                         AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity, message.PlayerKey);
                         isChange = true;
 #if DEBUG
-                        _plugin.Log.Verbose(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", message.ItemId, message.IsHq, quantity, message.PlayerKey));
+                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", message.ItemId, message.IsHq, quantity, message.PlayerKey));
 #endif
                     }
                 }
@@ -596,15 +607,15 @@ namespace MapPartyAssist.Services {
                 if(m.Success) {
                     //todo make this work for all languages...
                     bool isNumber = Regex.IsMatch(m.Value, @"\d+");
-                    int quantity = isNumber ? int.Parse(m.Value) : 1;
+                    int quantity = isNumber ? int.Parse(m.Value.Replace(",", "").Replace(".", "")) : 1;
                     if(message.ItemId is not null) {
-                        AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity);
-                        isChange = true;
+                        //AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity);
+                        //isChange = true;
 #if DEBUG
-                        _plugin.Log.Verbose(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", message.ItemId, message.IsHq, quantity));
+                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", message.ItemId, message.IsHq, quantity));
+                        _plugin.Log.Debug($"value: {m.Value} isNumber: {isNumber} quantity: {quantity}");
 #endif
                     }
-
                 }
 
                 //check for failure
@@ -727,7 +738,6 @@ namespace MapPartyAssist.Services {
             _plugin.Log.Information($"Adding new checkpoint: {CurrentDuty!.Checkpoints![size].Name}");
             results.CheckpointResults.Add(new RouletteCheckpointResults {
                 Checkpoint = CurrentDuty!.Checkpoints![size],
-                Time = DateTime.Now,
                 SummonType = summon,
                 MonsterName = monsterName,
                 IsSaved = isSaved,

@@ -20,6 +20,7 @@ namespace MapPartyAssist.Types {
         [BsonCtor]
         public CheckpointResults() {
             Checkpoint = new Checkpoint("");
+            Time = DateTime.Now;
         }
 
         public CheckpointResults(Checkpoint checkpoint, bool isReached = false) {
