@@ -34,6 +34,7 @@ namespace MapPartyAssist.Windows.Summary {
         private int _lootEligibleRuns = 0;
         private int _lootEligibleMaps = 0;
         private int _totalGilValueObtained = 0;
+        private int _totalGilValueDropped = 0;
         private Dictionary<LootResultKey, LootResultValue> _lootResults = new();
         private Dictionary<LootResultKey, LootResultValue> _lootResultsPage = new();
         //private List<LootResultKey> _pins = new();
@@ -53,6 +54,7 @@ namespace MapPartyAssist.Windows.Summary {
             int newLootEligibleRuns = 0;
             int newLootEligibleMaps = 0;
             int newTotalGilValueObtained = 0;
+            int newTotalGilValueDropped = 0;
             string newLootCSV = "Category,Quality,Name,Dropped,Obtained,Unit Price\n";
 
             List<string> selfPlayers = new();
@@ -60,27 +62,28 @@ namespace MapPartyAssist.Windows.Summary {
                 selfPlayers.Add(p.Key);
             });
 
-            var addLootResult = (LootResult lootResult) => {
+            var addLootResult = (LootResult lootResult, int playerCount) => {
                 var key = new LootResultKey { ItemId = lootResult.ItemId, IsHQ = lootResult.IsHQ };
                 bool selfObtained = lootResult.Recipient is not null && selfPlayers.Contains(lootResult.Recipient);
                 var price = _plugin.PriceHistory.CheckPrice(key);
                 int obtainedQuantity = selfObtained ? lootResult.Quantity : 0;
+                int droppedQuantity = lootResult.ItemId == 1 ? lootResult.Quantity * playerCount : lootResult.Quantity;
                 if(newLootResults.ContainsKey(key)) {
                     newLootResults[key].ObtainedQuantity += obtainedQuantity;
-                    newLootResults[key].DroppedQuantity += lootResult.Quantity;
-                    newLootResults[key].DroppedValue += lootResult.Quantity * price;
+                    newLootResults[key].DroppedQuantity += droppedQuantity;
+                    newLootResults[key].DroppedValue += droppedQuantity * price;
                     newLootResults[key].ObtainedValue += obtainedQuantity * price;
                 } else {
                     var row = _plugin.DataManager.GetExcelSheet<Item>()?.GetRow(lootResult.ItemId);
                     if(row is not null) {
                         newLootResults.Add(key, new LootResultValue {
-                            DroppedQuantity = lootResult.Quantity,
+                            DroppedQuantity = droppedQuantity,
                             ObtainedQuantity = obtainedQuantity,
                             Rarity = row.Rarity,
                             Category = row.ItemUICategory.Value.Name,
                             ItemName = row.Name,
                             AveragePrice = price,
-                            DroppedValue = price * lootResult.Quantity,
+                            DroppedValue = price * droppedQuantity,
                             ObtainedValue = price * obtainedQuantity,
                         });
                     }
@@ -93,7 +96,7 @@ namespace MapPartyAssist.Windows.Summary {
                     foreach(var checkpointResult in dutyResult.CheckpointResults) {
                         if(checkpointResult.LootResults != null) {
                             foreach(var lootResult in checkpointResult.LootResults.Where(x => x.Recipient != null)) {
-                                addLootResult(lootResult);
+                                addLootResult(lootResult, dutyResult.Players.Length);
                             }
                         }
                     }
@@ -106,7 +109,7 @@ namespace MapPartyAssist.Windows.Summary {
                 }
                 newLootEligibleMaps++;
                 foreach(var lootResult in map.LootResults) {
-                    addLootResult(lootResult);
+                    addLootResult(lootResult, map.Players?.Length ?? 1);
                 }
             }
 
@@ -119,6 +122,7 @@ namespace MapPartyAssist.Windows.Summary {
                 //lootResult.Value.ItemName = row is null ? "" : row.Name;
                 newLootCSV += $"{lootResult.Value.Category},{(lootResult.Key.IsHQ ? "HQ" : "")},{lootResult.Value.ItemName},{lootResult.Value.DroppedQuantity},{lootResult.Value.ObtainedQuantity},{lootResult.Value.AveragePrice}\n";
                 newTotalGilValueObtained += lootResult.Value.ObtainedValue ?? 0;
+                newTotalGilValueDropped += lootResult.Value.DroppedValue ?? 0;
                 if(!_lootResults.ContainsKey(lootResult.Key)) {
                     hasChange = true;
                 } else if(!lootResult.Value.Equals(_lootResults[lootResult.Key])) {
@@ -138,6 +142,7 @@ namespace MapPartyAssist.Windows.Summary {
             _lootEligibleRuns = newLootEligibleRuns;
             _lootEligibleMaps = newLootEligibleMaps;
             _totalGilValueObtained = newTotalGilValueObtained;
+            _totalGilValueDropped = newTotalGilValueDropped;
         }
 
         private void GoToPage(int? page = null) {
@@ -175,6 +180,8 @@ namespace MapPartyAssist.Windows.Summary {
             ImGui.Text($"Eligible maps: {_lootEligibleMaps} Eligible duties: {_lootEligibleRuns}");
             ImGui.SameLine();
             ImGuiHelper.HelpMarker("Loot tracking introduced in version 2.0.0.0. Legacy maps/duties are not counted.");
+            ImGui.Text($"Estimated total gil value dropped: {string.Format(_totalGilValueDropped.ToString("N0"))}");
+            ImGui.SameLine();
             ImGui.Text($"Estimated total gil value obtained: {string.Format(_totalGilValueObtained.ToString("N0"))}");
             ImGui.SameLine();
             ImGuiHelper.HelpMarker("Enable market board pricing in settings window to see pricing data.\n\nRight-click table header to add more columns.");
