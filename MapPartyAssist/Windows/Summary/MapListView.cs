@@ -55,7 +55,7 @@ namespace MapPartyAssist.Windows.Summary {
                 }
                 Dictionary<LootResultKey, LootResultValue> newLootResults = new();
                 int newTotalGil = 0;
-                foreach(var lootResult in m.LootResults) {
+                foreach(var lootResult in m.LootResults.Where(x => x.Recipient != null)) {
                     var key = new LootResultKey { ItemId = lootResult.ItemId, IsHQ = lootResult.IsHQ };
                     bool selfObtained = lootResult.Recipient is not null && selfPlayers.Contains(lootResult.Recipient);
                     var price = _plugin.PriceHistory.CheckPrice(key);

@@ -587,7 +587,7 @@ namespace MapPartyAssist.Services {
                 }
                 //party member loot obtained
             } else if(message.Channel == 8254 || message.Channel == 4158) {
-                Match m = PartyMemberObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                Match m = PartyMemberObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
                 if(m.Success) {
                     //todo make this work for all languages...
                     bool isNumber = Regex.IsMatch(m.Value, @"\d+");
@@ -603,7 +603,7 @@ namespace MapPartyAssist.Services {
 
                 //check for loot list
             } else if((XivChatType)message.Channel == XivChatType.SystemMessage) {
-                Match m = LootListRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                Match m = LootListRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
                 if(m.Success) {
                     //todo make this work for all languages...
                     bool isNumber = Regex.IsMatch(m.Value, @"\d+");

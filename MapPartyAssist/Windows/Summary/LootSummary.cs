@@ -92,7 +92,7 @@ namespace MapPartyAssist.Windows.Summary {
                     newLootEligibleRuns++;
                     foreach(var checkpointResult in dutyResult.CheckpointResults) {
                         if(checkpointResult.LootResults != null) {
-                            foreach(var lootResult in checkpointResult.LootResults) {
+                            foreach(var lootResult in checkpointResult.LootResults.Where(x => x.Recipient != null)) {
                                 addLootResult(lootResult);
                             }
                         }
