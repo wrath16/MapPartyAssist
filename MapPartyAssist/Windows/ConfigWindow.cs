@@ -46,15 +46,21 @@ namespace MapPartyAssist.Windows {
                 _plugin.Configuration.Save();
             }
 
-            bool undockZoneWindow = _plugin.Configuration.UndockZoneWindow;
-            if(ImGui.Checkbox("Undock 'Map Links by Zone' window", ref undockZoneWindow)) {
-                _plugin.Configuration.UndockZoneWindow = undockZoneWindow;
+            bool hideZoneTable = _plugin.Configuration.HideZoneTable;
+            if(ImGui.Checkbox("Hide 'Map Links by Zone'", ref hideZoneTable)) {
+                _plugin.Configuration.HideZoneTable = hideZoneTable;
                 _plugin.Configuration.Save();
             }
 
-            bool hideZoneTable = _plugin.Configuration.HideZoneTableWhenEmpty;
-            if(ImGui.Checkbox("Hide 'Map Links by Zone' when empty", ref hideZoneTable)) {
-                _plugin.Configuration.HideZoneTableWhenEmpty = hideZoneTable;
+            bool hideZoneTableEmpty = _plugin.Configuration.HideZoneTableWhenEmpty;
+            if(ImGui.Checkbox("Hide 'Map Links by Zone' only when empty", ref hideZoneTableEmpty)) {
+                _plugin.Configuration.HideZoneTableWhenEmpty = hideZoneTableEmpty;
+                _plugin.Configuration.Save();
+            }
+
+            bool undockZoneWindow = _plugin.Configuration.UndockZoneWindow;
+            if(ImGui.Checkbox("Undock 'Map Links by Zone' window", ref undockZoneWindow)) {
+                _plugin.Configuration.UndockZoneWindow = undockZoneWindow;
                 _plugin.Configuration.Save();
             }
 

@@ -117,7 +117,7 @@ internal class MainWindow : Window {
         CurrentPosition = ImGui.GetWindowPos();
         CurrentSize = ImGui.GetWindowSize();
 
-        if(!_plugin.Configuration.UndockZoneWindow) {
+        if(!_plugin.Configuration.UndockZoneWindow && !_plugin.Configuration.HideZoneTable) {
             if(_plugin.Configuration.HideZoneTableWhenEmpty) {
                 _zoneCountWindow.IsOpen = _zoneCountWindow.Zones.Count > 0;
             } else {
