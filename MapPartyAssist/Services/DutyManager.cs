@@ -278,6 +278,22 @@ namespace MapPartyAssist.Services {
             { ClientLanguage.Japanese, new Regex(@"すべての魔物を倒した", RegexOptions.IgnoreCase) }
         };
 
+        //LogMessage: 6997
+        internal static readonly Dictionary<ClientLanguage, Regex> HandOnGateRegex = new() {
+            { ClientLanguage.English, new Regex(@"(hand on the gate\.)$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"(actionné la porte\.)$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"(das Tor zu öffnen\.)$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"(は、扉に手を掛けた。)$", RegexOptions.IgnoreCase) }
+        };
+
+        //LogMessage: 9350
+        internal static readonly Dictionary<ClientLanguage, Regex> BeginInvocationRegex = new() {
+            { ClientLanguage.English, new Regex(@"(begins the invocation\.)$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"(a activé le cercle d'invocation!)$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"(startet die Anbetung!)$", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"(は、召喚魔法陣に手をかざした！)$", RegexOptions.IgnoreCase) }
+        };
+
         public DutyManager(Plugin plugin) {
             _plugin = plugin;
 
@@ -371,6 +387,7 @@ namespace MapPartyAssist.Services {
                     _plugin.MapManager.LastMap.DutyId = dutyId;
                     _plugin.StorageManager.UpdateMap(_plugin.MapManager.LastMap);
                 } else {
+                    _plugin.Log.Warning("Unknown map owner for current duty.");
                     CurrentDutyResults.Map = null;
                     CurrentDutyResults.Owner = "";
                 }

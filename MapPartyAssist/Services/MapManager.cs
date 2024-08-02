@@ -20,7 +20,6 @@ using System.Threading.Tasks;
 namespace MapPartyAssist.Services {
     //internal service for managing treasure maps and map links
     internal class MapManager : IDisposable {
-        public string LastMapPlayerKey { get; private set; } = "";
         private MPAMap? _lastMap;
         internal MPAMap? LastMap {
             get {
@@ -36,6 +35,7 @@ namespace MapPartyAssist.Services {
             }
         }
         public string StatusMessage { get; set; } = "";
+
         public StatusLevel Status { get; set; } = StatusLevel.OK;
 
         //upper limit between dig time and treasure coffer message to consider it eligible as ownership
@@ -43,7 +43,7 @@ namespace MapPartyAssist.Services {
         //ideal time between dig and "you discover a treasure coffer"
         private readonly int _digTargetMS = 600;
         //timer to block portal from adding a duplicate map after finishing a chest
-        private readonly int _portalBlockSeconds = 60;
+        private readonly int _portalBlockSeconds = 720;
         //delay added onto adding a map to avoid double-counting self maps with another player using dig at same time
         private readonly int _addMapDelaySeconds = 2;
         //window within last map was added to a player to suppress warning messages
@@ -245,6 +245,7 @@ namespace MapPartyAssist.Services {
             if((int)type == 2361) {
                 //party member opens portal while not blocked
                 if(EnterPortalRegex[_plugin.ClientState.ClientLanguage].IsMatch(message)) {
+                    _plugin.Log.Debug("Entering portal...");
                     if(_portalBlockUntil <= messageTime) {
                         //thief's maps
                         //key = playerKey ?? "";
@@ -261,6 +262,7 @@ namespace MapPartyAssist.Services {
             } else if((int)type == 2105 || (int)type == 2233) {
                 //self map detection
                 if(ConsumedMapRegex[_plugin.ClientState.ClientLanguage].IsMatch(message)) {
+                    _plugin.Log.Debug("Map consumed...");
                     newMapFound = true;
                     mapType = MapNameRegex[_plugin.ClientState.ClientLanguage].Match(message).ToString();
                     if(!mapType.IsNullOrEmpty()) {
@@ -276,30 +278,36 @@ namespace MapPartyAssist.Services {
                     //clear dig info just in case to prevent double-counting map if another player uses dig at the same time
                     ResetDigStatus();
                 } else if(DiscoverCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(message)) {
+                    _plugin.Log.Debug("Coffer discovered...");
                     //find (non-current PC) party member with the closest matching dig time and assume they are owner
                     _boundByMapDuty = true;
                     _boundByMapDutyDelayed = true;
                     _lockedInDiggerKey = GetLikelyMapOwner(messageTime, _plugin.GameStateManager.GetCurrentPlayer());
                     if(_lockedInDiggerKey.IsNullOrEmpty() && !IsPlayerCandidateOwner(messageTime, _plugin.GameStateManager.GetCurrentPlayer())) {
                         _plugin.Log.Warning($"No eligible map owner detected for discovered coffer!");
-                        SetStatus("Unable to determine map owner, verify and add manually.", StatusLevel.ERROR);
+                        SetStatus("Unable to determine map owner!", StatusLevel.ERROR);
                     }
                     //LogMessage: 3756, 9361, 9363
                     //this can trigger in excitatron 6000
                 } else if(OpenCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(message) && _plugin.Functions.GetCurrentDutyId() == 0) {
+                    _plugin.Log.Debug("Coffer opened...");
                     //add delay because this message occurs before "crumbles into dust" to avoid double-counting with self-dig
                     Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
                         _plugin.DataQueue.QueueDataOperation(() => {
                             if(!_lockedInDiggerKey.IsNullOrEmpty()) {
-                                AddMap(_plugin.GameStateManager.CurrentPartyList[_lockedInDiggerKey]);
+                                bool isAmbiguous = false;
                                 if(_candidateCount > 1) {
                                     _plugin.Log.Warning($"Multiple map owner candidates detected!");
                                     SetStatus("Multiple map owner candidates found, verify last map ownership.", StatusLevel.CAUTION);
+                                    isAmbiguous = true;
                                 }
+                                AddMap(_plugin.GameStateManager.CurrentPartyList[_lockedInDiggerKey], null, null, false, false, isAmbiguous);
+
                             } else if((messageTime - _lastMapTime).TotalMilliseconds > _lastMapAddedThresholdMS) {
                                 //need this in case player used a false dig out of range
                                 _plugin.Log.Warning($"No eligible map owner detected on opened coffer!");
-                                SetStatus("Unable to determine map owner, verify and add manually.", StatusLevel.ERROR);
+                                SetStatus("Unable to determine map owner, drag map to player name!", StatusLevel.ERROR);
+                                AddMap(null);
                             }
                             //have to reset here in case you fail to defeat the treasure chest enemies -_-
                             ResetDigStatus();
@@ -307,6 +315,7 @@ namespace MapPartyAssist.Services {
                     });
                     //LogMessage: 3765
                 } else if(DefeatAllRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
+                    _plugin.Log.Debug("Enemies defeated...");
                     ResetDigStatus();
                     //block portals from adding maps for a brief period to avoid double counting
                     //this can cause issues where someone opens a thief map immediately after, but whatever
@@ -360,7 +369,7 @@ namespace MapPartyAssist.Services {
                             AddLootResults((uint)itemId, isHQ, quantity, currentPlayer);
                             isChange = true;
 #if DEBUG
-                            _plugin.Log.Verbose(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, currentPlayer));
+                            _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, currentPlayer));
 #endif
                         } else if(itemMatch.Success) {
                             //tomestones...
@@ -417,8 +426,8 @@ namespace MapPartyAssist.Services {
             }
         }
 
-        public void AddMap(MPAMember player, string? zone = null, string? mapName = null, bool isManual = false, bool isPortal = false) {
-            _plugin.Log.Information(string.Format("Adding new{0} map for {1}", isManual ? " manual" : "", player.Key));
+        public void AddMap(MPAMember? player, string? zone = null, string? mapName = null, bool isManual = false, bool isPortal = false, bool isAmbiguous = false) {
+            _plugin.Log.Information(string.Format("Adding new{0} map for {1}", isManual ? " manual" : "", player?.Key));
             DateTime currentTime = DateTime.Now;
 
             if(_plugin.IsLanguageSupported()) {
@@ -445,7 +454,7 @@ namespace MapPartyAssist.Services {
             MPAMap newMap = new() {
                 Name = mapName,
                 Time = currentTime,
-                Owner = player.Key,
+                Owner = player?.Key,
                 Zone = zone,
                 IsManual = isManual,
                 IsPortal = isPortal,
@@ -455,12 +464,13 @@ namespace MapPartyAssist.Services {
                 MapType = mapType,
                 EventItemId = rowId
             };
-            player.MapLink = null;
-            LastMapPlayerKey = player.Key;
             _lastMapTime = currentTime;
+            if(player != null) {
+                player.MapLink = null;
+                _plugin.StorageManager.UpdatePlayer(player, false);
+            }
 
             //add to DB
-            _plugin.StorageManager.UpdatePlayer(player, false);
             _plugin.StorageManager.AddMap(newMap);
             LastMap = newMap;
             //Plugin.Save();
@@ -491,6 +501,28 @@ namespace MapPartyAssist.Services {
             maps.ToList().ForEach(m => m.IsDeleted = true);
             _plugin.StorageManager.UpdateMaps(maps, false);
             _plugin.GameStateManager.BuildRecentPartyList();
+            _plugin.Refresh();
+        }
+
+        public void ReassignMap(MPAMap map, MPAMember newOwner) {
+            _plugin.Log.Information($"Changing map owner: {map.Owner} to {newOwner.Key}");
+            if(map.Owner != null && map.Owner.Equals(newOwner.Key)) {
+                _plugin.Log.Warning($"Attempting to re-assign map to same owner!");
+                return;
+            }
+
+            map.Owner = newOwner.Key;
+            map.IsReassigned = true;
+
+            if(map.DutyId != null) {
+                var dutyResults = FindDutyResultsForMap(map);
+                if(dutyResults != null) {
+                    dutyResults.Owner = newOwner.Key;
+                    _plugin.StorageManager.UpdateDutyResults(dutyResults, false);
+                }
+            }
+
+            _plugin.StorageManager.UpdateMap(map, false);
             _plugin.Refresh();
         }
 

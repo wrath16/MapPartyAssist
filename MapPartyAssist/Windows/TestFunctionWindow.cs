@@ -4,6 +4,7 @@ using Dalamud.Game;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface;
+using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Logging;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
@@ -11,7 +12,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using ImGuiNET;
 using Lumina.Excel;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.GeneratedSheets2;
 using MapPartyAssist.Types;
 using MapPartyAssist.Types.REST.Universalis;
 using Newtonsoft.Json;
@@ -166,41 +167,48 @@ namespace MapPartyAssist.Windows {
                     //    _plugin.StorageManager.GetDutyResultsImports().DeleteAll();
                     //}
 
-                    //if(ImGui.Button("fix record")) {
-                    //    //var dr = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.DutyId == 745).OrderBy(dr => dr.Time).ToList().Last();
-                    //    //dr.CheckpointResults = new();
-                    //    //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[0], Summon.Lesser, "secret serpent", false, true));
-                    //    //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[1], null, null, false, true));
-                    //    //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[2], Summon.Greater, "secret porxie", true, true));
-                    //    //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[3], null, null, false, true));
-                    //    //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[4], Summon.Elder, "secret keeper", true, true));
-                    //    //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[5], null, null, false, true));
-                    //    //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[6], Summon.Greater, "greedy pixie", true, true));
-                    //    //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[7], null, null, false, true));
-                    //    //Plugin.StorageManager.UpdateDutyResults(dr);
+                    if(ImGui.Button("fix record")) {
+                        var dr = _plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.DutyId == 993).ToList();
 
-                    //    var dr = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.DutyId == 909).OrderBy(dr => dr.Time).ToList();
+                        foreach(var duty in dr) {
+                            foreach(var cp in duty.CheckpointResults) {
+                                cp.LootResults = cp.LootResults.Where(x => x.ItemId != 44133 || x.Quantity != 7).ToList();
+                            }
+                        }
 
-                    //    for(int i = 0; i < dr.Count; i++) {
-                    //        var res = dr[i];
-                    //        for(int j = 0; j < dr[i].CheckpointResults.Count; j += 2) {
-                    //            dr[i].CheckpointResults.Insert(j + 1, new RouletteCheckpointResults(Plugin.DutyManager.Duties[909].Checkpoints[j + 1], null, null, false, true));
-                    //            if(j != 0) {
-                    //                dr[i].CheckpointResults[j].Checkpoint = Plugin.DutyManager.Duties[909].Checkpoints[j];
-                    //            }
-                    //        }
-                    //    }
+                        //dr.CheckpointResults = new();
+                        //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[0], Summon.Lesser, "secret serpent", false, true));
+                        //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[1], null, null, false, true));
+                        //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[2], Summon.Greater, "secret porxie", true, true));
+                        //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[3], null, null, false, true));
+                        //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[4], Summon.Elder, "secret keeper", true, true));
+                        //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[5], null, null, false, true));
+                        //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[6], Summon.Greater, "greedy pixie", true, true));
+                        //dr.CheckpointResults.Add(new RouletteCheckpointResults(Plugin.DutyManager.Duties[745].Checkpoints[7], null, null, false, true));
+                        _plugin.StorageManager.UpdateDutyResults(dr);
 
-                    //    //dr.CheckpointResults = new();
-                    //    //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[0], true));
-                    //    //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[1], true));
-                    //    //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[2], true));
-                    //    //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[3], true));
-                    //    //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[4], true));
-                    //    //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[5], true));
-                    //    //dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[6], true));
-                    //    Plugin.StorageManager.UpdateDutyResults(dr);
-                    //}
+                        //var dr = Plugin.StorageManager.GetDutyResults().Query().Where(dr => dr.DutyId == 909).OrderBy(dr => dr.Time).ToList();
+
+                        //for(int i = 0; i < dr.Count; i++) {
+                        //    var res = dr[i];
+                        //    for(int j = 0; j < dr[i].CheckpointResults.Count; j += 2) {
+                        //        dr[i].CheckpointResults.Insert(j + 1, new RouletteCheckpointResults(Plugin.DutyManager.Duties[909].Checkpoints[j + 1], null, null, false, true));
+                        //        if(j != 0) {
+                        //            dr[i].CheckpointResults[j].Checkpoint = Plugin.DutyManager.Duties[909].Checkpoints[j];
+                        //        }
+                        //    }
+                        //}
+
+                        ////dr.CheckpointResults = new();
+                        ////dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[0], true));
+                        ////dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[1], true));
+                        ////dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[2], true));
+                        ////dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[3], true));
+                        ////dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[4], true));
+                        ////dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[5], true));
+                        ////dr.CheckpointResults.Add(new CheckpointResults(Plugin.DutyManager.Duties[276].Checkpoints[6], true));
+                        //Plugin.StorageManager.UpdateDutyResults(dr);
+                    }
 
                     if(ImGui.Button("Set Map Status")) {
                         _plugin.MapManager.Status = StatusLevel.CAUTION;
@@ -432,6 +440,38 @@ namespace MapPartyAssist.Windows {
                     }
 
                     ImGui.EndTabItem();
+                }
+
+                using(var tab = ImRaii.TabItem("Map Window")) {
+                    var p1Name = "Bozzie Baranta";
+                    var p1World = "Tatooine";
+                    var p2Name = "Dud Bolt";
+                    var p2World = "Vulpter";
+                    MPAMember p1 = new MPAMember(p1Name, p1World);
+                    MPAMember p2 = new MPAMember(p2Name, p2World);
+
+                    if(ImGui.Button("Create party members in DB")) {
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            _plugin.StorageManager.AddPlayer(p1);
+                            _plugin.StorageManager.AddPlayer(p2);
+                        });
+                    }
+
+                    if(ImGui.Button("Add party members")) {
+                        _plugin.GameStateManager.CurrentPartyList.Add($"{p1Name} {p1World}", p1);
+                        _plugin.GameStateManager.CurrentPartyList.Add($"{p2Name} {p2World}", p2);
+                    }
+
+                    if(ImGui.Button("Add unknown Map")) {
+                        _plugin.MapManager.AddMap(null);
+                    }
+
+                    ImGui.Text("Test move me!");
+
+                    using var drag = ImRaii.DragDropSource(ImGuiDragDropFlags.SourceAllowNullID);
+                    if(drag) {
+                        ImGui.Text("Moving!");
+                    }
                 }
             }
         }

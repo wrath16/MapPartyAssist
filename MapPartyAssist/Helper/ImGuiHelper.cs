@@ -1,4 +1,5 @@
 ﻿using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using ImGuiNET;
 
 namespace MapPartyAssist.Helper {
@@ -18,16 +19,35 @@ namespace MapPartyAssist.Helper {
             ImGui.SetCursorPosX(posX);
         }
 
-        internal static void HelpMarker(string text) {
+        internal static void HelpMarker(string text, bool sameLine = true, bool alignToFrame = false) {
+            if(sameLine) ImGui.SameLine();
+            if(alignToFrame) ImGui.AlignTextToFramePadding();
+
             ImGui.TextDisabled("(?)");
+            WrappedTooltip(text, 500f);
+        }
+
+        internal static void HelpMarker(System.Action action, bool sameLine = true) {
+            if(sameLine) ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            CustomTooltip(action);
+        }
+
+        internal static void CustomTooltip(System.Action action) {
             if(ImGui.IsItemHovered()) {
-                ImGui.BeginTooltip();
-                ImGui.Text(text);
-                ImGui.EndTooltip();
+                using var tooltip = ImRaii.Tooltip();
+                action.Invoke();
             }
         }
 
         internal static void WrappedTooltip(string text, float width = 400f) {
+            if(ImGui.IsItemHovered()) {
+                using var tooltip = ImRaii.Tooltip();
+                ImGui.Text(WrappedString(text, width));
+            }
+        }
+
+        internal static string WrappedString(string text, float width) {
             width *= ImGuiHelpers.GlobalScale;
             string[] splitStrings = text.Split(" ");
             string wrappedString = "";
@@ -35,7 +55,11 @@ namespace MapPartyAssist.Helper {
 
             foreach(var word in splitStrings) {
                 if(ImGui.CalcTextSize($"{currentLine} {word}").X > width) {
-                    wrappedString += $"\n{word}";
+                    if(wrappedString == "") {
+                        wrappedString = word;
+                    } else {
+                        wrappedString += $"\n{word}";
+                    }
                     currentLine = word;
                 } else {
                     if(currentLine == "") {
@@ -47,12 +71,37 @@ namespace MapPartyAssist.Helper {
                     }
                 }
             }
+            return wrappedString;
+        }
 
-            if(ImGui.IsItemHovered()) {
-                ImGui.BeginTooltip();
-                ImGui.Text(wrappedString);
-                ImGui.EndTooltip();
+        internal static string WrappedString(string text, uint lines) {
+            var size = ImGui.CalcTextSize(text).X;
+            var sizePerLine = size / lines * 1.4; //add a margin of error
+            string[] splitStrings = text.Split(" ");
+            string wrappedString = "";
+            string currentLine = "";
+            int lineIndex = 0;
+
+            foreach(var word in splitStrings) {
+                if(ImGui.CalcTextSize($"{currentLine} {word}").X > sizePerLine && currentLine != "" && lineIndex + 1 < lines) {
+                    if(wrappedString == "") {
+                        wrappedString = word;
+                    } else {
+                        wrappedString += $"\n{word}";
+                        lineIndex++;
+                    }
+                    currentLine = word;
+                } else {
+                    if(currentLine == "") {
+                        wrappedString += $"{word}";
+                        currentLine += $"{word}";
+                    } else {
+                        wrappedString += $" {word}";
+                        currentLine += $" {word}";
+                    }
+                }
             }
+            return wrappedString;
         }
     }
 }

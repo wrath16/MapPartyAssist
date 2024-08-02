@@ -1,13 +1,18 @@
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using ImGuiNET;
+using LiteDB;
+using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace MapPartyAssist.Windows;
@@ -21,12 +26,14 @@ internal class MainWindow : Window {
 
     private Dictionary<MPAMember, List<MPAMap>> _currentPlayerMaps = new();
     private Dictionary<MPAMember, List<MPAMap>> _recentPlayerMaps = new();
+    private List<MPAMap> _unknownOwnerMaps = new();
     private string? _lastMapPlayer;
+    private string? _currentDragDropSource;
 
     private int _currentPortalCount;
-    private int _recentPortalCount;
+    //private int _recentPortalCount;
     private int _currentMapCount;
-    private int _recentMapCount;
+    //private int _recentMapCount;
 
     internal Vector2 CurrentPosition { get; private set; }
     internal Vector2 CurrentSize { get; private set; }
@@ -53,9 +60,9 @@ internal class MainWindow : Window {
         try {
             _refreshLock.WaitAsync();
             _currentMapCount = 0;
-            _recentMapCount = 0;
+            //_recentMapCount = 0;
             _currentPortalCount = 0;
-            _recentPortalCount = 0;
+            //_recentPortalCount = 0;
 
             //setup players independent of Plugin's recent and current lists
             _currentPlayerMaps = new Dictionary<MPAMember, List<MPAMap>>();
@@ -67,21 +74,22 @@ internal class MainWindow : Window {
             foreach(var kvp in _plugin.GameStateManager.RecentPartyList) {
                 _recentPlayerMaps.Add(kvp.Value, new List<MPAMap>());
             }
-
-            var maps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted && m.Owner != null).OrderBy(m => m.Time).ToList();
+            _unknownOwnerMaps = new();
+            var maps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted).OrderBy(m => m.Time).ToList();
+            //_unknownOwnerMaps = maps.Where(m => m.Owner is null).OrderBy(m => m.Time).ToList();
             foreach(var map in maps) {
-                if(_plugin.GameStateManager.CurrentPartyList.ContainsKey(map.Owner!)) {
-                    _currentPlayerMaps[_plugin.GameStateManager.CurrentPartyList[map.Owner!]].Add(map);
-                    _currentMapCount++;
-                    if(map.IsPortal) {
-                        _currentPortalCount++;
-                    }
-                } else if(_plugin.GameStateManager.RecentPartyList.ContainsKey(map.Owner!)) {
-                    _recentPlayerMaps[_plugin.GameStateManager.RecentPartyList[map.Owner!]].Add(map);
-                    _recentMapCount++;
-                    if(map.IsPortal) {
-                        _recentPortalCount++;
-                    }
+
+                if(map.Owner is null) {
+                    _unknownOwnerMaps.Add(map);
+                } else if(_plugin.GameStateManager.CurrentPartyList.ContainsKey(map.Owner)) {
+                    _currentPlayerMaps[_plugin.GameStateManager.CurrentPartyList[map.Owner]].Add(map);
+                } else if(_plugin.GameStateManager.RecentPartyList.ContainsKey(map.Owner)) {
+                    _recentPlayerMaps[_plugin.GameStateManager.RecentPartyList[map.Owner]].Add(map);
+                }
+
+                _currentMapCount++;
+                if(map.IsPortal) {
+                    _currentPortalCount++;
                 }
             }
             _lastMapPlayer = maps.LastOrDefault()?.Owner;
@@ -156,20 +164,28 @@ internal class MainWindow : Window {
         }
 
         ImGui.SameLine();
-        ImGui.Text($"Total Maps: {_currentMapCount + _recentMapCount}");
+        ImGui.Text($"Total Maps: {_currentMapCount}");
         //if(ImGui.IsItemHovered()) {
         //    ImGui.BeginTooltip();
         //    ImGui.Text($"Including recent party members: {_currentMapCount + _recentMapCount}");
         //    ImGui.EndTooltip();
         //}
         ImGui.SameLine();
-        ImGui.Text($"Total Portals: {_currentPortalCount + _recentPortalCount}");
+        ImGui.Text($"Total Portals: {_currentPortalCount}");
         //if(ImGui.IsItemHovered()) {
         //    ImGui.BeginTooltip();
         //    ImGui.Text($"Including recent party members: {_currentPortalCount + _recentPortalCount}");
         //    ImGui.EndTooltip();
         //}
         //ImGui.Text($"{ImGuiHelpers.GlobalScale.ToString()}");
+
+        ImGuiHelper.HelpMarker(() => {
+            ImGui.TextColored(ImGuiColors.ParsedGreen, "Automatically added.");
+            ImGui.TextColored(ImGuiColors.DalamudWhite, "Manually added.");
+            ImGui.TextColored(ImGuiColors.ParsedBlue, "Manually re-assigned.");
+            ImGui.TextColored(ImGuiColors.ParsedOrange, "Possibly wrong owner.");
+            ImGui.TextColored(ImGuiColors.DalamudRed, "Unknown owner.");
+        });
 
         if(!_refreshLock.Wait(0)) {
             return;
@@ -185,6 +201,11 @@ internal class MainWindow : Window {
                 ImGui.Text("Recent party members:");
                 MapTable(_recentPlayerMaps);
             }
+
+            if(_unknownOwnerMaps.Count > 0) {
+                UnknownMapTable();
+            }
+
         } finally {
             _refreshLock.Release();
         }
@@ -193,7 +214,9 @@ internal class MainWindow : Window {
     private void MapTable(Dictionary<MPAMember, List<MPAMap>> list, bool readOnly = false) {
         List<MPAMap> toArchive = new();
         List<MPAMap> toDelete = new();
-        if(ImGui.BeginTable($"##{list.GetHashCode()}--MapsTable", MaxMaps + 2, ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoKeepColumnsVisible)) {
+
+        using var table = ImRaii.Table($"##{list.GetHashCode()}--MapsTable", MaxMaps + 2, ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoKeepColumnsVisible);
+        if(table) {
             ImGui.TableSetupColumn("name", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 158f);
             for(int i = 0; i < MaxMaps; i++) {
                 ImGui.TableSetupColumn($"map{i + 1}", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 15f);
@@ -210,27 +233,25 @@ internal class MainWindow : Window {
                 ImGui.TableNextColumn();
                 if(playerMaps.Key.Equals(_lastMapPlayer)) {
                     ImGui.TextColored(ImGuiColors.DalamudYellow, $"{playerMaps.Key.Name.PadRight(20)}");
-                    if(ImGui.IsItemHovered()) {
-                        ImGui.BeginTooltip();
-                        ImGui.Text($"Used most recent map.");
-                        ImGui.EndTooltip();
-                    }
+                    ImGuiHelper.WrappedTooltip("Used most recent map.");
                 } else {
                     ImGui.Text($"{playerMaps.Key.Name.PadRight(20)}");
                 }
-                if(ImGui.BeginPopupContextItem($"##{playerMaps.Key.GetHashCode()}--NameContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
-                    if(ImGui.MenuItem($"Add map manually##{playerMaps.Key.GetHashCode()}--NameAddMap")) {
-                        _plugin.DataQueue.QueueDataOperation(() => _plugin.MapManager.AddMap(playerMaps.Key, null, "Manually-added map", true));
-                    } else if(ImGui.MenuItem($"Clear map link##{playerMaps.Key.GetHashCode()}--ClearMapLink")) {
-                        _plugin.DataQueue.QueueDataOperation(() => _plugin.MapManager.ClearMapLink(playerMaps.Key));
+                MapDragDropTarget(playerMaps.Key);
+
+                using(var popup = ImRaii.ContextPopupItem($"##{playerMaps.Key.GetHashCode()}--NameContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
+                    if(popup) {
+                        if(ImGui.MenuItem($"Add map manually##{playerMaps.Key.GetHashCode()}--NameAddMap")) {
+                            _plugin.DataQueue.QueueDataOperation(() => _plugin.MapManager.AddMap(playerMaps.Key, null, "Manually-added map", true));
+                        } else if(ImGui.MenuItem($"Clear map link##{playerMaps.Key.GetHashCode()}--ClearMapLink")) {
+                            _plugin.DataQueue.QueueDataOperation(() => _plugin.MapManager.ClearMapLink(playerMaps.Key));
+                        }
                     }
-                    ImGui.EndPopup();
                 }
                 if(playerMaps.Key.MapLink != null) {
                     //need to fix this for >1 scales...
                     ImGui.SameLine(ImGui.GetColumnWidth() - (158 - 151) * ImGuiHelpers.GlobalScale * ImGuiHelpers.GlobalScale);
-                    try {
-                        ImGui.PushFont(UiBuilder.IconFont);
+                    using(var font = ImRaii.PushFont(UiBuilder.IconFont)) {
                         var linkColor = ImGuiColors.DalamudGrey;
                         if(_plugin.Configuration.HighlightLinksInCurrentZone) {
                             linkColor = playerMaps.Key.MapLink.GetMapLinkPayload().TerritoryType.RowId == _plugin.GameStateManager.CurrentTerritory ? ImGuiColors.DalamudYellow : linkColor;
@@ -240,14 +261,8 @@ internal class MainWindow : Window {
                             linkColor = closestLink != null && closestLink.Key == playerMaps.Key.Key ? ImGuiColors.DalamudOrange : linkColor;
                         }
                         ImGui.TextColored(linkColor, FontAwesomeIcon.Search.ToIconString());
-                    } finally {
-                        ImGui.PopFont();
                     }
-                    if(ImGui.IsItemHovered()) {
-                        ImGui.BeginTooltip();
-                        ImGui.Text($"{playerMaps.Key.MapLink.GetMapLinkPayload().PlaceName} {playerMaps.Key.MapLink.GetMapLinkPayload().CoordinateString}");
-                        ImGui.EndTooltip();
-                    }
+                    ImGuiHelper.WrappedTooltip($"{playerMaps.Key.MapLink.GetMapLinkPayload().PlaceName} {playerMaps.Key.MapLink.GetMapLinkPayload().CoordinateString}");
                     if(ImGui.IsItemClicked()) {
                         _plugin.OpenMapLink(playerMaps.Key.MapLink.GetMapLinkPayload());
                     }
@@ -256,38 +271,27 @@ internal class MainWindow : Window {
                 //List<MPAMap> maps = player.Value.Maps.Where(m => !m.IsDeleted && !m.IsArchived).ToList();
                 for(int i = 0; i < playerMaps.Value.Count() && i < MaxMaps; i++) {
                     var currentMap = playerMaps.Value.ElementAt(i);
-                    try {
-                        ImGui.PushFont(UiBuilder.IconFont);
-                        if(currentMap.IsManual) {
-                            ImGui.TextColored(ImGuiColors.DalamudWhite, FontAwesomeIcon.Check.ToIconString());
-                        } else {
-                            ImGui.TextColored(ImGuiColors.ParsedGreen, FontAwesomeIcon.Check.ToIconString());
-                        }
-                    } finally {
-                        ImGui.PopFont();
+
+                    using(var font = ImRaii.PushFont(UiBuilder.IconFont)) {
+                        var color = ImGuiColors.ParsedGreen;
+                        color = currentMap.IsAmbiguousOwner ? ImGuiColors.ParsedOrange : color;
+                        color = currentMap.IsManual ? ImGuiColors.DalamudWhite : color;
+                        color = currentMap.IsReassigned ? ImGuiColors.ParsedBlue : color;
+                        ImGui.TextColored(color, FontAwesomeIcon.Check.ToIconString());
                     }
-                    if(ImGui.IsItemHovered()) {
-                        ImGui.BeginTooltip();
-                        if(!currentMap.DutyName.IsNullOrEmpty()) {
-                            ImGui.Text($"{currentMap.DutyName}");
-                        }
-                        if(!currentMap.Name.IsNullOrEmpty()) {
-                            ImGui.Text($"{currentMap.Name}");
-                        }
-                        if(!currentMap.Zone.IsNullOrEmpty()) {
-                            ImGui.Text($"{currentMap.Zone}");
-                        }
-                        ImGui.Text($"{currentMap.Time}");
-                        ImGui.EndTooltip();
+                    if(!MapDragDropSource(currentMap)) {
+                        MapTooltip(currentMap);
                     }
-                    if(ImGui.BeginPopupContextItem($"##{currentMap.GetHashCode()}--MapContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
-                        if(ImGui.MenuItem($"Archive##{currentMap.GetHashCode()}--ArchiveMap")) {
-                            toArchive.Add(playerMaps.Value[i]);
+
+                    using(var popup = ImRaii.ContextPopupItem($"##{currentMap.GetHashCode()}--MapContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
+                        if(popup) {
+                            if(ImGui.MenuItem($"Archive##{currentMap.GetHashCode()}--ArchiveMap")) {
+                                toArchive.Add(playerMaps.Value[i]);
+                            }
+                            if(ImGui.MenuItem($"Delete##{currentMap.GetHashCode()}--DeleteMap")) {
+                                toDelete.Add(playerMaps.Value[i]);
+                            }
                         }
-                        if(ImGui.MenuItem($"Delete##{currentMap.GetHashCode()}--DeleteMap")) {
-                            toDelete.Add(playerMaps.Value[i]);
-                        }
-                        ImGui.EndPopup();
                     }
                     ImGui.TableNextColumn();
                 }
@@ -298,18 +302,16 @@ internal class MainWindow : Window {
                 if(playerMaps.Value.Count() > MaxMaps) {
                     var color = playerMaps.Value.Last().IsManual ? ImGuiColors.DalamudYellow : ImGuiColors.ParsedGreen;
                     ImGui.TextColored(color, $" +{playerMaps.Value.Count() - MaxMaps}");
-                    if(ImGui.BeginPopupContextItem($"##{playerMaps.Key.GetHashCode()}--ExtraMapsContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
+                    using(var popup = ImRaii.ContextPopupItem($"##{playerMaps.Key.GetHashCode()}--ExtraMapsContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
                         if(ImGui.MenuItem($"Archive Last##{playerMaps.Key.GetHashCode()}--ExtraMapsArchive")) {
                             toArchive.Add(playerMaps.Value.Last());
                         }
                         if(ImGui.MenuItem($"Delete Last##{playerMaps.Key.GetHashCode()}--ExtraMapsDelete")) {
                             toDelete.Add(playerMaps.Value.Last());
                         }
-                        ImGui.EndPopup();
                     }
                 }
             }
-            ImGui.EndTable();
         }
         if(toArchive.Count > 0) {
             _plugin.DataQueue.QueueDataOperation(() => {
@@ -322,5 +324,104 @@ internal class MainWindow : Window {
                 _plugin.MapManager.DeleteMaps(toDelete);
             });
         }
+    }
+
+    private void UnknownMapTable() {
+        using var table = ImRaii.Table($"##UnknownMapTable", MaxMaps + 2, ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoKeepColumnsVisible);
+        if(table) {
+            ImGui.TableSetupColumn("name", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 158f);
+            for(int i = 0; i < MaxMaps; i++) {
+                ImGui.TableSetupColumn($"map{i + 1}", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 15f);
+            }
+            ImGui.TableSetupColumn($"extraMaps", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 24f);
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            if(_lastMapPlayer == null) {
+                ImGui.TextColored(ImGuiColors.DalamudYellow, "UNKNOWN");
+                ImGuiHelper.WrappedTooltip("Used most recent map.");
+            } else {
+                ImGui.TextUnformatted($"UNKNOWN");
+            }
+            for(int i = 0; i < _unknownOwnerMaps.Count && i < MaxMaps; i++) {
+                var currentMap = _unknownOwnerMaps.ElementAt(i);
+                ImGui.TableNextColumn();
+                using(var font = ImRaii.PushFont(UiBuilder.IconFont)) {
+                    ImGui.TextColored(ImGuiColors.DalamudRed, FontAwesomeIcon.Check.ToIconString());
+                }
+                if(!MapDragDropSource(currentMap)) {
+                    MapTooltip(currentMap);
+                }
+            }
+
+            for(int i = _unknownOwnerMaps.Count; i < MaxMaps; i++) {
+                ImGui.TableNextColumn();
+            }
+
+            if(_unknownOwnerMaps.Count > MaxMaps) {
+                ImGui.TextColored(ImGuiColors.DalamudRed, $" +{_unknownOwnerMaps.Count - MaxMaps}");
+            }
+        }
+    }
+
+    private void MapTooltip(MPAMap map) {
+        string tooltip = map.Time.ToString() + "\n";
+        if(!map.DutyName.IsNullOrEmpty()) {
+            tooltip += map.DutyName + "\n";
+        }
+        if(!map.Name.IsNullOrEmpty()) {
+            tooltip += map.Name + "\n";
+        }
+        if(map.IsAmbiguousOwner) {
+            tooltip += "Owner may be incorrect\n";
+        } else if(map.IsReassigned) {
+            tooltip += "Manually re-assigned\n";
+        }
+        if(!map.Zone.IsNullOrEmpty()) {
+            tooltip += map.Zone + "\n";
+        }
+        tooltip = tooltip.TrimEnd('\n');
+        ImGuiHelper.WrappedTooltip(tooltip);
+    }
+
+    private unsafe bool MapDragDropSource(MPAMap map) {
+        if(ImGui.GetDragDropPayload().NativePtr != null) {
+            byte[] data = new byte[12];
+            Marshal.Copy(ImGui.GetDragDropPayload().Data, data, 0, 12);
+            if(data.SequenceEqual(map.Id.ToByteArray())) {
+                //_plugin.Log.Debug($"{currentMap.Id} is being dragged!");
+                //using var style = ImRaii.PushColor(ImGuiCol.TableRowBg, ImGuiColors.DalamudViolet);
+                ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(ImGuiColors.DalamudYellow - new Vector4(0, 0, 0, 0.5f)));
+            }
+        }
+
+        using var drag = ImRaii.DragDropSource(ImGuiDragDropFlags.SourceAllowNullID);
+        if(drag) {
+            byte[] data = map.Id.ToByteArray();
+            fixed(byte* dataPtr = data) {
+                ImGui.SetDragDropPayload("map", (IntPtr)dataPtr, 0x12, ImGuiCond.Once);
+            }
+            ImGui.Text("Drag to name to re-assign...");
+        }
+        return drag.Success;
+    }
+
+    private unsafe bool MapDragDropTarget(MPAMember player) {
+        using var drag = ImRaii.DragDropTarget();
+        if(drag) {
+            ImGuiPayloadPtr acceptPayload = ImGui.AcceptDragDropPayload("map");
+            if(acceptPayload.NativePtr != null) {
+                byte[] data = new byte[12];
+                Marshal.Copy(acceptPayload.Data, data, 0, 12);
+
+                _plugin.Log.Debug($"Assigning map to {player.Key}");
+                _plugin.DataQueue.QueueDataOperation(() => {
+                    var map = _plugin.StorageManager.Maps.Query().ToList().Where(x => x.Id.ToByteArray().SequenceEqual(data)).FirstOrDefault();
+                    if(map != null) {
+                        _plugin.MapManager.ReassignMap(map, player);
+                    }
+                });
+            }
+        }
+        return drag.Success;
     }
 }

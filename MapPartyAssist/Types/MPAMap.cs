@@ -28,6 +28,8 @@ namespace MapPartyAssist.Types {
         public bool IsManual { get; set; }
         public bool IsDeleted { get; set; }
         public bool IsArchived { get; set; }
+        public bool IsAmbiguousOwner { get; set; }
+        public bool IsReassigned { get; set; }
         [BsonIgnore]
         public SeString? MapLink { get; set; }
         public List<LootResult>? LootResults { get; set; }
