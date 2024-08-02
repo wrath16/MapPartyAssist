@@ -21,7 +21,7 @@ Tool for recording treasure map statistics and co-ordinating map parties.
 * If someone links a waymark in party chat, it will be noted with a magnifying glass next to their name that you can hover over or click on to open your map with the waymark.
 * The most recent party member to use a map will be highlighted in yellow.
 * Maps auto-archive after 24 hours, and you can see recent party members' maps until then. You can also clear the slate manually if you're running multiple parties a day.
-* A number of customization options for both map and stats tracking are available in the configuration menu opened with '/mpartyconfig' or by pressing the 'Settings' button in the Dalamud plugin installer.
+* A number of customization options for both map and stats tracking are available in the configuration menu opened with `/mpartyconfig` or by pressing the 'Settings' button in the Dalamud plugin installer.
 
 ### Treasure dungeon stats:
 
@@ -31,7 +31,7 @@ Tool for recording treasure map statistics and co-ordinating map parties.
 ### Important notes:
 * Only works with the international client languages (EN/JP/FR/DE).
 * The plugin primarily works by parsing system chat messages. Sometimes it isn't always possible to know exactly who owns a map and the tracker can make mistakes (known cases are listed below), so stay vigilant and correct mistakes as necessary.
-* Use `/mpartyedit` to toggle editing of maps and duties for error correction.
+* Use `/mpartyedit` to toggle editing of maps and duties on the stats window for error correction.
 * Use imports to add stats that were recorded when the plugin is unavailable!
 
 ## Known issues:
