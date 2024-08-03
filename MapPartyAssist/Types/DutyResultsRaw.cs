@@ -16,7 +16,7 @@ namespace MapPartyAssist.Types {
         public List<Message> Messages { get; set; }
         [BsonRef("map")]
         public MPAMap? Map { get; set; }
-        public string Owner { get; set; }
+        public string? Owner { get; set; }
         public string[] Players { get; set; }
 
         public DutyResultsRaw() {

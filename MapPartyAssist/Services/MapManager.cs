@@ -21,29 +21,34 @@ namespace MapPartyAssist.Services {
     //internal service for managing treasure maps and map links
     internal class MapManager : IDisposable {
         private MPAMap? _lastMap;
-        internal MPAMap? LastMap {
-            get {
-                if(_lastMap is not null) {
-                    return _lastMap;
-                } else {
-                    _lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().LastOrDefault();
-                    return _lastMap;
-                }
-            }
-            set {
-                _lastMap = value;
-            }
-        }
+        //internal MPAMap? LastMap {
+        //    get {
+        //        if(_lastMap is not null) {
+        //            return _lastMap;
+        //        } else {
+        //            _lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().LastOrDefault();
+        //            return _lastMap;
+        //        }
+        //    }
+        //    set {
+        //        _lastMap = value;
+        //    }
+        //}
+
+        internal MPAMap? GetLastMap() {
+            return _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().LastOrDefault();
+        } 
+
         public string StatusMessage { get; set; } = "";
 
         public StatusLevel Status { get; set; } = StatusLevel.OK;
 
         //upper limit between dig time and treasure coffer message to consider it eligible as ownership
-        private readonly int _digThresholdMS = 6000;
+        private readonly int _digThresholdMS = 11000;
         //ideal time between dig and "you discover a treasure coffer"
         private readonly int _digTargetMS = 600;
         //timer to block portal from adding a duplicate map after finishing a chest
-        private readonly int _portalBlockSeconds = 720;
+        private readonly int _portalBlockSeconds = 120;
         //delay added onto adding a map to avoid double-counting self maps with another player using dig at same time
         private readonly int _addMapDelaySeconds = 2;
         //window within last map was added to a player to suppress warning messages
@@ -171,17 +176,19 @@ namespace MapPartyAssist.Services {
 
             if(baseNode->IsVisible() && TreasureHuntRegex[_plugin.ClientState.ClientLanguage].IsMatch(dutyName)) {
                 if(!_boundByMapDuty) {
-                    _plugin.Log.Verbose($"Bound by map duty!");
+                    _plugin.Log.Debug($"Bound by map duty!");
+                    _portalBlockUntil = DateTime.UnixEpoch;
                 }
                 _boundByMapDuty = true;
                 _boundByMapDutyDelayed = true;
+
             } else if(_boundByMapDuty) {
-                _plugin.Log.Verbose($"No longer bound by map duty!");
-                _boundByMapDuty = false;
-                //add delay since we can miss some loot messages otherwise
-                _plugin.DataQueue.QueueDataOperation(() => {
-                    _boundByMapDutyDelayed = false;
-                });
+                _plugin.Log.Debug($"No longer bound by map duty!");
+                //_boundByMapDuty = false;
+                ////add delay since we can miss some loot messages otherwise
+                //_plugin.DataQueue.QueueDataOperation(() => {
+                //    _boundByMapDutyDelayed = false;
+                //});
             }
         }
 
@@ -241,6 +248,7 @@ namespace MapPartyAssist.Services {
             bool isPortal = false;
             //string key = "";
             string mapType = "";
+            var lastMap = GetLastMap();
 
             if((int)type == 2361) {
                 //party member opens portal while not blocked
@@ -253,9 +261,9 @@ namespace MapPartyAssist.Services {
                         newMapFound = true;
                     } else {
                         //TODO compare to last map to verify ownership
-                        if(LastMap != null) {
+                        if(lastMap != null) {
                             isChange = true;
-                            LastMap.IsPortal = true;
+                            lastMap.IsPortal = true;
                         }
                     }
                 }
@@ -295,19 +303,18 @@ namespace MapPartyAssist.Services {
                     Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
                         _plugin.DataQueue.QueueDataOperation(() => {
                             if(!_lockedInDiggerKey.IsNullOrEmpty()) {
-                                bool isAmbiguous = false;
-                                if(_candidateCount > 1) {
+                                bool isAmbiguous = _candidateCount > 1;
+                                AddMap(_plugin.GameStateManager.CurrentPartyList[_lockedInDiggerKey], null, null, false, false, isAmbiguous);
+                                if(isAmbiguous) {
                                     _plugin.Log.Warning($"Multiple map owner candidates detected!");
                                     SetStatus("Multiple map owner candidates found, verify last map ownership.", StatusLevel.CAUTION);
-                                    isAmbiguous = true;
                                 }
-                                AddMap(_plugin.GameStateManager.CurrentPartyList[_lockedInDiggerKey], null, null, false, false, isAmbiguous);
 
                             } else if((messageTime - _lastMapTime).TotalMilliseconds > _lastMapAddedThresholdMS) {
                                 //need this in case player used a false dig out of range
+                                AddMap(null);
                                 _plugin.Log.Warning($"No eligible map owner detected on opened coffer!");
                                 SetStatus("Unable to determine map owner, drag map to player name!", StatusLevel.ERROR);
-                                AddMap(null);
                             }
                             //have to reset here in case you fail to defeat the treasure chest enemies -_-
                             ResetDigStatus();
@@ -354,7 +361,7 @@ namespace MapPartyAssist.Services {
                     if(m.Success) {
                         string parsedGilString = m.Value.Replace(",", "").Replace(".", "").Replace(" ", "");
                         int gil = int.Parse(parsedGilString);
-                        AddLootResults(1, false, gil, _plugin.GameStateManager.GetCurrentPlayer());
+                        AddLootResults(lastMap, 1, false, gil, _plugin.GameStateManager.GetCurrentPlayer());
                         isChange = true;
                     }
                     //self loot obtained
@@ -366,7 +373,7 @@ namespace MapPartyAssist.Services {
                         int quantity = isNumber ? int.Parse(quantityMatch.Value.Replace(",", "").Replace(".", "")) : 1;
                         var currentPlayer = _plugin.GameStateManager.GetCurrentPlayer();
                         if(itemId is not null) {
-                            AddLootResults((uint)itemId, isHQ, quantity, currentPlayer);
+                            AddLootResults(lastMap, (uint)itemId, isHQ, quantity, currentPlayer);
                             isChange = true;
 #if DEBUG
                             _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, currentPlayer));
@@ -376,7 +383,7 @@ namespace MapPartyAssist.Services {
                             //Japanese has no plural...
                             var rowId = quantity != 1 && _plugin.ClientState.ClientLanguage != ClientLanguage.Japanese ? _plugin.GetRowId<Item>(itemMatch.Value, "Plural", GrammarCase.Accusative) : _plugin.GetRowId<Item>(itemMatch.Value, "Singular", GrammarCase.Accusative);
                             if(rowId is not null) {
-                                AddLootResults((uint)rowId, false, quantity, currentPlayer);
+                                AddLootResults(lastMap, (uint)rowId, false, quantity, currentPlayer);
                                 isChange = true;
                             } else {
                                 _plugin.Log.Warning($"Cannot find rowId for {itemMatch.Value}");
@@ -390,10 +397,10 @@ namespace MapPartyAssist.Services {
                         bool isNumber = Regex.IsMatch(m.Value, @"\d+");
                         int quantity = isNumber ? int.Parse(m.Value.Replace(",", "").Replace(".", "")) : 1;
                         if(itemId is not null) {
-                            //AddLootResults((uint)itemId, isHQ, quantity, playerKey);
-                            //isChange = true;
+                            AddLootResults(lastMap, (uint)itemId, isHQ, quantity, playerKey);
+                            isChange = true;
 #if DEBUG
-                            _plugin.Log.Verbose(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, playerKey));
+                            _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, playerKey));
 #endif
                         }
                     }
@@ -405,8 +412,8 @@ namespace MapPartyAssist.Services {
                         bool isNumber = Regex.IsMatch(m.Value, @"\d+");
                         int quantity = isNumber ? int.Parse(m.Value.Replace(",", "").Replace(".", "")) : 1;
                         if(itemId is not null) {
-                            AddLootResults((uint)itemId, isHQ, quantity, playerKey);
-                            isChange = true;
+                            //AddLootResults((uint)itemId, isHQ, quantity, playerKey);
+                            //isChange = true;
 #if DEBUG
                             _plugin.Log.Verbose(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", itemId, isHQ, quantity));
                             _plugin.Log.Debug($"value: {m.Value} isNumber: {isNumber} quantity: {quantity}");
@@ -414,9 +421,9 @@ namespace MapPartyAssist.Services {
                         }
                     }
                 }
-                if(isChange && LastMap != null) {
+                if(isChange && lastMap != null) {
                     //very first map...?
-                    _plugin.StorageManager.UpdateMap(LastMap);
+                    _plugin.StorageManager.UpdateMap(lastMap);
                     //_plugin.Save();
                 }
             }
@@ -472,7 +479,7 @@ namespace MapPartyAssist.Services {
 
             //add to DB
             _plugin.StorageManager.AddMap(newMap);
-            LastMap = newMap;
+            //LastMap = newMap;
             //Plugin.Save();
 
             ClearStatus();
@@ -514,12 +521,19 @@ namespace MapPartyAssist.Services {
             map.Owner = newOwner.Key;
             map.IsReassigned = true;
 
+            ClearStatus();
+
             if(map.DutyId != null) {
                 var dutyResults = FindDutyResultsForMap(map);
                 if(dutyResults != null) {
                     dutyResults.Owner = newOwner.Key;
                     _plugin.StorageManager.UpdateDutyResults(dutyResults, false);
                 }
+            }
+
+            if(map.Id.Equals(GetLastMap()?.Id)) {
+                newOwner.MapLink = null;
+                _plugin.StorageManager.UpdatePlayer(newOwner, false);
             }
 
             _plugin.StorageManager.UpdateMap(map, false);
@@ -639,9 +653,7 @@ namespace MapPartyAssist.Services {
                 }
                 double timeDiffMS = (cofferTime - digger.Value).TotalMilliseconds;
                 double diffFromIdealMS = Math.Abs(timeDiffMS - _digTargetMS);
-#if DEBUG
                 _plugin.Log.Debug($"digger: {digger.Key} timediffMS: {timeDiffMS} diffFromIdeal: {diffFromIdealMS}");
-#endif
                 if(timeDiffMS < _digThresholdMS) {
                     _candidateCount++;
                     if(diffFromIdealMS < closestTimeMS) {
@@ -670,7 +682,7 @@ namespace MapPartyAssist.Services {
             SetStatus("", StatusLevel.OK);
         }
 
-        private void AddLootResults(uint itemId, bool isHQ, int quantity, string? recipient = null) {
+        private void AddLootResults(MPAMap? map, uint itemId, bool isHQ, int quantity, string? recipient = null) {
             ////this is bad
             //if(LastMap is null) {
             //    var lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().Last();
@@ -680,19 +692,19 @@ namespace MapPartyAssist.Services {
             //    LastMap = lastMap;
             //}
 
-            if(LastMap is null) {
+            if(map is null) {
                 _plugin.Log.Warning("Unable to add loot results: no map");
                 return;
-            } else if(LastMap.LootResults is null) {
+            } else if(map.LootResults is null) {
                 throw new InvalidOperationException("Unable to add loot result to map!");
                 //10 minute fallback
-            } else if((DateTime.Now - LastMap.Time).TotalMinutes > 10) {
+            } else if((DateTime.Now - map.Time).TotalMinutes > 10) {
                 //throw new InvalidOperationException("");
                 _plugin.Log.Warning("Last map time exceeded loot threshold window.");
                 return;
             }
 
-            var matchingLootResults = LastMap.GetMatchingLootResult(itemId, isHQ, quantity);
+            var matchingLootResults = map.GetMatchingLootResult(itemId, isHQ, quantity);
             if(matchingLootResults is null) {
                 LootResult lootResult = new() {
                     Time = DateTime.Now,
@@ -701,7 +713,7 @@ namespace MapPartyAssist.Services {
                     Quantity = quantity,
                     Recipient = recipient,
                 };
-                LastMap.LootResults.Add(lootResult);
+                map.LootResults.Add(lootResult);
             } else {
                 matchingLootResults.Recipient = recipient;
             }

@@ -20,7 +20,7 @@ namespace MapPartyAssist.Types {
         public DateTime Time { get; init; }
         public DateTime CompletionTime { get; set; }
         public string[] Players { get; set; }
-        public string Owner { get; set; }
+        public string? Owner { get; set; }
         [BsonRef("map")]
         [JsonIgnore]
         public MPAMap? Map { get; set; }
@@ -28,6 +28,7 @@ namespace MapPartyAssist.Types {
         public bool IsComplete { get; set; }
         public bool IsPickup { get; set; }
         public bool IsEdited { get; set; }
+        public bool IsOwnerUpdated { get; set; }
 
         //this sux
         public List<LootResult> FirstLootResults { get; set; } = new();

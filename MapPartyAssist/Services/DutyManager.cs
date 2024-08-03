@@ -378,14 +378,16 @@ namespace MapPartyAssist.Services {
                     Owner = "",
                 };
                 //_firstLootResults = new();
+
+                var lastMap = _plugin.MapManager.GetLastMap();
                 //check last map, 10 min fallback for linking to most recent map
-                if(_plugin.MapManager.LastMap != null && (DateTime.Now - _plugin.MapManager.LastMap.Time).TotalMinutes < 10) {
-                    CurrentDutyResults.Map = _plugin.MapManager.LastMap;
-                    CurrentDutyResults.Owner = _plugin.MapManager.LastMap.Owner!;
-                    _plugin.MapManager.LastMap.IsPortal = true;
-                    _plugin.MapManager.LastMap.DutyName = Duties[dutyId].GetDisplayName();
-                    _plugin.MapManager.LastMap.DutyId = dutyId;
-                    _plugin.StorageManager.UpdateMap(_plugin.MapManager.LastMap);
+                if(lastMap != null && (DateTime.Now - lastMap.Time).TotalMinutes < 10) {
+                    CurrentDutyResults.Map = lastMap;
+                    CurrentDutyResults.Owner = lastMap.Owner;
+                    lastMap.IsPortal = true;
+                    lastMap.DutyName = Duties[dutyId].GetDisplayName();
+                    lastMap.DutyId = dutyId;
+                    _plugin.StorageManager.UpdateMap(lastMap);
                 } else {
                     _plugin.Log.Warning("Unknown map owner for current duty.");
                     CurrentDutyResults.Map = null;
@@ -437,12 +439,13 @@ namespace MapPartyAssist.Services {
                 DutyId = dutyId,
                 Players = _plugin.GameStateManager.CurrentPartyList.Keys.ToArray(),
             };
-            if(_plugin.MapManager.LastMap != null && (DateTime.Now - _plugin.MapManager.LastMap.Time).TotalMinutes < 10) {
-                CurrentDutyResultsRaw.Map = _plugin.MapManager.LastMap;
-                CurrentDutyResultsRaw.Owner = _plugin.MapManager.LastMap.Owner!;
-                _plugin.MapManager.LastMap.IsPortal = true;
-                _plugin.MapManager.LastMap.DutyId = dutyId;
-                _plugin.StorageManager.UpdateMap(_plugin.MapManager.LastMap);
+            var lastMap = _plugin.MapManager.GetLastMap();
+            if(lastMap != null && (DateTime.Now - lastMap.Time).TotalMinutes < 10) {
+                CurrentDutyResultsRaw.Map = lastMap;
+                CurrentDutyResultsRaw.Owner = lastMap.Owner;
+                lastMap.IsPortal = true;
+                lastMap.DutyId = dutyId;
+                _plugin.StorageManager.UpdateMap(lastMap);
             } else {
                 CurrentDutyResultsRaw.Map = null;
                 CurrentDutyResultsRaw.Owner = "";
