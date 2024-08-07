@@ -412,8 +412,8 @@ namespace MapPartyAssist.Services {
                         bool isNumber = Regex.IsMatch(m.Value, @"\d+");
                         int quantity = isNumber ? int.Parse(m.Value.Replace(",", "").Replace(".", "")) : 1;
                         if(itemId is not null) {
-                            //AddLootResults((uint)itemId, isHQ, quantity, playerKey);
-                            //isChange = true;
+                            AddLootResults(lastMap, (uint)itemId, isHQ, quantity, playerKey);
+                            isChange = true;
 #if DEBUG
                             _plugin.Log.Verbose(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", itemId, isHQ, quantity));
                             _plugin.Log.Debug($"value: {m.Value} isNumber: {isNumber} quantity: {quantity}");

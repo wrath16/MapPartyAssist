@@ -629,8 +629,8 @@ namespace MapPartyAssist.Services {
                     bool isNumber = Regex.IsMatch(m.Value, @"\d+");
                     int quantity = isNumber ? int.Parse(m.Value.Replace(",", "").Replace(".", "")) : 1;
                     if(message.ItemId is not null) {
-                        //AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity);
-                        //isChange = true;
+                        AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity);
+                        isChange = true;
 #if DEBUG
                         _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", message.ItemId, message.IsHq, quantity));
                         _plugin.Log.Debug($"value: {m.Value} isNumber: {isNumber} quantity: {quantity}");
