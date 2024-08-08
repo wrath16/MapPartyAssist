@@ -37,7 +37,7 @@ namespace MapPartyAssist.Services {
 
         internal MPAMap? GetLastMap() {
             return _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().LastOrDefault();
-        } 
+        }
 
         public string StatusMessage { get; set; } = "";
 
@@ -351,7 +351,7 @@ namespace MapPartyAssist.Services {
             } else if(type == XivChatType.Party || type == XivChatType.Say || type == XivChatType.Alliance || type == XivChatType.Shout || type == XivChatType.Yell || type == XivChatType.TellIncoming) {
                 //getting map links
                 if(playerKey != null && mapLink != null && _plugin.GameStateManager.CurrentPartyList.ContainsKey(playerKey) && (_plugin.GameStateManager.CurrentPartyList[playerKey].MapLink == null || !_plugin.Configuration.NoOverwriteMapLink)) {
-                    _plugin.GameStateManager.CurrentPartyList[playerKey].MapLink = mapLink;
+                    SetMapLink(_plugin.GameStateManager.CurrentPartyList[playerKey], mapLink);
                     _plugin.DataQueue.QueueDataOperation(() => _plugin.StorageManager.UpdatePlayer(_plugin.GameStateManager.CurrentPartyList[playerKey]));
                 }
             } else if(_boundByMapDutyDelayed) {
@@ -473,7 +473,7 @@ namespace MapPartyAssist.Services {
             };
             _lastMapTime = currentTime;
             if(player != null) {
-                player.MapLink = null;
+                SetMapLink(player, null);
                 _plugin.StorageManager.UpdatePlayer(player, false);
             }
 
@@ -532,12 +532,19 @@ namespace MapPartyAssist.Services {
             }
 
             if(map.Id.Equals(GetLastMap()?.Id)) {
-                newOwner.MapLink = null;
+                SetMapLink(newOwner, null);
                 _plugin.StorageManager.UpdatePlayer(newOwner, false);
             }
 
             _plugin.StorageManager.UpdateMap(map, false);
             _plugin.Refresh();
+        }
+
+        internal void SetMapLink(MPAMember player, MPAMapLink? mapLink) {
+            if(player.MapLink != null) {
+                player.PreviousMapLink = player.MapLink;
+            }
+            player.MapLink = mapLink;
         }
 
         public void CheckAndArchiveMaps() {
@@ -553,11 +560,11 @@ namespace MapPartyAssist.Services {
             _plugin.Refresh();
         }
 
-        public void ClearMapLink(MPAMember player) {
-            player.MapLink = null;
-            _plugin.StorageManager.UpdatePlayer(player);
-            //_plugin.Save();
-        }
+        //public void ClearMapLink(MPAMember player) {
+        //    player.MapLink = null;
+        //    _plugin.StorageManager.UpdatePlayer(player);
+        //    //_plugin.Save();
+        //}
 
         //returns map coords
         public double? GetDistanceToMapLink(MPAMapLink mapLink) {
@@ -574,7 +581,7 @@ namespace MapPartyAssist.Services {
         }
 
         //credit to Pohky on discord
-        private static Vector2 WorldPosToMapCoords(Vector3 pos) {
+        internal static Vector2 WorldPosToMapCoords(Vector3 pos) {
             var xInt = (int)(MathF.Round(pos.X, 3, MidpointRounding.AwayFromZero) * 1000);
             var yInt = (int)(MathF.Round(pos.Z, 3, MidpointRounding.AwayFromZero) * 1000);
             return new Vector2((int)(xInt * 0.001f * 1000f), (int)(yInt * 0.001f * 1000f));

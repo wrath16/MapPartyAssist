@@ -1,3 +1,4 @@
+using Dalamud.Game.Text;
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
@@ -14,6 +15,7 @@ using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Threading;
+using static Lumina.Data.Parsing.Layer.LayerCommon;
 
 namespace MapPartyAssist.Windows;
 
@@ -269,10 +271,43 @@ internal class MainWindow : Window {
 
                 using(var popup = ImRaii.ContextPopupItem($"##{playerMaps.Key.GetHashCode()}--NameContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
                     if(popup) {
-                        if(ImGui.MenuItem($"Add map manually##{playerMaps.Key.GetHashCode()}--NameAddMap")) {
+                        if(ImGui.MenuItem($"Announce map link to party chat##{playerMaps.Key.GetHashCode()}--NameLinkInChat")) {
+                            var mapLink = playerMaps.Key.MapLink;
+                            if(mapLink != null) {
+                                try {
+                                    //there's some rounding silliness here
+                                    _plugin.Functions.SetFlagMarker(mapLink.TerritoryTypeId, mapLink.MapId, mapLink.RawX / 1000f, mapLink.RawY / 1000f);
+                                    var message = _plugin.Configuration.MapLinkChat ?? "<flag>";
+                                    message = message.Replace("<name>", playerMaps.Key.Name);
+                                    message = message.Replace("<fullname>", playerMaps.Key.Key);
+                                    message = message.Replace("<firstname>", playerMaps.Key.FirstName);
+#if DEBUG
+                                    if(_plugin.GameStateManager.CurrentPartyList.Count <= 1) {
+                                        _plugin.Functions.SendChatMessage($"/say {message}");
+                                    }
+#endif
+                                    _plugin.Functions.SendChatMessage($"/p {message}");
+                                } catch(Exception ex) {
+                                    _plugin.Log.Error(ex, "Unable to send chat message");
+                                }
+                            }
+                        } else if(ImGui.MenuItem($"Add map manually##{playerMaps.Key.GetHashCode()}--NameAddMap")) {
                             _plugin.DataQueue.QueueDataOperation(() => _plugin.MapManager.AddMap(playerMaps.Key, null, "Manually-added map", true));
+                        } else if(ImGui.MenuItem($"Restore last map link##{playerMaps.Key.GetHashCode()}--RestoreMapLink")) {
+                            _plugin.DataQueue.QueueDataOperation(() => {
+                                //I should make this value-type
+                                var prevLink = playerMaps.Key.PreviousMapLink;
+                                if(prevLink != null) {
+                                    var prevLinkNew = new MPAMapLink(playerMaps.Key.PreviousMapLink!.TerritoryTypeId, playerMaps.Key.PreviousMapLink.MapId, playerMaps.Key.PreviousMapLink.RawX, playerMaps.Key.PreviousMapLink.RawY);
+                                    _plugin.MapManager.SetMapLink(playerMaps.Key, prevLinkNew);
+                                    _plugin.StorageManager.UpdatePlayer(playerMaps.Key);
+                                }
+                            });
                         } else if(ImGui.MenuItem($"Clear map link##{playerMaps.Key.GetHashCode()}--ClearMapLink")) {
-                            _plugin.DataQueue.QueueDataOperation(() => _plugin.MapManager.ClearMapLink(playerMaps.Key));
+                            _plugin.DataQueue.QueueDataOperation(() => {
+                                _plugin.MapManager.SetMapLink(playerMaps.Key, null);
+                                _plugin.StorageManager.UpdatePlayer(playerMaps.Key);
+                            });
                         }
                     }
                 }

@@ -13,7 +13,7 @@ namespace MapPartyAssist.Windows {
         internal ConfigWindow(Plugin plugin) : base("Map Party Assist Settings") {
             SizeConstraints = new WindowSizeConstraints {
                 MinimumSize = new Vector2(300, 50),
-                MaximumSize = new Vector2(400, 800)
+                MaximumSize = new Vector2(2000, 2000)
             };
             PositionCondition = ImGuiCond.Appearing;
             _plugin = plugin;
@@ -72,7 +72,7 @@ namespace MapPartyAssist.Windows {
                 });
             }
             ImGui.SameLine();
-            ImGuiHelper.HelpMarker("Will only clear map link on new treasure map added to player \nor manual removal.");
+            ImGuiHelper.HelpMarker("Will only clear map link on new treasure map added to player, manual removal, or manual re-assignment of latest map only.");
 
             bool highlightCurrentZoneLinks = _plugin.Configuration.HighlightLinksInCurrentZone;
             if(ImGui.Checkbox("Highlight map links in current zone (yellow)", ref highlightCurrentZoneLinks)) {
@@ -83,6 +83,14 @@ namespace MapPartyAssist.Windows {
             bool highlightClosestLink = _plugin.Configuration.HighlightClosestLink;
             if(ImGui.Checkbox("Highlight closest map link (orange)", ref highlightClosestLink)) {
                 _plugin.Configuration.HighlightClosestLink = highlightClosestLink;
+                _plugin.Configuration.Save();
+            }
+
+            string mapLinkMessage = _plugin.Configuration.MapLinkChat ?? "<flag>";
+            ImGui.Text("Map link chat message format");
+            ImGuiHelper.HelpMarker("Message to display in party chat when using the announce map link function. Recommend enabling 'Don't overwrite map links' with this feature. Hit enter to save after editing.\n\nCustom shortcuts:\nPlayer name: <name>\nFull name with home world: <fullname>\nFirst name: <firstname>");
+            if(ImGui.InputText("###MapLinkChatPrefix", ref mapLinkMessage, 50, ImGuiInputTextFlags.EnterReturnsTrue)) {
+                _plugin.Configuration.MapLinkChat = mapLinkMessage;
                 _plugin.Configuration.Save();
             }
         }

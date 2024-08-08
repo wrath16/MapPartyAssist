@@ -13,8 +13,12 @@ namespace MapPartyAssist.Types {
         public bool IsSelf { get; set; }
         public DateTime LastJoined { get; set; }
         public MPAMapLink? MapLink { get; set; }
+        public MPAMapLink? PreviousMapLink { get; set; }
         [BsonId]
         public string Key => $"{Name} {HomeWorld}";
+
+        [BsonIgnore]
+        public string FirstName => Name.Split(" ")[0];
 
         public MPAMember(string name, string homeWorld, bool isSelf = false) {
             Name = name;

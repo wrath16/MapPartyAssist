@@ -130,7 +130,7 @@ namespace MapPartyAssist {
                 //order is important here
                 DataQueue = new(this);
                 StorageManager = new(this, $"{PluginInterface.GetPluginConfigDirectory()}\\{DatabaseName}");
-                Functions = new();
+                Functions = new(this);
                 DutyManager = new(this);
                 MapManager = new(this);
                 ImportManager = new(this);

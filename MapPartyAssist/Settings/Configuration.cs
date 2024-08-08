@@ -46,6 +46,7 @@ namespace MapPartyAssist.Settings {
         public FilterConfiguration StatsWindowFilters { get; set; } = new();
         public List<LootResultKey> LootPins { get; set; } = new();
         public bool EnablePriceCheck { get; set; } = false;
+        public string? MapLinkChat { get; set; }
         [Obsolete]
         public Dictionary<string, MPAMember> RecentPartyList { get; set; } = new();
         [Obsolete]
