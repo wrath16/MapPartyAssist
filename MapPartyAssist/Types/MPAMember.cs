@@ -44,6 +44,13 @@ namespace MapPartyAssist.Types {
             }
         }
 
+        public void SetMapLink(MPAMapLink? link) {
+            if(MapLink != null) {
+                PreviousMapLink = MapLink;
+            }
+            MapLink = link;
+        }
+
         //public static bool operator ==(MPAMember? a, MPAMember? b) {
         //    if((object?)a == null && (object?)b == null) {
         //        return true;

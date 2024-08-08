@@ -351,7 +351,7 @@ namespace MapPartyAssist.Services {
             } else if(type == XivChatType.Party || type == XivChatType.Say || type == XivChatType.Alliance || type == XivChatType.Shout || type == XivChatType.Yell || type == XivChatType.TellIncoming) {
                 //getting map links
                 if(playerKey != null && mapLink != null && _plugin.GameStateManager.CurrentPartyList.ContainsKey(playerKey) && (_plugin.GameStateManager.CurrentPartyList[playerKey].MapLink == null || !_plugin.Configuration.NoOverwriteMapLink)) {
-                    SetMapLink(_plugin.GameStateManager.CurrentPartyList[playerKey], mapLink);
+                    _plugin.GameStateManager.CurrentPartyList[playerKey].SetMapLink(mapLink);
                     _plugin.DataQueue.QueueDataOperation(() => _plugin.StorageManager.UpdatePlayer(_plugin.GameStateManager.CurrentPartyList[playerKey]));
                 }
             } else if(_boundByMapDutyDelayed) {
@@ -473,7 +473,7 @@ namespace MapPartyAssist.Services {
             };
             _lastMapTime = currentTime;
             if(player != null) {
-                SetMapLink(player, null);
+                player.SetMapLink(null);
                 _plugin.StorageManager.UpdatePlayer(player, false);
             }
 
@@ -532,19 +532,12 @@ namespace MapPartyAssist.Services {
             }
 
             if(map.Id.Equals(GetLastMap()?.Id)) {
-                SetMapLink(newOwner, null);
+                newOwner.SetMapLink(null);
                 _plugin.StorageManager.UpdatePlayer(newOwner, false);
             }
 
             _plugin.StorageManager.UpdateMap(map, false);
             _plugin.Refresh();
-        }
-
-        internal void SetMapLink(MPAMember player, MPAMapLink? mapLink) {
-            if(player.MapLink != null) {
-                player.PreviousMapLink = player.MapLink;
-            }
-            player.MapLink = mapLink;
         }
 
         public void CheckAndArchiveMaps() {
@@ -559,12 +552,6 @@ namespace MapPartyAssist.Services {
             _plugin.GameStateManager.BuildRecentPartyList();
             _plugin.Refresh();
         }
-
-        //public void ClearMapLink(MPAMember player) {
-        //    player.MapLink = null;
-        //    _plugin.StorageManager.UpdatePlayer(player);
-        //    //_plugin.Save();
-        //}
 
         //returns map coords
         public double? GetDistanceToMapLink(MPAMapLink mapLink) {

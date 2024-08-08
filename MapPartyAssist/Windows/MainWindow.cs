@@ -15,7 +15,6 @@ using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Threading;
-using static Lumina.Data.Parsing.Layer.LayerCommon;
 
 namespace MapPartyAssist.Windows;
 
@@ -299,13 +298,13 @@ internal class MainWindow : Window {
                                 var prevLink = playerMaps.Key.PreviousMapLink;
                                 if(prevLink != null) {
                                     var prevLinkNew = new MPAMapLink(playerMaps.Key.PreviousMapLink!.TerritoryTypeId, playerMaps.Key.PreviousMapLink.MapId, playerMaps.Key.PreviousMapLink.RawX, playerMaps.Key.PreviousMapLink.RawY);
-                                    _plugin.MapManager.SetMapLink(playerMaps.Key, prevLinkNew);
+                                    playerMaps.Key.SetMapLink(prevLinkNew);
                                     _plugin.StorageManager.UpdatePlayer(playerMaps.Key);
                                 }
                             });
                         } else if(ImGui.MenuItem($"Clear map link##{playerMaps.Key.GetHashCode()}--ClearMapLink")) {
                             _plugin.DataQueue.QueueDataOperation(() => {
-                                _plugin.MapManager.SetMapLink(playerMaps.Key, null);
+                                playerMaps.Key.SetMapLink(null);
                                 _plugin.StorageManager.UpdatePlayer(playerMaps.Key);
                             });
                         }
