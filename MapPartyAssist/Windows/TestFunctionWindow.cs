@@ -12,7 +12,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using ImGuiNET;
 using Lumina.Excel;
-using Lumina.Excel.GeneratedSheets2;
+using Lumina.Excel.Sheets;
 using MapPartyAssist.Types;
 using MapPartyAssist.Types.REST.Universalis;
 using Newtonsoft.Json;
@@ -34,8 +34,8 @@ namespace MapPartyAssist.Windows {
         private int _originLanguage = (int)ClientLanguage.English;
         private int _destinationLanguage = (int)ClientLanguage.English;
 
-        private readonly Type[] _dataTableCombo;
-        private readonly string[] _dataTableDisplayCombo;
+        private readonly Type[] _dataTableCombo = [];
+        private readonly string[] _dataTableDisplayCombo = [];
         private Type _selectedDataType => _dataTableCombo != null ? _dataTableCombo[_selectedDataTypeIndex] : null;
         private int _selectedDataTypeIndex;
 
@@ -63,16 +63,16 @@ namespace MapPartyAssist.Windows {
             //                     select t;
 
 
+            //todo: fix this
+            //_dataTableCombo = Assembly.GetAssembly(typeof(BNpcName)).GetTypes().Where(t => t.IsAssignableTo(typeof(IExcelRow))).ToArray();
+            //_dataTableDisplayCombo = new string[_dataTableCombo.Length];
+            //for(int i = 0; i < _dataTableCombo.Length; i++) {
+            //    _dataTableDisplayCombo[i] = _dataTableCombo[i].Name;
+            //}
 
-            _dataTableCombo = Assembly.GetAssembly(typeof(BNpcName)).GetTypes().Where(t => t.IsAssignableTo(typeof(ExcelRow))).ToArray();
-            _dataTableDisplayCombo = new string[_dataTableCombo.Length];
-            for(int i = 0; i < _dataTableCombo.Length; i++) {
-                _dataTableDisplayCombo[i] = _dataTableCombo[i].Name;
-            }
-
-            _selectedDataTypeIndex = 0;
-            //_selectedDataType = _dataTableCombo[_selectedDataTypeIndex];
-            UpdatePropertyInfoCombo();
+            //_selectedDataTypeIndex = 0;
+            ////_selectedDataType = _dataTableCombo[_selectedDataTypeIndex];
+            //UpdatePropertyInfoCombo();
         }
 
         public override void Draw() {
@@ -91,14 +91,13 @@ namespace MapPartyAssist.Windows {
                         }
                     }
 
-                    if(ImGui.Button("Show all Treasure Spots")) {
-                        foreach(var spot in _plugin.DataManager.GetExcelSheet<TreasureSpot>()) {
-                            if(spot.Location.Value == null) {
-                                continue;
-                            }
-                            _plugin.Log.Debug($"id: {spot.RowId}.{spot.SubRowId} zone: {spot.Location.Value.Territory.Value.PlaceName.Value.Name} x: {spot.Location.Value.X} y: {spot.Location.Value.Y} z: {spot.Location.Value.Z}");
-                        }
-                    }
+                    //if(ImGui.Button("Show all Treasure Spots")) {
+                    //    var row = _plugin.DataManager.GetExcelSheet<Addon>();
+                    //    var x = _plugin.DataManager.GetExcelSheet<TreasureSpot>();
+                    //    foreach(var spot in _plugin.DataManager.GetExcelSheet<TreasureSpot>()) {
+                    //        _plugin.Log.Debug($"id: {spot.RowId}.{spot.SubrowId} zone: {spot.Location.Value.Territory.Value.PlaceName.Value.Name} x: {spot.Location.Value.X} y: {spot.Location.Value.Y} z: {spot.Location.Value.Z}");
+                    //    }
+                    //}
 
                     if(ImGui.Button("Maps Table")) {
                         ShowMapsTable();

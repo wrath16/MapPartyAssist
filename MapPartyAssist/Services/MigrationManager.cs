@@ -1,6 +1,6 @@
 ﻿using Dalamud.Game;
 using Dalamud.Utility;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using System;

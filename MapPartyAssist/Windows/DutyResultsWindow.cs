@@ -5,7 +5,7 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
 using LiteDB;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using System;
@@ -108,7 +108,7 @@ namespace MapPartyAssist.Windows {
                             var row = _plugin.DataManager.GetExcelSheet<Item>()?.First(r => r.RowId == lr.ItemId);
                             bool isPlural = lr.Quantity > 1;
                             if(row is not null) {
-                                lr.ItemName = isPlural ? row.Plural : row.Singular;
+                                lr.ItemName = isPlural ? row.Value.Plural.ToString() : row.Value.Singular.ToString();
                             }
                         }
                     }

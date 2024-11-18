@@ -8,7 +8,8 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using Lumina.Excel;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
+using Lumina.Text.ReadOnly;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Services;
 using MapPartyAssist.Settings;
@@ -332,7 +333,7 @@ namespace MapPartyAssist {
             return TranslateDataTableEntry<BNpcName>(npcName, "Singular", GrammarCase.Nominative, destinationLanguage, originLanguage);
         }
 
-        public string TranslateDataTableEntry<T>(string data, string column, GrammarCase gramCase, ClientLanguage destinationLanguage, ClientLanguage? originLanguage = null) where T : ExcelRow {
+        public string TranslateDataTableEntry<T>(string data, string column, GrammarCase gramCase, ClientLanguage destinationLanguage, ClientLanguage? originLanguage = null) where T : struct, IExcelRow<T> {
             originLanguage ??= ClientState.ClientLanguage;
             uint? rowId = null;
             Type type = typeof(T);
@@ -344,7 +345,7 @@ namespace MapPartyAssist {
 
             //check to make sure column is string
             var columnProperty = type.GetProperty(column) ?? throw new ArgumentException($"No property of name: {column} on type {type.FullName}");
-            if(!columnProperty.PropertyType.IsAssignableTo(typeof(Lumina.Text.SeString))) {
+            if(!columnProperty.PropertyType.IsAssignableTo(typeof(ReadOnlySeString))) {
                 throw new ArgumentException($"property {column} of type {columnProperty.PropertyType.FullName} on type {type.FullName} is not assignable to a SeString!");
             }
 
@@ -453,7 +454,7 @@ namespace MapPartyAssist {
             return input;
         }
 
-        public uint? GetRowId<T>(string data, string column, GrammarCase gramCase, ClientLanguage? language = null) where T : ExcelRow {
+        public uint? GetRowId<T>(string data, string column, GrammarCase gramCase, ClientLanguage? language = null) where T : struct, IExcelRow<T> {
             language ??= ClientState.ClientLanguage;
             Type type = typeof(T);
             bool isPlural = column.Equals("Plural", StringComparison.OrdinalIgnoreCase);
@@ -464,7 +465,7 @@ namespace MapPartyAssist {
 
             //check to make sure column is string
             var columnProperty = type.GetProperty(column) ?? throw new ArgumentException($"No property of name: {column} on type {type.FullName}");
-            if(!columnProperty.PropertyType.IsAssignableTo(typeof(Lumina.Text.SeString))) {
+            if(!columnProperty.PropertyType.IsAssignableTo(typeof(ReadOnlySeString))) {
                 throw new ArgumentException($"property {column} of type {columnProperty.PropertyType.FullName} on type {type.FullName} is not assignable to a SeString!");
             }
 

@@ -42,7 +42,7 @@ namespace MapPartyAssist.Services {
         }
 
         private void OnFrameworkUpdate(IFramework framework) {
-            var playerJob = _plugin.ClientState.LocalPlayer?.ClassJob.GameData?.Abbreviation;
+            var playerJob = _plugin.ClientState.LocalPlayer?.ClassJob.Value.Abbreviation;
             var currentPartySize = _plugin.PartyList.Length;
 
             if(!_plugin.Condition[ConditionFlag.BetweenAreas] && playerJob != null && currentPartySize != _lastPartySize) {
@@ -69,7 +69,7 @@ namespace MapPartyAssist.Services {
             });
         }
 
-        private void OnLogout() {
+        private void OnLogout(int type, int code) {
             _plugin.DataQueue.QueueDataOperation(() => {
                 _plugin.PriceHistory.Shutdown();
                 CurrentPartyList = new();
@@ -79,7 +79,7 @@ namespace MapPartyAssist.Services {
 
         public string? GetCurrentPlayer() {
             string? currentPlayerName = _plugin.ClientState.LocalPlayer?.Name?.ToString();
-            string? currentPlayerWorld = _plugin.ClientState.LocalPlayer?.HomeWorld?.GameData?.Name?.ToString();
+            string? currentPlayerWorld = _plugin.ClientState.LocalPlayer?.HomeWorld.Value.Name.ToString();
             if(currentPlayerName == null || currentPlayerWorld == null) {
                 //throw exception?
                 //throw new InvalidOperationException("Cannot retrieve current player");
@@ -89,7 +89,7 @@ namespace MapPartyAssist.Services {
         }
 
         public Region GetCurrentRegion() {
-            var currentPlayerRegion = _plugin.ClientState.LocalPlayer?.CurrentWorld.GameData?.DataCenter.Value?.Region;
+            var currentPlayerRegion = _plugin.ClientState.LocalPlayer?.CurrentWorld.Value.DataCenter.Value.Region;
             return PlayerHelper.GetRegion(currentPlayerRegion);
         }
 
@@ -102,7 +102,7 @@ namespace MapPartyAssist.Services {
         private void BuildCurrentPartyList(IPartyMember[] partyMembers) {
             _plugin.Log.Debug("Rebuilding current party list.");
             string currentPlayerName = _plugin.ClientState.LocalPlayer!.Name.ToString()!;
-            string currentPlayerWorld = _plugin.ClientState.LocalPlayer!.HomeWorld.GameData!.Name!;
+            string currentPlayerWorld = _plugin.ClientState.LocalPlayer!.HomeWorld.Value.Name.ToString();
             string currentPlayerKey = GetCurrentPlayer()!;
             CurrentPartyList = new();
             var allPlayers = _plugin.StorageManager.GetPlayers();
@@ -122,7 +122,7 @@ namespace MapPartyAssist.Services {
             } else {
                 foreach(IPartyMember p in partyMembers) {
                     string partyMemberName = p.Name.ToString();
-                    string partyMemberWorld = p.World.GameData!.Name.ToString();
+                    string partyMemberWorld = p.World.Value.Name.ToString();
                     var key = $"{partyMemberName} {partyMemberWorld}";
                     bool isCurrentPlayer = partyMemberName.Equals(currentPlayerName) && partyMemberWorld.Equals(currentPlayerWorld);
                     var findPlayer = allPlayers.Query().Where(p => p.Key == key).FirstOrDefault();

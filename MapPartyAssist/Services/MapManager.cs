@@ -6,7 +6,7 @@ using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using System;
@@ -210,7 +210,7 @@ namespace MapPartyAssist.Services {
                 case 8254: //party member loot
                 case (int)XivChatType.SystemMessage:
                     var playerPayload = (PlayerPayload?)message.Payloads.FirstOrDefault(m => m is PlayerPayload);
-                    playerKey = playerPayload is not null ? $"{playerPayload.PlayerName} {playerPayload.World.Name}" : null;
+                    playerKey = playerPayload is not null ? $"{playerPayload.PlayerName} {playerPayload.World.Value.Name}" : null;
                     break;
                 case (int)XivChatType.Party:
                 case (int)XivChatType.Alliance:
@@ -222,9 +222,9 @@ namespace MapPartyAssist.Services {
                     if(senderPayload is null) {
                         //from same world as player
                         string matchName = Regex.Match(sender.TextValue, @"[A-Za-z-']*\s[A-Za-z-']*$").ToString();
-                        playerKey = $"{matchName} {_plugin.ClientState.LocalPlayer!.HomeWorld.GameData!.Name}";
+                        playerKey = $"{matchName} {_plugin.ClientState.LocalPlayer!.HomeWorld.Value.Name}";
                     } else {
-                        playerKey = $"{senderPayload.PlayerName} {senderPayload.World.Name}";
+                        playerKey = $"{senderPayload.PlayerName} {senderPayload.World.Value.Name}";
                     }
                     break;
                 default:
@@ -439,8 +439,8 @@ namespace MapPartyAssist.Services {
 
             if(_plugin.IsLanguageSupported()) {
                 //have to do lookup on PlaceName sheet otherwise will not translate properly
-                var placeNameId = _plugin.DataManager.GetExcelSheet<TerritoryType>(ClientLanguage.English)?.GetRow(_plugin.GameStateManager.CurrentTerritory)?.PlaceName.Row;
-                zone ??= placeNameId != null ? _plugin.DataManager.GetExcelSheet<PlaceName>(ClientLanguage.English)!.GetRow((uint)placeNameId)!.Name : "";
+                var placeNameId = _plugin.DataManager.GetExcelSheet<TerritoryType>(ClientLanguage.English)?.GetRow(_plugin.GameStateManager.CurrentTerritory).PlaceName.Value.RowId;
+                zone ??= placeNameId != null ? _plugin.DataManager.GetExcelSheet<PlaceName>(ClientLanguage.English)!.GetRow((uint)placeNameId)!.Name.ToString() : "";
             } else {
                 zone ??= "";
             }

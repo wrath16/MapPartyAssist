@@ -5,8 +5,7 @@ using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Hooking;
 using Dalamud.Utility;
 using Dalamud.Utility.Signatures;
-using FFXIVClientStructs.FFXIV.Client.Game.InstanceContent;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
@@ -469,7 +468,7 @@ namespace MapPartyAssist.Services {
         }
 
         private void OnDutyStart(object? sender, ushort territoryId) {
-            _plugin.Log.Debug($"Duty has started with territory id: {territoryId} name: {_plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId)?.PlaceName.Value?.Name} ");
+            _plugin.Log.Debug($"Duty has started with territory id: {territoryId} name: {_plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId).PlaceName.Value.Name} ");
             var dutyId = _plugin.Functions.GetCurrentDutyId();
             _plugin.Log.Debug($"Current duty ID: {dutyId}");
             var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
@@ -500,7 +499,7 @@ namespace MapPartyAssist.Services {
                 var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
                 _plugin.Log.Debug($"Territory changed: {territoryId}, Current duty: {_plugin.Functions.GetCurrentDutyId()}, Content Type: {_plugin.Functions.GetInstanceContentType().ToString() ?? ""}");
 
-                if(!Duties.ContainsKey(dutyId) && _plugin.Functions.GetInstanceContentType() == InstanceContentType.TreasureHuntDungeon) {
+                if(!Duties.ContainsKey(dutyId) && _plugin.Functions.GetInstanceContentType() == FFXIVClientStructs.FFXIV.Client.Game.InstanceContent.InstanceContentType.TreasureHuntDungeon) {
                     _plugin.Log.Information($"Unknown treasure hunt duty: {dutyId}");
                 }
 
@@ -519,7 +518,7 @@ namespace MapPartyAssist.Services {
                         if(!PickupLastDuty(true)) {
                             StartNewDuty(dutyId);
                         }
-                    } else if(_plugin.Functions.GetInstanceContentType() == InstanceContentType.TreasureHuntDungeon) {
+                    } else if(_plugin.Functions.GetInstanceContentType() == FFXIVClientStructs.FFXIV.Client.Game.InstanceContent.InstanceContentType.TreasureHuntDungeon) {
                         //StartNewUnknownDuty(dutyId);
                     }
                 }
@@ -547,7 +546,7 @@ namespace MapPartyAssist.Services {
                     uint? itemId = item?.ItemId;
                     bool isHq = item is not null ? item.IsHQ : false;
                     var player = (PlayerPayload?)message.Payloads.FirstOrDefault(m => m is PlayerPayload);
-                    string? playerKey = player is not null ? $"{player.PlayerName} {player.World.Name}" : null;
+                    string? playerKey = player is not null ? $"{player.PlayerName} {player.World.Value.Name}" : null;
                     Message record = new(DateTime.Now, (int)type, messageText, itemId, isHq, playerKey);
                     _plugin.DataQueue.QueueDataOperation(() => {
                         if(IsUnknownDutyInProgress()) {
@@ -822,10 +821,10 @@ namespace MapPartyAssist.Services {
         }
 
         private Dictionary<ClientLanguage, Regex> GetFailureRegex(int dutyId) {
-            string? dutyNameEnglish = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.English)?.Where(r => r.RowId == dutyId).FirstOrDefault()?.Name.ToString();
-            string? dutyNameFrench = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.French)?.Where(r => r.RowId == dutyId).FirstOrDefault()?.Name.ToString();
-            string? dutyNameGerman = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.German)?.Where(r => r.RowId == dutyId).FirstOrDefault()?.Name.ToString();
-            string? dutyNameJapanese = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.Japanese)?.Where(r => r.RowId == dutyId).FirstOrDefault()?.Name.ToString();
+            string? dutyNameEnglish = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.English)?.Where(r => r.RowId == dutyId).FirstOrDefault().Name.ToString();
+            string? dutyNameFrench = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.French)?.Where(r => r.RowId == dutyId).FirstOrDefault().Name.ToString();
+            string? dutyNameGerman = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.German)?.Where(r => r.RowId == dutyId).FirstOrDefault().Name.ToString();
+            string? dutyNameJapanese = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.Japanese)?.Where(r => r.RowId == dutyId).FirstOrDefault().Name.ToString();
 
             return new Dictionary<ClientLanguage, Regex>() {
                 { ClientLanguage.English, new Regex($"{dutyNameEnglish} has ended", RegexOptions.IgnoreCase) },

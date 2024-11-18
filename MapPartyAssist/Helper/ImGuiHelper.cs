@@ -13,6 +13,13 @@ namespace MapPartyAssist.Helper {
             }
         }
 
+        internal static void RightAlignCursor2(string text, float extra) {
+            var posX = ImGui.GetCursorPosX() + ImGui.GetColumnWidth() - ImGui.CalcTextSize(text).X;
+            if(posX > ImGui.GetCursorPosX()) {
+                ImGui.SetCursorPosX(posX + extra);
+            }
+        }
+
         internal static void CenterAlignCursor(string text) {
             var size = ImGui.CalcTextSize(text);
             var posX = ImGui.GetCursorPosX() + (ImGui.GetColumnWidth() - ImGui.CalcTextSize(text).X) / 2f;

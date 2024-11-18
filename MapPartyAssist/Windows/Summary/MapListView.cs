@@ -3,7 +3,7 @@ using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
 using ImGuiNET;
 using LiteDB;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using System.Collections.Generic;
@@ -69,9 +69,9 @@ namespace MapPartyAssist.Windows.Summary {
                             newLootResults.Add(key, new LootResultValue {
                                 DroppedQuantity = lootResult.Quantity,
                                 ObtainedQuantity = obtainedQuantity,
-                                Rarity = row.Rarity,
-                                ItemName = row.Name,
-                                Category = row.ItemUICategory.Value.Name,
+                                Rarity = row.Value.Rarity,
+                                ItemName = row.Value.Name.ToString(),
+                                Category = row.Value.ItemUICategory.Value.Name.ToString(),
                                 AveragePrice = price,
                                 DroppedValue = price * lootResult.Quantity,
                                 ObtainedValue = price * obtainedQuantity,

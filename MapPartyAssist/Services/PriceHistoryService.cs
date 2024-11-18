@@ -1,4 +1,4 @@
-﻿using Lumina.Excel.GeneratedSheets2;
+﻿using Lumina.Excel.Sheets;
 using MapPartyAssist.Types;
 using MapPartyAssist.Types.REST.Universalis;
 using Newtonsoft.Json;
@@ -202,7 +202,7 @@ namespace MapPartyAssist.Services {
             }
 
             var row = _plugin.DataManager.GetExcelSheet<Item>()?.GetRow(itemKey.ItemId);
-            if(row is null || !row.CanBeHq && itemKey.IsHQ || row.IsUntradable) {
+            if(row is null || !row.Value.CanBeHq && itemKey.IsHQ || row.Value.IsUntradable) {
                 return null;
             }
 
@@ -273,7 +273,7 @@ namespace MapPartyAssist.Services {
                     foreach(var item in results.Value.Items) {
                         string itemName = "";
 #if DEBUG
-                        itemName = _plugin.DataManager.GetExcelSheet<Item>().GetRow(item.Key).Name;
+                        itemName = _plugin.DataManager.GetExcelSheet<Item>().GetRow(item.Key).Name.ToString();
 #endif
                         //int normalTotal = 0;
                         int normalCount = 0;

@@ -335,27 +335,21 @@ namespace MapPartyAssist.Windows {
                     //ImGui.TableNextRow();
 
                     foreach(var filter in Filters) {
-                        //ImGui.PushStyleVar(ImGuiStyleVar.CellPadding, 4);
                         ImGui.TableNextColumn();
 
                         if(filter.HelpMessage != null) {
                             ImGui.AlignTextToFramePadding();
-                            ImGuiHelper.HelpMarker(filter.HelpMessage);
+                            ImGuiHelper.HelpMarker(filter.HelpMessage, false);
                             ImGui.SameLine();
                         }
-                        //ImGui.GetStyle().FramePadding.X = ImGui.GetStyle().FramePadding.X - 2f;
                         string nameText = $"{filter.Name}:";
-                        ImGuiHelper.RightAlignCursor(nameText);
+                        ImGuiHelper.RightAlignCursor2(nameText, -5f * ImGuiHelpers.GlobalScale);
                         ImGui.AlignTextToFramePadding();
-                        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + float.Max(0, 16f - 4f * ImGuiHelpers.GlobalScale));
-                        ImGui.Text($"{nameText}");
-                        //ImGui.PopStyleVar();
-                        //ImGui.GetStyle().FramePadding.X = ImGui.GetStyle().FramePadding.X + 2f;
+                        //ImGui.SetCursorPosX(ImGui.GetCursorPosX() + float.Max(0, 16f - 4f * ImGuiHelpers.GlobalScale));
+                        ImGui.TextUnformatted(nameText);
                         ImGui.TableNextColumn();
-                        //if(filter.GetType() == typeof(TimeFilter)) {
-                        //    ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X / 2f);
-                        //}
                         filter.Draw();
+
                     }
                     ImGui.EndTable();
                 }
