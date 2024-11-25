@@ -18,7 +18,7 @@ namespace MapPartyAssist.Windows {
 
         private string _statusMessage = "";
         private int _selectedDuty = 0;
-        private readonly int[] _dutyIdCombo = { 0, 179, 268, 276, 586, 688, 745, 819, 909 };
+        private readonly int[] _dutyIdCombo = { 0, 179, 268, 276, 586, 688, 745, 819, 909, 993 };
         private readonly string[] _dutyNameCombo;
 
         private const float _inputWidth = 200f;
