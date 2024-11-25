@@ -175,7 +175,7 @@ namespace MapPartyAssist {
                 PluginInterface.UiBuilder.OpenMainUi += DrawMainUI;
                 PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
 
-                ChatGui.ChatMessage += OnChatMessage;
+                ChatGui.CheckMessageHandled += OnChatMessage;
 
                 //data migration
                 DataQueue.QueueDataOperation(MigrationManager.CheckAndMigrate);
@@ -218,7 +218,7 @@ namespace MapPartyAssist {
             CommandManager.RemoveHandler(TestCommandName);
 #endif
 
-            ChatGui.ChatMessage -= OnChatMessage;
+            ChatGui.CheckMessageHandled -= OnChatMessage;
 
             PluginInterface.UiBuilder.Draw -= DrawUI;
             PluginInterface.UiBuilder.OpenMainUi -= DrawMainUI;
