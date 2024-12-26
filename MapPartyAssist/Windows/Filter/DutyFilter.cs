@@ -1,4 +1,5 @@
 ﻿using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using ImGuiNET;
 using System;
 using System.Collections.Generic;
@@ -43,23 +44,24 @@ namespace MapPartyAssist.Windows.Filter {
                 });
             }
 
-            ImGui.BeginTable("dutyFilterTable", 2);
-            ImGui.TableSetupColumn($"c1", ImGuiTableColumnFlags.WidthFixed, float.Min(ImGui.GetContentRegionAvail().X / 2, ImGuiHelpers.GlobalScale * 400f));
-            ImGui.TableSetupColumn($"c2", ImGuiTableColumnFlags.WidthFixed, float.Min(ImGui.GetContentRegionAvail().X / 2, ImGuiHelpers.GlobalScale * 400f));
-            ImGui.TableNextRow();
+            using var table = ImRaii.Table("dutyFilterTable", 2);
+            if(table) {
+                ImGui.TableSetupColumn($"c1", ImGuiTableColumnFlags.WidthFixed, float.Min(ImGui.GetContentRegionAvail().X / 2, ImGuiHelpers.GlobalScale * 400f));
+                ImGui.TableSetupColumn($"c2", ImGuiTableColumnFlags.WidthFixed, float.Min(ImGui.GetContentRegionAvail().X / 2, ImGuiHelpers.GlobalScale * 400f));
+                ImGui.TableNextRow();
 
-            foreach(var duty in FilterState) {
-                ImGui.TableNextColumn();
-                bool filterState = duty.Value;
-                if(ImGui.Checkbox($"{_plugin!.DutyManager.Duties[duty.Key].GetDisplayName()}##{GetHashCode()}", ref filterState)) {
-                    _plugin.DataQueue.QueueDataOperation(() => {
-                        FilterState[duty.Key] = filterState;
-                        UpdateAllSelected();
-                        Refresh();
-                    });
+                foreach(var duty in FilterState) {
+                    ImGui.TableNextColumn();
+                    bool filterState = duty.Value;
+                    if(ImGui.Checkbox($"{_plugin!.DutyManager.Duties[duty.Key].GetDisplayName()}##{GetHashCode()}", ref filterState)) {
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            FilterState[duty.Key] = filterState;
+                            UpdateAllSelected();
+                            Refresh();
+                        });
+                    }
                 }
             }
-            ImGui.EndTable();
         }
     }
 }

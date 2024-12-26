@@ -1,4 +1,5 @@
 ﻿using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using ImGuiNET;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
@@ -56,23 +57,24 @@ namespace MapPartyAssist.Windows.Filter {
                 });
             }
 
-            ImGui.BeginTable("mapFilterTable", 2);
-            ImGui.TableSetupColumn($"c1", ImGuiTableColumnFlags.WidthFixed, float.Min(ImGui.GetContentRegionAvail().X / 2, ImGuiHelpers.GlobalScale * 400f));
-            ImGui.TableSetupColumn($"c2", ImGuiTableColumnFlags.WidthFixed, float.Min(ImGui.GetContentRegionAvail().X / 2, ImGuiHelpers.GlobalScale * 400f));
-            ImGui.TableNextRow();
+            using var table = ImRaii.Table("mapFilterTable", 2);
+            if(table) {
+                ImGui.TableSetupColumn($"c1", ImGuiTableColumnFlags.WidthFixed, float.Min(ImGui.GetContentRegionAvail().X / 2, ImGuiHelpers.GlobalScale * 400f));
+                ImGui.TableSetupColumn($"c2", ImGuiTableColumnFlags.WidthFixed, float.Min(ImGui.GetContentRegionAvail().X / 2, ImGuiHelpers.GlobalScale * 400f));
+                ImGui.TableNextRow();
 
-            foreach(var category in FilterState) {
-                ImGui.TableNextColumn();
-                bool filterState = category.Value;
-                if(ImGui.Checkbox($"{MapHelper.GetCategoryName(category.Key)}##{GetHashCode()}", ref filterState)) {
-                    _plugin!.DataQueue.QueueDataOperation(() => {
-                        FilterState[category.Key] = filterState;
-                        UpdateAllSelected();
-                        Refresh();
-                    });
+                foreach(var category in FilterState) {
+                    ImGui.TableNextColumn();
+                    bool filterState = category.Value;
+                    if(ImGui.Checkbox($"{MapHelper.GetCategoryName(category.Key)}##{GetHashCode()}", ref filterState)) {
+                        _plugin!.DataQueue.QueueDataOperation(() => {
+                            FilterState[category.Key] = filterState;
+                            UpdateAllSelected();
+                            Refresh();
+                        });
+                    }
                 }
             }
-            ImGui.EndTable();
         }
     }
 }

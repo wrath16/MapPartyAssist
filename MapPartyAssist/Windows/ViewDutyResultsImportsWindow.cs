@@ -1,4 +1,5 @@
 ﻿using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
 using MapPartyAssist.Helper;
@@ -69,20 +70,23 @@ namespace MapPartyAssist.Windows {
             ImGuiHelper.HelpMarker("Use imports to include stats that were tracked when the plugin was unavailable.");
 
             if(_imports.Count > 0) {
-                ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true);
-                ImGui.BeginTable($"AddTable", 4, ImGuiTableFlags.NoHostExtendX);
-                ImGui.TableSetupColumn("time", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 130);
-                ImGui.TableSetupColumn("duty", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 200);
-                ImGui.TableSetupColumn("edit", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 30);
-                ImGui.TableSetupColumn("delete", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 50);
-                ImGui.TableNextRow();
-                ImGui.TableNextColumn();
+                using(var child = ImRaii.Child("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true)) {
+                    if(child) {
+                        using var table = ImRaii.Table($"AddTable", 4, ImGuiTableFlags.NoHostExtendX);
+                        if(table) {
+                            ImGui.TableSetupColumn("time", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 130);
+                            ImGui.TableSetupColumn("duty", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 200);
+                            ImGui.TableSetupColumn("edit", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 30);
+                            ImGui.TableSetupColumn("delete", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 50);
+                            ImGui.TableNextRow();
+                            ImGui.TableNextColumn();
 
-                foreach(var import in _imports) {
-                    DrawImport(import);
+                            foreach(var import in _imports) {
+                                DrawImport(import);
+                            }
+                        }
+                    }
                 }
-                ImGui.EndTable();
-                ImGui.EndChild();
             }
 
             if(_currentPage > 0) {
@@ -115,19 +119,20 @@ namespace MapPartyAssist.Windows {
                 _addImportWindow.Open(import);
             }
             ImGui.TableNextColumn();
-            if(ImGui.BeginPopup($"{import.Id.ToString()}-DeletePopup")) {
-                ImGui.Text("Are you sure?");
-                if(ImGui.Button($"Yes##{import.Id.ToString()}-ConfirmDelete")) {
-                    _plugin.DataQueue.QueueDataOperation(() => {
-                        import.IsDeleted = true;
-                        _plugin.StorageManager.UpdateDutyResultsImport(import);
-                    });
+            using(var popup = ImRaii.Popup($"{import.Id.ToString()}-DeletePopup")) {
+                if(popup) {
+                    ImGui.Text("Are you sure?");
+                    if(ImGui.Button($"Yes##{import.Id.ToString()}-ConfirmDelete")) {
+                        _plugin.DataQueue.QueueDataOperation(() => {
+                            import.IsDeleted = true;
+                            _plugin.StorageManager.UpdateDutyResultsImport(import);
+                        });
+                    }
+                    ImGui.SameLine();
+                    if(ImGui.Button($"Cancel##{import.Id.ToString()}-CancelDelete")) {
+                        ImGui.CloseCurrentPopup();
+                    }
                 }
-                ImGui.SameLine();
-                if(ImGui.Button($"Cancel##{import.Id.ToString()}-CancelDelete")) {
-                    ImGui.CloseCurrentPopup();
-                }
-                ImGui.EndPopup();
             }
             if(ImGui.Button($"Delete##{import.Id.ToString()}")) {
                 ImGui.OpenPopup($"{import.Id.ToString()}-DeletePopup");

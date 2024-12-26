@@ -1,5 +1,6 @@
 ﻿using Dalamud.Interface;
 using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using ImGuiNET;
@@ -303,57 +304,63 @@ namespace MapPartyAssist.Windows {
 
             //    ImGui.EndChild();
             //}
-            if(!ImGui.Begin(WindowName)) {
-                ImGui.End();
-                return;
-            }
+            //if(!ImGui.Begin(WindowName)) {
+            //    ImGui.End();
+            //    return;
+            //}
 
             if(ImGui.BeginMenuBar()) {
-                if(ImGui.BeginMenu("Windows")) {
-                    if(ImGui.MenuItem("Map Tracker", null, _plugin.MainWindow.IsOpen)) {
-                        OpenMapWindow();
+                try {
+                    if(ImGui.BeginMenu("Windows")) {
+                        try {
+                            if(ImGui.MenuItem("Map Tracker", null, _plugin.MainWindow.IsOpen)) {
+                                OpenMapWindow();
+                            }
+                        } finally {
+                            ImGui.EndMenu();
+                        }
                     }
-                    ImGui.EndMenu();
+                    if(ImGui.BeginMenu("Options")) {
+                        try {
+                            if(ImGui.MenuItem("Manage Imports")) {
+                                OpenImportsWindow();
+                            }
+                            if(ImGui.MenuItem("Settings")) {
+                                OpenConfigWindow();
+                            }
+                        } finally {
+                            ImGui.EndMenu();
+                        }
+                    }
+                } finally {
+                    ImGui.EndMenuBar();
                 }
-                if(ImGui.BeginMenu("Options")) {
-                    if(ImGui.MenuItem("Manage Imports")) {
-                        OpenImportsWindow();
-                    }
-                    if(ImGui.MenuItem("Settings")) {
-                        OpenConfigWindow();
-                    }
-                    ImGui.EndMenu();
-                }
-                ImGui.EndMenuBar();
             }
 
-            if(!_collapseFilters && ImGui.BeginChild("FilterChild", new Vector2(ImGui.GetContentRegionAvail().X, float.Max(ImGuiHelpers.GlobalScale * 150, ImGui.GetWindowHeight() / 4f)), true, ImGuiWindowFlags.AlwaysAutoResize)) {
-                if(ImGui.BeginTable("FilterTable", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.BordersInnerH)) {
-                    ImGui.BeginTable("FilterTable", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.BordersInner);
-                    ImGui.TableSetupColumn("filterName", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 110f);
-                    ImGui.TableSetupColumn($"filters", ImGuiTableColumnFlags.WidthStretch);
-                    //ImGui.TableNextRow();
+            if(!_collapseFilters) {
+                using(var child = ImRaii.Child("FilterChild", new Vector2(ImGui.GetContentRegionAvail().X, float.Max(ImGuiHelpers.GlobalScale * 150, ImGui.GetWindowHeight() / 4f)), true, ImGuiWindowFlags.AlwaysAutoResize)) {
+                    using(var table = ImRaii.Table("FilterTable", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.BordersInnerH)) {
+                        ImGui.TableSetupColumn("filterName", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 110f);
+                        ImGui.TableSetupColumn($"filters", ImGuiTableColumnFlags.WidthStretch);
+                        //ImGui.TableNextRow();
+                        foreach(var filter in Filters) {
+                            ImGui.TableNextColumn();
 
-                    foreach(var filter in Filters) {
-                        ImGui.TableNextColumn();
-
-                        if(filter.HelpMessage != null) {
+                            if(filter.HelpMessage != null) {
+                                ImGui.AlignTextToFramePadding();
+                                ImGuiHelper.HelpMarker(filter.HelpMessage, false);
+                                ImGui.SameLine();
+                            }
+                            string nameText = $"{filter.Name}:";
+                            ImGuiHelper.RightAlignCursor2(nameText, -5f * ImGuiHelpers.GlobalScale);
                             ImGui.AlignTextToFramePadding();
-                            ImGuiHelper.HelpMarker(filter.HelpMessage, false);
-                            ImGui.SameLine();
+                            //ImGui.SetCursorPosX(ImGui.GetCursorPosX() + float.Max(0, 16f - 4f * ImGuiHelpers.GlobalScale));
+                            ImGui.TextUnformatted(nameText);
+                            ImGui.TableNextColumn();
+                            filter.Draw();
                         }
-                        string nameText = $"{filter.Name}:";
-                        ImGuiHelper.RightAlignCursor2(nameText, -5f * ImGuiHelpers.GlobalScale);
-                        ImGui.AlignTextToFramePadding();
-                        //ImGui.SetCursorPosX(ImGui.GetCursorPosX() + float.Max(0, 16f - 4f * ImGuiHelpers.GlobalScale));
-                        ImGui.TextUnformatted(nameText);
-                        ImGui.TableNextColumn();
-                        filter.Draw();
-
                     }
-                    ImGui.EndTable();
                 }
-                ImGui.EndChild();
             }
             //hide filter button
             try {
@@ -369,40 +376,38 @@ namespace MapPartyAssist.Windows {
             }
             ImGuiHelper.WrappedTooltip($"{(_collapseFilters ? "Show filters" : "Hide filters")}");
 
-            if(ImGui.BeginTabBar("TabBar", ImGuiTabBarFlags.None)) {
-                if(ImGui.BeginTabItem("Duty Progress Summary")) {
-                    if(ImGui.BeginChild("DungeonSummaryChild")) {
-                        _dutySummary.Draw();
-                        ImGui.EndChild();
+            using(var tabBar = ImRaii.TabBar("TabBar", ImGuiTabBarFlags.None)) {
+                if(tabBar) {
+                    using(var tab1 = ImRaii.TabItem("Duty Progress Summary")) {
+                        if(tab1) {
+                            using(var child = ImRaii.Child("DungeonSummaryChild")) {
+                                _dutySummary.Draw();
+                            }
+                        }
                     }
-                    ImGui.EndTabItem();
-                }
-
-                if(ImGui.BeginTabItem("Loot")) {
-                    if(ImGui.BeginChild("LootResultsChild")) {
-                        _lootSummary.Draw();
-                        ImGui.EndChild();
+                    using(var tab2 = ImRaii.TabItem("Loot")) {
+                        if(tab2) {
+                            using(var child = ImRaii.Child("LootResultsChild")) {
+                                _lootSummary.Draw();
+                            }
+                        }
                     }
-                    ImGui.EndTabItem();
-                }
-
-                if(ImGui.BeginTabItem("Maps")) {
-                    if(ImGui.BeginChild("Maps")) {
-                        _mapList.Draw();
-                        ImGui.EndChild();
+                    using(var tab3 = ImRaii.TabItem("Maps")) {
+                        if(tab3) {
+                            using(var child = ImRaii.Child("Maps")) {
+                                _mapList.Draw();
+                            }
+                        }
                     }
-                    ImGui.EndTabItem();
-                }
-                if(ImGui.BeginTabItem("Duties")) {
-                    if(ImGui.BeginChild("DutyResultsChild")) {
-                        _dutyResultsList.Draw();
-                        ImGui.EndChild();
+                    using(var tab4 = ImRaii.TabItem("Duties")) {
+                        if(tab4) {
+                            using(var child = ImRaii.Child("DutyResultsChild")) {
+                                _dutyResultsList.Draw();
+                            }
+                        }
                     }
-                    ImGui.EndTabItem();
                 }
-                ImGui.EndTabBar();
             }
-            ImGui.End();
         }
 
         internal void OpenImportsWindow() {

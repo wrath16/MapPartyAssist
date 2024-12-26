@@ -1,5 +1,6 @@
 ﻿using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using ImGuiNET;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Settings;
@@ -314,21 +315,21 @@ namespace MapPartyAssist.Windows.Summary {
             if(_dutyStats.Count == 0) {
                 ImGui.TextDisabled("No duty results for given filters.");
             }
-            ImGui.BeginTable("statsTable", 2, ImGuiTableFlags.NoClip | ImGuiTableFlags.NoKeepColumnsVisible);
-            for(int i = 0; i < _dutyStats.Count; i++) {
-                var duty = _dutyStats.ElementAt(i);
-                ImGui.TableNextColumn();
-                if(i > 1) {
-                    ImGui.Separator();
-                }
-                ImGui.TextColored(ImGuiColors.DalamudViolet, _plugin.DutyManager.Duties[duty.Key].GetDisplayName());
-                //ImGui.TextColored(ImGuiColors.DalamudWhite, TimeFilter.RangeToString(_timeFilter.StatRange).ToUpper());
-                ProgressTable(duty.Key);
-                if(_plugin.DutyManager.Duties[duty.Key].Structure == DutyStructure.Roulette) {
-                    SummonTable(duty.Key);
+            using(var table = ImRaii.Table("statsTable", 2, ImGuiTableFlags.NoClip | ImGuiTableFlags.NoKeepColumnsVisible)) {
+                for(int i = 0; i < _dutyStats.Count; i++) {
+                    var duty = _dutyStats.ElementAt(i);
+                    ImGui.TableNextColumn();
+                    if(i > 1) {
+                        ImGui.Separator();
+                    }
+                    ImGui.TextColored(ImGuiColors.DalamudViolet, _plugin.DutyManager.Duties[duty.Key].GetDisplayName());
+                    //ImGui.TextColored(ImGuiColors.DalamudWhite, TimeFilter.RangeToString(_timeFilter.StatRange).ToUpper());
+                    ProgressTable(duty.Key);
+                    if(_plugin.DutyManager.Duties[duty.Key].Structure == DutyStructure.Roulette) {
+                        SummonTable(duty.Key);
+                    }
                 }
             }
-            ImGui.EndTable();
         }
 
         private void ProgressTable(int dutyId) {
@@ -343,172 +344,174 @@ namespace MapPartyAssist.Windows.Summary {
             string gateNoun = isRoulette ? "summon" : "gate";
 
             //Draw
-            if(ImGui.BeginTable($"##{dutyId}-Table", 3, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip | ImGuiTableFlags.NoKeepColumnsVisible)) {
-                ImGui.TableSetupColumn("checkpoint", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 158f);
-                ImGui.TableSetupColumn($"rawNumber", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
-                ImGui.TableSetupColumn($"rate", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
+            using(var table = ImRaii.Table($"##{dutyId}-Table", 3, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip | ImGuiTableFlags.NoKeepColumnsVisible)) {
+                if(table) {
+                    ImGui.TableSetupColumn("checkpoint", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 158f);
+                    ImGui.TableSetupColumn($"rawNumber", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
+                    ImGui.TableSetupColumn($"rate", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
 
-                ImGui.TableNextRow();
-                ImGui.TableNextColumn();
+                    ImGui.TableNextRow();
+                    ImGui.TableNextColumn();
 
-                if(dutyStat.HasGil) {
-                    ImGui.Text("Total gil earned: ");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{dutyStat.TotalGil.ToString("N0")}");
-                    ImGui.TableNextColumn();
-                    ImGui.TableNextColumn();
-                }
-                if(_timeFilter.StatRange != StatRange.SinceLastClear) {
-                    ImGui.Text("Total clears: ");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{dutyStat.TotalClears}");
-                    ImGui.TableNextColumn();
-                    if(dutyStat.TotalRuns > 0) {
-                        ImGui.Text($"{string.Format("{0:P}%", (double)dutyStat.TotalClears / dutyStat.TotalRuns)}");
+                    if(dutyStat.HasGil) {
+                        ImGui.Text("Total gil earned: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{dutyStat.TotalGil.ToString("N0")}");
+                        ImGui.TableNextColumn();
+                        ImGui.TableNextColumn();
                     }
-                    ImGui.TableNextColumn();
-                }
-                if(_plugin.Configuration.DutyConfigurations[dutyId].DisplayDeaths) {
-                    ImGui.Text("Total wipes:");
-                    Tooltip("Inferred from last checkpoint.");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{dutyStat.TotalWipes}");
-                    ImGui.TableNextColumn();
-                    ImGui.TableNextColumn();
-                }
-                ImGui.Text("Total runs:");
-                ImGui.TableNextColumn();
-                ImGui.Text($"{dutyStat.TotalRuns}");
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
-
-                if(dutyStat.HasFloors) {
-                    if(_plugin.Configuration.ProgressTableCount == ProgressTableCount.Last) {
-                        for(int i = 0; i < dutyStat.EndChambers.Length; i++) {
-                            if(i == numChambers - 1) {
-                                ImGui.Text($"{passiveSuccessVerb} final {stageNoun}:");
-                            } else {
-                                var ordinalIndex = isRoulette ? i + 2 : i + 1;
-                                ImGui.Text($"Ejected at {StringHelper.AddOrdinal(ordinalIndex)} {gateNoun}:");
-                                Tooltip("Also includes preceding wipes, abandons \nand timeouts.");
-                            }
-                            ImGui.TableNextColumn();
-                            ImGui.Text($"{dutyStat.EndChambers[i]}");
-                            ImGui.TableNextColumn();
-                            if(_plugin.Configuration.ProgressTableRate == ProgressTableRate.Previous
-                                && i != dutyStat.EndChambers.Length - 1 && ((i == 0 && dutyStat.TotalRuns != 0) || (i != 0 && dutyStat.OpenChambers[i - 1] != 0))) {
-                                ImGui.Text($"{string.Format("{0:P}%", (double)1d - dutyStat.OpenChambersRates[i])}");
-                                Tooltip("Calculated from previous stage.");
-                            } else if(_plugin.Configuration.ProgressTableRate == ProgressTableRate.Total && dutyStat.TotalRuns != 0) {
-                                ImGui.Text($"{string.Format("{0:P}%", (double)dutyStat.EndChambers[i] / dutyStat.TotalRuns)}");
-                                Tooltip("Calculated from total runs.");
-                            }
-                            ImGui.TableNextColumn();
+                    if(_timeFilter.StatRange != StatRange.SinceLastClear) {
+                        ImGui.Text("Total clears: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{dutyStat.TotalClears}");
+                        ImGui.TableNextColumn();
+                        if(dutyStat.TotalRuns > 0) {
+                            ImGui.Text($"{string.Format("{0:P}%", (double)dutyStat.TotalClears / dutyStat.TotalRuns)}");
                         }
-                    } else if(_plugin.Configuration.ProgressTableCount == ProgressTableCount.All) {
-                        for(int i = 0; i < dutyStat.OpenChambers.Length; i++) {
-                            if(i == numChambers - 2) {
-                                ImGui.Text($"{passiveSuccessVerb} final {stageNoun}:");
-                            } else {
-                                ImGui.Text($"{passiveSuccessVerb} {StringHelper.AddOrdinal(i + 2)} {stageNoun}:");
+                        ImGui.TableNextColumn();
+                    }
+                    if(_plugin.Configuration.DutyConfigurations[dutyId].DisplayDeaths) {
+                        ImGui.Text("Total wipes:");
+                        Tooltip("Inferred from last checkpoint.");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{dutyStat.TotalWipes}");
+                        ImGui.TableNextColumn();
+                        ImGui.TableNextColumn();
+                    }
+                    ImGui.Text("Total runs:");
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"{dutyStat.TotalRuns}");
+                    ImGui.TableNextColumn();
+                    ImGui.TableNextColumn();
+
+                    if(dutyStat.HasFloors) {
+                        if(_plugin.Configuration.ProgressTableCount == ProgressTableCount.Last) {
+                            for(int i = 0; i < dutyStat.EndChambers.Length; i++) {
+                                if(i == numChambers - 1) {
+                                    ImGui.Text($"{passiveSuccessVerb} final {stageNoun}:");
+                                } else {
+                                    var ordinalIndex = isRoulette ? i + 2 : i + 1;
+                                    ImGui.Text($"Ejected at {StringHelper.AddOrdinal(ordinalIndex)} {gateNoun}:");
+                                    Tooltip("Also includes preceding wipes, abandons \nand timeouts.");
+                                }
+                                ImGui.TableNextColumn();
+                                ImGui.Text($"{dutyStat.EndChambers[i]}");
+                                ImGui.TableNextColumn();
+                                if(_plugin.Configuration.ProgressTableRate == ProgressTableRate.Previous
+                                    && i != dutyStat.EndChambers.Length - 1 && ((i == 0 && dutyStat.TotalRuns != 0) || (i != 0 && dutyStat.OpenChambers[i - 1] != 0))) {
+                                    ImGui.Text($"{string.Format("{0:P}%", (double)1d - dutyStat.OpenChambersRates[i])}");
+                                    Tooltip("Calculated from previous stage.");
+                                } else if(_plugin.Configuration.ProgressTableRate == ProgressTableRate.Total && dutyStat.TotalRuns != 0) {
+                                    ImGui.Text($"{string.Format("{0:P}%", (double)dutyStat.EndChambers[i] / dutyStat.TotalRuns)}");
+                                    Tooltip("Calculated from total runs.");
+                                }
+                                ImGui.TableNextColumn();
                             }
-                            ImGui.TableNextColumn();
-                            ImGui.Text($"{dutyStat.OpenChambers[i]}");
-                            ImGui.TableNextColumn();
-                            if(_plugin.Configuration.ProgressTableRate == ProgressTableRate.Previous && ((i == 0 && dutyStat.TotalRuns != 0) || (i != 0 && dutyStat.OpenChambers[i - 1] != 0))) {
-                                ImGui.Text($"{string.Format("{0:P}%", dutyStat.OpenChambersRates[i])}");
-                                Tooltip("Calculated from previous stage.");
-                            } else if(_plugin.Configuration.ProgressTableRate == ProgressTableRate.Total && dutyStat.TotalRuns != 0) {
-                                ImGui.Text($"{string.Format("{0:P}%", (double)dutyStat.OpenChambers[i] / dutyStat.TotalRuns)}");
-                                Tooltip("Calculated from total runs.");
+                        } else if(_plugin.Configuration.ProgressTableCount == ProgressTableCount.All) {
+                            for(int i = 0; i < dutyStat.OpenChambers.Length; i++) {
+                                if(i == numChambers - 2) {
+                                    ImGui.Text($"{passiveSuccessVerb} final {stageNoun}:");
+                                } else {
+                                    ImGui.Text($"{passiveSuccessVerb} {StringHelper.AddOrdinal(i + 2)} {stageNoun}:");
+                                }
+                                ImGui.TableNextColumn();
+                                ImGui.Text($"{dutyStat.OpenChambers[i]}");
+                                ImGui.TableNextColumn();
+                                if(_plugin.Configuration.ProgressTableRate == ProgressTableRate.Previous && ((i == 0 && dutyStat.TotalRuns != 0) || (i != 0 && dutyStat.OpenChambers[i - 1] != 0))) {
+                                    ImGui.Text($"{string.Format("{0:P}%", dutyStat.OpenChambersRates[i])}");
+                                    Tooltip("Calculated from previous stage.");
+                                } else if(_plugin.Configuration.ProgressTableRate == ProgressTableRate.Total && dutyStat.TotalRuns != 0) {
+                                    ImGui.Text($"{string.Format("{0:P}%", (double)dutyStat.OpenChambers[i] / dutyStat.TotalRuns)}");
+                                    Tooltip("Calculated from total runs.");
+                                }
+                                ImGui.TableNextColumn();
                             }
-                            ImGui.TableNextColumn();
                         }
                     }
-                }
 
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
+                    ImGui.TableNextColumn();
+                    ImGui.TableNextColumn();
+                    ImGui.TableNextColumn();
 
-                if(dutyStat.HasSequence) {
-                    //todo make this a configuration variable
-                    if(_plugin.Configuration.DutyConfigurations[dutyId].DisplayClearSequence) {
-                        for(int i = 0; i < dutyStat.ClearSequence.Count; i++) {
+                    if(dutyStat.HasSequence) {
+                        //todo make this a configuration variable
+                        if(_plugin.Configuration.DutyConfigurations[dutyId].DisplayClearSequence) {
+                            for(int i = 0; i < dutyStat.ClearSequence.Count; i++) {
+                                if(_plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
+                                    ImGui.Text($"{StringHelper.AddOrdinal(i + 1)} clear:");
+                                    Tooltip(i == 0 ? "Runs since start." : "Runs since preceding clear.");
+                                    ImGui.TableNextColumn();
+                                    ImGui.Text($"{dutyStat.ClearSequence[i].ToString().PadRight(3)}");
+                                } else {
+                                    ImGui.Text($"{StringHelper.AddOrdinal(i + 1)} clear (total):");
+                                    Tooltip("Total runs at time.");
+                                    ImGui.TableNextColumn();
+                                    int clearTotal = dutyStat.ClearSequence[i];
+                                    dutyStat.ClearSequence.GetRange(0, i).ForEach(x => clearTotal += x);
+                                    ImGui.Text($"{clearTotal.ToString().PadRight(3)}");
+                                }
+                                if(ImGui.IsItemHovered()) {
+                                    ImGui.BeginTooltip();
+                                    ImGui.Text($"{dutyStat.ClearDuties[i].CompletionTime.ToString()}");
+                                    ImGui.Text($"{dutyStat.ClearDuties[i].Owner}");
+                                    ImGui.EndTooltip();
+                                }
+                                ImGui.TableNextColumn();
+                                ImGui.TableNextColumn();
+                            }
+                        }
+
+                        if(dutyStat.TotalClears > 0 && _plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
                             if(_plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
-                                ImGui.Text($"{StringHelper.AddOrdinal(i + 1)} clear:");
-                                Tooltip(i == 0 ? "Runs since start." : "Runs since preceding clear.");
+                                ImGui.Text("Runs since last clear: ");
                                 ImGui.TableNextColumn();
-                                ImGui.Text($"{dutyStat.ClearSequence[i].ToString().PadRight(3)}");
-                            } else {
-                                ImGui.Text($"{StringHelper.AddOrdinal(i + 1)} clear (total):");
-                                Tooltip("Total runs at time.");
+                                ImGui.Text($"{dutyStat.RunsSinceLastClear}");
                                 ImGui.TableNextColumn();
-                                int clearTotal = dutyStat.ClearSequence[i];
-                                dutyStat.ClearSequence.GetRange(0, i).ForEach(x => clearTotal += x);
-                                ImGui.Text($"{clearTotal.ToString().PadRight(3)}");
+                                ImGui.TableNextColumn();
                             }
-                            if(ImGui.IsItemHovered()) {
-                                ImGui.BeginTooltip();
-                                ImGui.Text($"{dutyStat.ClearDuties[i].CompletionTime.ToString()}");
-                                ImGui.Text($"{dutyStat.ClearDuties[i].Owner}");
-                                ImGui.EndTooltip();
-                            }
-                            ImGui.TableNextColumn();
-                            ImGui.TableNextColumn();
-                        }
-                    }
-
-                    if(dutyStat.TotalClears > 0 && _plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
-                        if(_plugin.Configuration.ClearSequenceCount == ClearSequenceCount.Last) {
-                            ImGui.Text("Runs since last clear: ");
-                            ImGui.TableNextColumn();
-                            ImGui.Text($"{dutyStat.RunsSinceLastClear}");
-                            ImGui.TableNextColumn();
-                            ImGui.TableNextColumn();
                         }
                     }
                 }
-                ImGui.EndTable();
             }
         }
 
         private void SummonTable(int dutyId) {
             var dutyStat = _dutyStats[dutyId];
             if(dutyStat.HasSummons) {
-                if(ImGui.BeginTable($"##{dutyId}-SummonTable", 3, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip | ImGuiTableFlags.NoKeepColumnsVisible)) {
-                    ImGui.TableSetupColumn("summon", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 158f);
-                    ImGui.TableSetupColumn($"rawNumber", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
-                    ImGui.TableSetupColumn($"rate", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
+                using(var table = ImRaii.Table($"##{dutyId}-SummonTable", 3, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip | ImGuiTableFlags.NoKeepColumnsVisible)) {
+                    if(table) {
+                        ImGui.TableSetupColumn("summon", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 158f);
+                        ImGui.TableSetupColumn($"rawNumber", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
+                        ImGui.TableSetupColumn($"rate", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 45f);
 
-                    ImGui.TableNextRow();
-                    ImGui.TableNextColumn();
-                    ImGui.Text("Lesser summons: ");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{dutyStat.SummonTotals[Summon.Lesser]}");
-                    ImGui.TableNextColumn();
-                    ImGui.TableNextColumn();
-                    ImGui.Text("Greater summons: ");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{dutyStat.SummonTotals[Summon.Greater]}");
-                    ImGui.TableNextColumn();
-                    ImGui.TableNextColumn();
-                    ImGui.Text("Elder summons: ");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{dutyStat.SummonTotals[Summon.Elder]}");
-                    ImGui.TableNextColumn();
-                    ImGui.TableNextColumn();
-                    ImGui.Text("Circle shifts: ");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{dutyStat.SummonTotals[Summon.Gold]}");
-                    ImGui.TableNextColumn();
-                    ImGui.TableNextColumn();
-                    ImGui.Text("Abominations: ");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{dutyStat.SummonTotals[Summon.Silver]}");
-                    ImGui.TableNextColumn();
-                    ImGui.TableNextColumn();
-                    ImGui.EndTable();
+                        ImGui.TableNextRow();
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Lesser summons: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{dutyStat.SummonTotals[Summon.Lesser]}");
+                        ImGui.TableNextColumn();
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Greater summons: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{dutyStat.SummonTotals[Summon.Greater]}");
+                        ImGui.TableNextColumn();
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Elder summons: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{dutyStat.SummonTotals[Summon.Elder]}");
+                        ImGui.TableNextColumn();
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Circle shifts: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{dutyStat.SummonTotals[Summon.Gold]}");
+                        ImGui.TableNextColumn();
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Abominations: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{dutyStat.SummonTotals[Summon.Silver]}");
+                        ImGui.TableNextColumn();
+                        ImGui.TableNextColumn();
+                    }
                 }
             }
         }

@@ -1,6 +1,7 @@
 ﻿using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using ImGuiNET;
 using LiteDB;
 using Lumina.Excel.Sheets;
@@ -159,39 +160,42 @@ namespace MapPartyAssist.Windows.Summary {
 
                 ImGui.Text($"Total maps: {_maps.Count} Total portals: {_portalCount}");
 
-                ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true);
-                foreach(var map in _mapsPage) {
-                    if(_collapseAll) {
-                        ImGui.SetNextItemOpen(false);
-                    }
+                using(var child = ImRaii.Child("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true)) {
+                    if(child) {
+                        foreach(var map in _mapsPage) {
+                            if(_collapseAll) {
+                                ImGui.SetNextItemOpen(false);
+                            }
 
-                    float targetWidth1 = 150f * ImGuiHelpers.GlobalScale;
-                    float targetWidth2 = 200f * ImGuiHelpers.GlobalScale;
-                    float targetWidth3 = 215f * ImGuiHelpers.GlobalScale;
-                    var text1 = map.Time.ToString();
-                    var text2 = map.Zone;
-                    _plugin.DutyManager.Duties.TryGetValue(map.DutyId ?? 0, out var duty);
-                    var text3 = duty?.GetDisplayName() ?? map.DutyName ?? "";
-                    while(ImGui.CalcTextSize(text1).X < targetWidth1) {
-                        text1 += " ";
-                    }
-                    while(ImGui.CalcTextSize(text2).X < targetWidth2) {
-                        text2 += " ";
-                    }
-                    while(ImGui.CalcTextSize(text3).X < targetWidth3) {
-                        text3 += " ";
-                    }
+                            float targetWidth1 = 150f * ImGuiHelpers.GlobalScale;
+                            float targetWidth2 = 200f * ImGuiHelpers.GlobalScale;
+                            float targetWidth3 = 215f * ImGuiHelpers.GlobalScale;
+                            var text1 = map.Time.ToString();
+                            var text2 = map.Zone;
+                            _plugin.DutyManager.Duties.TryGetValue(map.DutyId ?? 0, out var duty);
+                            var text3 = duty?.GetDisplayName() ?? map.DutyName ?? "";
+                            while(ImGui.CalcTextSize(text1).X < targetWidth1) {
+                                text1 += " ";
+                            }
+                            while(ImGui.CalcTextSize(text2).X < targetWidth2) {
+                                text2 += " ";
+                            }
+                            while(ImGui.CalcTextSize(text3).X < targetWidth3) {
+                                text3 += " ";
+                            }
 
-                    if(ImGui.CollapsingHeader(string.Format("{0} {1} {2} {3}", text1, text2, text3, map.Id.ToString()))) {
+                            if(ImGui.CollapsingHeader(string.Format("{0} {1} {2} {3}", text1, text2, text3, map.Id.ToString()))) {
 
-                        if(_plugin.AllowEdit) {
-                            DrawMapEditable(map);
-                        } else {
-                            DrawMap(map);
+                                if(_plugin.AllowEdit) {
+                                    DrawMapEditable(map);
+                                } else {
+                                    DrawMap(map);
+                                }
+                            }
                         }
                     }
                 }
-                ImGui.EndChild();
+
                 ImGui.Text("");
                 ImGui.SameLine();
 
@@ -220,64 +224,62 @@ namespace MapPartyAssist.Windows.Summary {
         }
 
         private void DrawMap(MPAMap map) {
-            if(ImGui.BeginTable($"##{map.Id}--MainTable", 2, ImGuiTableFlags.NoClip)) {
-                ImGui.TableNextColumn();
-                if(ImGui.BeginTable($"##{map.Id}--SubTable1", 2, ImGuiTableFlags.NoClip)) {
-                    ImGui.TableSetupColumn("propName", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 95f);
-                    ImGui.TableSetupColumn("propVal", ImGuiTableColumnFlags.WidthStretch);
+            using(var table = ImRaii.Table($"##{map.Id}--MainTable", 2, ImGuiTableFlags.NoClip)) {
+                if(table) {
+                    ImGui.TableNextColumn();
+                    using(var subtable1 = ImRaii.Table($"##{map.Id}--SubTable1", 2, ImGuiTableFlags.NoClip)) {
+                        ImGui.TableSetupColumn("propName", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 95f);
+                        ImGui.TableSetupColumn("propVal", ImGuiTableColumnFlags.WidthStretch);
 
-                    ImGui.TableNextColumn();
-                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Deleted: ");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{(map.IsDeleted ? "Yes" : "No")}");
-
-                    ImGui.TableNextColumn();
-                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Archived: ");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{(map.IsArchived ? "Yes" : "No")}");
-
-                    ImGui.TableNextColumn();
-                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Method: ");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{(map.IsManual ? "Manual" : "Auto")}");
-
-                    ImGui.TableNextColumn();
-                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Owner: ");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{map.Owner}");
-
-                    ImGui.TableNextColumn();
-                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Type: ");
-                    ImGui.TableNextColumn();
-                    if(map.MapType != null) {
-                        ImGui.Text($"{MapHelper.GetMapName((TreasureMap)map.MapType)}");
-                    }
-
-                    ImGui.TableNextColumn();
-                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Portal: ");
-                    ImGui.TableNextColumn();
-                    _plugin.DutyManager.Duties.TryGetValue(map.DutyId ?? 0, out var duty);
-                    string portalString = map.IsPortal ? duty?.GetDisplayName() ?? map.DutyName ?? "???" : "No";
-
-                    ImGui.Text($"{portalString}");
-
-                    ImGui.EndTable();
-                }
-                ImGui.TableNextColumn();
-                if(ImGui.BeginTable($"##{map.Id}--SubTable2", 2)) {
-                    ImGui.TableSetupColumn("propName", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 95f);
-                    ImGui.TableSetupColumn("propVal", ImGuiTableColumnFlags.WidthStretch);
-                    ImGui.TableNextColumn();
-                    if(map.Players != null) {
-                        ImGui.TextColored(ImGuiColors.DalamudGrey, "Party Members: ");
                         ImGui.TableNextColumn();
-                        foreach(var partyMember in map.Players) {
-                            ImGui.Text($"{partyMember}");
+                        ImGui.TextColored(ImGuiColors.DalamudGrey, "Deleted: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{(map.IsDeleted ? "Yes" : "No")}");
+
+                        ImGui.TableNextColumn();
+                        ImGui.TextColored(ImGuiColors.DalamudGrey, "Archived: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{(map.IsArchived ? "Yes" : "No")}");
+
+                        ImGui.TableNextColumn();
+                        ImGui.TextColored(ImGuiColors.DalamudGrey, "Method: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{(map.IsManual ? "Manual" : "Auto")}");
+
+                        ImGui.TableNextColumn();
+                        ImGui.TextColored(ImGuiColors.DalamudGrey, "Owner: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{map.Owner}");
+
+                        ImGui.TableNextColumn();
+                        ImGui.TextColored(ImGuiColors.DalamudGrey, "Type: ");
+                        ImGui.TableNextColumn();
+                        if(map.MapType != null) {
+                            ImGui.Text($"{MapHelper.GetMapName((TreasureMap)map.MapType)}");
+                        }
+
+                        ImGui.TableNextColumn();
+                        ImGui.TextColored(ImGuiColors.DalamudGrey, "Portal: ");
+                        ImGui.TableNextColumn();
+                        _plugin.DutyManager.Duties.TryGetValue(map.DutyId ?? 0, out var duty);
+                        string portalString = map.IsPortal ? duty?.GetDisplayName() ?? map.DutyName ?? "???" : "No";
+
+                        ImGui.Text($"{portalString}");
+                    }
+                    ImGui.TableNextColumn();
+                    using(var subtable2 = ImRaii.Table($"##{map.Id}--SubTable2", 2)) {
+                        ImGui.TableSetupColumn("propName", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 95f);
+                        ImGui.TableSetupColumn("propVal", ImGuiTableColumnFlags.WidthStretch);
+                        ImGui.TableNextColumn();
+                        if(map.Players != null) {
+                            ImGui.TextColored(ImGuiColors.DalamudGrey, "Party Members: ");
+                            ImGui.TableNextColumn();
+                            foreach(var partyMember in map.Players) {
+                                ImGui.Text($"{partyMember}");
+                            }
                         }
                     }
-                    ImGui.EndTable();
                 }
-                ImGui.EndTable();
             }
 
             if(map.LootResults != null) {
@@ -293,36 +295,38 @@ namespace MapPartyAssist.Windows.Summary {
                     ImGuiHelper.HelpMarker("Total market value of all drops plus gil multiplied by number of players.");
                 }
 
-                ImGui.BeginTable($"loottable", 4, ImGuiTableFlags.None);
-                //ImGui.TableSetupColumn("Category", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f);
-                ImGui.TableSetupColumn("Quality", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f);
-                ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 200f);
-                ImGui.TableSetupColumn("Dropped", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 65f);
-                ImGui.TableSetupColumn("Obtained", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 70f);
-                ImGui.TableNextColumn();
-                ImGui.Text("Quality");
-                ImGui.TableNextColumn();
-                ImGui.Text("Name");
-                ImGui.TableNextColumn();
-                ImGui.Text("Dropped");
-                ImGui.TableNextColumn();
-                ImGui.Text("Obtained");
+                using(var table = ImRaii.Table($"loottable", 4, ImGuiTableFlags.None)) {
+                    if(table) {
+                        //ImGui.TableSetupColumn("Category", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f);
+                        ImGui.TableSetupColumn("Quality", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f);
+                        ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 200f);
+                        ImGui.TableSetupColumn("Dropped", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 65f);
+                        ImGui.TableSetupColumn("Obtained", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 70f);
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Quality");
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Name");
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Dropped");
+                        ImGui.TableNextColumn();
+                        ImGui.Text("Obtained");
 
-                foreach(var lootResult in _lootResults[map.Id]) {
-                    //ImGui.TableNextColumn();
-                    //ImGui.Text($"{lootResult.Value.Category}");
-                    ImGui.TableNextColumn();
-                    var qualityText = lootResult.Key.IsHQ ? "HQ" : "";
-                    ImGuiHelper.CenterAlignCursor(qualityText);
-                    ImGui.Text($"{qualityText}");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{lootResult.Value.ItemName}");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{lootResult.Value.DroppedQuantity.ToString("N0")}");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{lootResult.Value.ObtainedQuantity.ToString("N0")}");
+                        foreach(var lootResult in _lootResults[map.Id]) {
+                            //ImGui.TableNextColumn();
+                            //ImGui.Text($"{lootResult.Value.Category}");
+                            ImGui.TableNextColumn();
+                            var qualityText = lootResult.Key.IsHQ ? "HQ" : "";
+                            ImGuiHelper.CenterAlignCursor(qualityText);
+                            ImGui.Text($"{qualityText}");
+                            ImGui.TableNextColumn();
+                            ImGui.Text($"{lootResult.Value.ItemName}");
+                            ImGui.TableNextColumn();
+                            ImGui.Text($"{lootResult.Value.DroppedQuantity.ToString("N0")}");
+                            ImGui.TableNextColumn();
+                            ImGui.Text($"{lootResult.Value.ObtainedQuantity.ToString("N0")}");
+                        }
+                    }
                 }
-                ImGui.EndTable();
             }
         }
 

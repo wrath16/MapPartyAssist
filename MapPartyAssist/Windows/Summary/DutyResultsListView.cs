@@ -1,6 +1,7 @@
 ﻿using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using ImGuiNET;
 using LiteDB;
 using Lumina.Excel.Sheets;
@@ -176,32 +177,35 @@ namespace MapPartyAssist.Windows.Summary {
                     _collapseAll = true;
                 }
 
-                ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true);
-                foreach(var results in _dutyResultsPage) {
-                    if(_collapseAll) {
-                        ImGui.SetNextItemOpen(false);
-                    }
+                using(var child = ImRaii.Child("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), true)) {
+                    if(child) {
+                        foreach(var results in _dutyResultsPage) {
+                            if(_collapseAll) {
+                                ImGui.SetNextItemOpen(false);
+                            }
 
-                    float targetWidth1 = 150f * ImGuiHelpers.GlobalScale;
-                    float targetWidth2 = 215f * ImGuiHelpers.GlobalScale;
-                    var text1 = results.Time.ToString();
-                    var text2 = _plugin.DutyManager.Duties[results.DutyId].GetDisplayName();
-                    while(ImGui.CalcTextSize(text1).X < targetWidth1) {
-                        text1 += " ";
-                    }
-                    while(ImGui.CalcTextSize(text2).X < targetWidth2) {
-                        text2 += " ";
-                    }
+                            float targetWidth1 = 150f * ImGuiHelpers.GlobalScale;
+                            float targetWidth2 = 215f * ImGuiHelpers.GlobalScale;
+                            var text1 = results.Time.ToString();
+                            var text2 = _plugin.DutyManager.Duties[results.DutyId].GetDisplayName();
+                            while(ImGui.CalcTextSize(text1).X < targetWidth1) {
+                                text1 += " ";
+                            }
+                            while(ImGui.CalcTextSize(text2).X < targetWidth2) {
+                                text2 += " ";
+                            }
 
-                    if(ImGui.CollapsingHeader(string.Format("{0:-23} {1:-40} {2:-25}", text1, text2, results.Id.ToString()))) {
-                        if(_plugin.AllowEdit) {
-                            DrawDutyResultsEditable(results);
-                        } else {
-                            DrawDutyResults(results);
+                            if(ImGui.CollapsingHeader(string.Format("{0:-23} {1:-40} {2:-25}", text1, text2, results.Id.ToString()))) {
+                                if(_plugin.AllowEdit) {
+                                    DrawDutyResultsEditable(results);
+                                } else {
+                                    DrawDutyResults(results);
+                                }
+                            }
                         }
                     }
                 }
-                ImGui.EndChild();
+
                 ImGui.Text("");
                 ImGui.SameLine();
 
@@ -230,78 +234,77 @@ namespace MapPartyAssist.Windows.Summary {
         }
 
         private void DrawDutyResults(DutyResults dutyResults) {
-            if(ImGui.BeginTable($"##{dutyResults.Id}--MainTable", 2, ImGuiTableFlags.NoClip)) {
-                ImGui.TableNextColumn();
-                if(ImGui.BeginTable($"##{dutyResults.Id}--SubTable1", 2, ImGuiTableFlags.NoClip)) {
-                    ImGui.TableSetupColumn("propName", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 95f);
-                    ImGui.TableSetupColumn("propVal", ImGuiTableColumnFlags.WidthStretch);
+            using(var table = ImRaii.Table($"##{dutyResults.Id}--MainTable", 2, ImGuiTableFlags.NoClip)) {
+                if(table) {
+                    ImGui.TableNextColumn();
+                    using(var subtable1 = ImRaii.Table($"##{dutyResults.Id}--SubTable1", 2, ImGuiTableFlags.NoClip)) {
+                        ImGui.TableSetupColumn("propName", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 95f);
+                        ImGui.TableSetupColumn("propVal", ImGuiTableColumnFlags.WidthStretch);
 
-                    ImGui.TableNextColumn();
-                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Completed: ");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{(dutyResults.IsComplete ? "Yes" : "No")}");
-
-                    ImGui.TableNextColumn();
-                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Duration: ");
-                    ImGui.TableNextColumn();
-                    string durationString = "";
-                    if(dutyResults.CompletionTime > dutyResults.Time) {
-                        durationString = (dutyResults.CompletionTime - dutyResults.Time).ToString(@"mm\:ss");
-                    }
-                    ImGui.Text($"{durationString}");
-
-                    ImGui.TableNextColumn();
-                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Owner: ");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{dutyResults.Owner}");
-
-                    ImGui.TableNextColumn();
-                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Map ID: ");
-                    ImGui.TableNextColumn();
-                    if(dutyResults.Map != null) {
-                        ImGui.Text($"{dutyResults.Map.Id}");
-                    }
-
-                    ImGui.TableNextColumn();
-                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Last Checkpoint: ");
-                    ImGui.TableNextColumn();
-                    var currentLastCheckpointIndex = dutyResults.CheckpointResults.Count - 1;
-                    if(currentLastCheckpointIndex >= 0) {
-                        ImGui.Text($"{_plugin.DutyManager.Duties[dutyResults.DutyId].Checkpoints!.ElementAt(currentLastCheckpointIndex).Name}");
-                    }
-
-                    ImGui.TableNextColumn();
-                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Total Gil: ");
-                    ImGui.TableNextColumn();
-                    ImGui.Text($"{dutyResults.TotalGil}");
-
-                    if(_plugin.DutyManager.Duties[dutyResults.DutyId].Structure == DutyStructure.Roulette) {
                         ImGui.TableNextColumn();
+                        ImGui.TextColored(ImGuiColors.DalamudGrey, "Completed: ");
                         ImGui.TableNextColumn();
+                        ImGui.Text($"{(dutyResults.IsComplete ? "Yes" : "No")}");
+
                         ImGui.TableNextColumn();
-                        ImGui.TextColored(ImGuiColors.DalamudGrey, "Summons: ");
+                        ImGui.TextColored(ImGuiColors.DalamudGrey, "Duration: ");
                         ImGui.TableNextColumn();
-                        foreach(var checkpointResult in dutyResults.CheckpointResults) {
-                            if(checkpointResult.SummonType != null) {
-                                ImGui.Text($"{DutyHelper.GetSummonName((Summon)checkpointResult.SummonType)}");
+                        string durationString = "";
+                        if(dutyResults.CompletionTime > dutyResults.Time) {
+                            durationString = (dutyResults.CompletionTime - dutyResults.Time).ToString(@"mm\:ss");
+                        }
+                        ImGui.Text($"{durationString}");
+
+                        ImGui.TableNextColumn();
+                        ImGui.TextColored(ImGuiColors.DalamudGrey, "Owner: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{dutyResults.Owner}");
+
+                        ImGui.TableNextColumn();
+                        ImGui.TextColored(ImGuiColors.DalamudGrey, "Map ID: ");
+                        ImGui.TableNextColumn();
+                        if(dutyResults.Map != null) {
+                            ImGui.Text($"{dutyResults.Map.Id}");
+                        }
+
+                        ImGui.TableNextColumn();
+                        ImGui.TextColored(ImGuiColors.DalamudGrey, "Last Checkpoint: ");
+                        ImGui.TableNextColumn();
+                        var currentLastCheckpointIndex = dutyResults.CheckpointResults.Count - 1;
+                        if(currentLastCheckpointIndex >= 0) {
+                            ImGui.Text($"{_plugin.DutyManager.Duties[dutyResults.DutyId].Checkpoints!.ElementAt(currentLastCheckpointIndex).Name}");
+                        }
+
+                        ImGui.TableNextColumn();
+                        ImGui.TextColored(ImGuiColors.DalamudGrey, "Total Gil: ");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{dutyResults.TotalGil}");
+
+                        if(_plugin.DutyManager.Duties[dutyResults.DutyId].Structure == DutyStructure.Roulette) {
+                            ImGui.TableNextColumn();
+                            ImGui.TableNextColumn();
+                            ImGui.TableNextColumn();
+                            ImGui.TextColored(ImGuiColors.DalamudGrey, "Summons: ");
+                            ImGui.TableNextColumn();
+                            foreach(var checkpointResult in dutyResults.CheckpointResults) {
+                                if(checkpointResult.SummonType != null) {
+                                    ImGui.Text($"{DutyHelper.GetSummonName((Summon)checkpointResult.SummonType)}");
+                                }
                             }
                         }
                     }
-                    ImGui.EndTable();
-                }
-                ImGui.TableNextColumn();
-                if(ImGui.BeginTable($"##{dutyResults.Id}--SubTable2", 2)) {
-                    ImGui.TableSetupColumn("propName", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 95f);
-                    ImGui.TableSetupColumn("propVal", ImGuiTableColumnFlags.WidthStretch);
                     ImGui.TableNextColumn();
-                    ImGui.TextColored(ImGuiColors.DalamudGrey, "Party Members: ");
-                    ImGui.TableNextColumn();
-                    foreach(var partyMember in dutyResults.Players) {
-                        ImGui.Text($"{partyMember}");
+                    using(var subtable2 = ImRaii.Table($"##{dutyResults.Id}--SubTable2", 2)) {
+                        ImGui.TableSetupColumn("propName", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 95f);
+                        ImGui.TableSetupColumn("propVal", ImGuiTableColumnFlags.WidthStretch);
+                        ImGui.TableNextColumn();
+                        ImGui.TextColored(ImGuiColors.DalamudGrey, "Party Members: ");
+                        ImGui.TableNextColumn();
+                        foreach(var partyMember in dutyResults.Players) {
+                            ImGui.Text($"{partyMember}");
+                        }
                     }
-                    ImGui.EndTable();
                 }
-                ImGui.EndTable();
             }
             if(dutyResults.HasLootResults()) {
                 ImGui.TextColored(ImGuiColors.DalamudGrey, "Loot: ");
@@ -316,7 +319,7 @@ namespace MapPartyAssist.Windows.Summary {
                     ImGuiHelper.HelpMarker("Total market value of all drops plus gil multiplied by number of players.");
                 }
 
-                if(ImGui.BeginTable($"loottable", 4, ImGuiTableFlags.None)) {
+                using(ImRaii.Table($"loottable", 4, ImGuiTableFlags.None)) {
                     //ImGui.TableSetupColumn("Category", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f);
                     ImGui.TableSetupColumn("Quality", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 55f);
                     ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 200f);
@@ -344,7 +347,6 @@ namespace MapPartyAssist.Windows.Summary {
                         ImGui.TableNextColumn();
                         ImGui.Text($"{lootResult.Value.ObtainedQuantity.ToString("N0")}");
                     }
-                    ImGui.EndTable();
                 }
             }
         }

@@ -1,4 +1,5 @@
 ﻿using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using ImGuiNET;
 using System;
 
@@ -62,7 +63,8 @@ namespace MapPartyAssist.Windows.Filter {
                 });
             }
             if(StatRange == StatRange.Custom) {
-                if(ImGui.BeginTable("timeFilterTable", 2)) {
+                using var table = ImRaii.Table("timeFilterTable", 2);
+                if(table) {
                     ImGui.TableSetupColumn($"c1", ImGuiTableColumnFlags.WidthStretch);
                     ImGui.TableSetupColumn($"c2", ImGuiTableColumnFlags.WidthStretch);
                     ImGui.TableNextRow();
@@ -99,7 +101,6 @@ namespace MapPartyAssist.Windows.Filter {
                             }
                         }
                     }
-                    ImGui.EndTable();
                 }
             }
         }

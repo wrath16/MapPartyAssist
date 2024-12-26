@@ -1,4 +1,5 @@
 ﻿using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
 using MapPartyAssist.Helper;
@@ -20,22 +21,24 @@ namespace MapPartyAssist.Windows {
         }
 
         public override void Draw() {
-
-            if(ImGui.BeginTabBar("SettingsTabBar")) {
-                if(ImGui.BeginTabItem("General Stats")) {
-                    DrawStatsSettings();
-                    ImGui.EndTabItem();
+            using(var tabBar = ImRaii.TabBar("SettingsTabBar", ImGuiTabBarFlags.None)) {
+                if(tabBar) {
+                    using(var tab1 = ImRaii.TabItem("General Stats")) {
+                        if(tab1) {
+                            DrawStatsSettings();
+                        }
+                    }
+                    using(var tab2 = ImRaii.TabItem("Map Tracker")) {
+                        if(tab2) {
+                            DrawMapSettings();
+                        }
+                    }
+                    using(var tab3 = ImRaii.TabItem("Duty Progress")) {
+                        if(tab3) {
+                            DrawDutySettings();
+                        }
+                    }
                 }
-                if(ImGui.BeginTabItem("Map Tracker")) {
-                    DrawMapSettings();
-                    ImGui.EndTabItem();
-                }
-                if(ImGui.BeginTabItem("Duty Progress")) {
-                    DrawDutySettings();
-                    ImGui.EndTabItem();
-                }
-
-                ImGui.EndTabBar();
             }
         }
 
@@ -137,60 +140,62 @@ namespace MapPartyAssist.Windows {
                 allZeroOmit = allZeroOmit && dutyConfig.Value.OmitZeroCheckpoints;
             }
 
-            if(ImGui.BeginTable($"##allDutiesConfigTable", 2, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX)) {
-                ImGui.TableNextRow();
-                ImGui.TableNextColumn();
-                if(ImGui.Checkbox("Display clear sequence", ref allSequences)) {
-                    foreach(var dutyConfig in _plugin.Configuration.DutyConfigurations) {
-                        dutyConfig.Value.DisplayClearSequence = allSequences;
+            using(var table = ImRaii.Table($"##allDutiesConfigTable", 2, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX)) {
+                if(table) {
+                    ImGui.TableNextRow();
+                    ImGui.TableNextColumn();
+                    if(ImGui.Checkbox("Display clear sequence", ref allSequences)) {
+                        foreach(var dutyConfig in _plugin.Configuration.DutyConfigurations) {
+                            dutyConfig.Value.DisplayClearSequence = allSequences;
+                        }
+                        _plugin.Configuration.Save();
                     }
-                    _plugin.Configuration.Save();
-                }
-                ImGui.TableNextColumn();
-                if(ImGui.Checkbox("Display wipes", ref allDeaths)) {
-                    foreach(var dutyConfig in _plugin.Configuration.DutyConfigurations) {
-                        dutyConfig.Value.DisplayDeaths = allDeaths;
+                    ImGui.TableNextColumn();
+                    if(ImGui.Checkbox("Display wipes", ref allDeaths)) {
+                        foreach(var dutyConfig in _plugin.Configuration.DutyConfigurations) {
+                            dutyConfig.Value.DisplayDeaths = allDeaths;
+                        }
+                        _plugin.Configuration.Save();
                     }
-                    _plugin.Configuration.Save();
-                }
-                ImGui.TableNextColumn();
-                if(ImGui.Checkbox("Omit no checkpoints", ref allZeroOmit)) {
-                    foreach(var dutyConfig in _plugin.Configuration.DutyConfigurations) {
-                        dutyConfig.Value.OmitZeroCheckpoints = allZeroOmit;
+                    ImGui.TableNextColumn();
+                    if(ImGui.Checkbox("Omit no checkpoints", ref allZeroOmit)) {
+                        foreach(var dutyConfig in _plugin.Configuration.DutyConfigurations) {
+                            dutyConfig.Value.OmitZeroCheckpoints = allZeroOmit;
+                        }
+                        _plugin.Configuration.Save();
                     }
-                    _plugin.Configuration.Save();
+                    ImGui.SameLine();
+                    ImGuiHelper.HelpMarker("Runs where no checkpoints were reached will be omitted from stats.");
                 }
-                ImGui.SameLine();
-                ImGuiHelper.HelpMarker("Runs where no checkpoints were reached will be omitted from stats.");
             }
-            ImGui.EndTable();
 
             foreach(var dutyConfig in _plugin.Configuration.DutyConfigurations) {
                 if(ImGui.CollapsingHeader($"{_plugin.DutyManager.Duties[dutyConfig.Key].GetDisplayName()}##Header")) {
-                    if(ImGui.BeginTable($"##{dutyConfig.Key}--ConfigTable", 2, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX)) {
-                        //ImGui.TableSetupColumn("config1", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 200f);
-                        //ImGui.TableSetupColumn($"config2", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 200f);
-                        ImGui.TableNextRow();
-                        ImGui.TableNextColumn();
-                        bool displayClearSequence = dutyConfig.Value.DisplayClearSequence;
-                        if(ImGui.Checkbox($"Display clear sequence##{dutyConfig.Key}--ClearSequence", ref displayClearSequence)) {
-                            dutyConfig.Value.DisplayClearSequence = displayClearSequence;
-                            _plugin.Configuration.Save();
-                        }
-                        ImGui.TableNextColumn();
-                        bool showDeaths = dutyConfig.Value.DisplayDeaths;
-                        if(ImGui.Checkbox($"Display wipes##{dutyConfig.Key}--Wipes", ref showDeaths)) {
-                            dutyConfig.Value.DisplayDeaths = showDeaths;
-                            _plugin.Configuration.Save();
-                        }
-                        ImGui.TableNextColumn();
-                        bool omitZeroCheckpoints = dutyConfig.Value.OmitZeroCheckpoints;
-                        if(ImGui.Checkbox($"Omit no checkpoints##{dutyConfig.Key}--NoCheckpoints", ref omitZeroCheckpoints)) {
-                            dutyConfig.Value.OmitZeroCheckpoints = omitZeroCheckpoints;
-                            _plugin.Configuration.Save();
+                    using(var table = ImRaii.Table($"##{dutyConfig.Key}--ConfigTable", 2, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX)) {
+                        if(table) {
+                            //ImGui.TableSetupColumn("config1", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 200f);
+                            //ImGui.TableSetupColumn($"config2", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 200f);
+                            ImGui.TableNextRow();
+                            ImGui.TableNextColumn();
+                            bool displayClearSequence = dutyConfig.Value.DisplayClearSequence;
+                            if(ImGui.Checkbox($"Display clear sequence##{dutyConfig.Key}--ClearSequence", ref displayClearSequence)) {
+                                dutyConfig.Value.DisplayClearSequence = displayClearSequence;
+                                _plugin.Configuration.Save();
+                            }
+                            ImGui.TableNextColumn();
+                            bool showDeaths = dutyConfig.Value.DisplayDeaths;
+                            if(ImGui.Checkbox($"Display wipes##{dutyConfig.Key}--Wipes", ref showDeaths)) {
+                                dutyConfig.Value.DisplayDeaths = showDeaths;
+                                _plugin.Configuration.Save();
+                            }
+                            ImGui.TableNextColumn();
+                            bool omitZeroCheckpoints = dutyConfig.Value.OmitZeroCheckpoints;
+                            if(ImGui.Checkbox($"Omit no checkpoints##{dutyConfig.Key}--NoCheckpoints", ref omitZeroCheckpoints)) {
+                                dutyConfig.Value.OmitZeroCheckpoints = omitZeroCheckpoints;
+                                _plugin.Configuration.Save();
+                            }
                         }
                     }
-                    ImGui.EndTable();
                 }
             }
         }

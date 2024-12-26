@@ -1,6 +1,7 @@
 ﻿using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using ImGuiNET;
 using Lumina.Excel.Sheets;
 using MapPartyAssist.Helper;
@@ -186,93 +187,97 @@ namespace MapPartyAssist.Windows.Summary {
             ImGui.SameLine();
             ImGuiHelper.HelpMarker("Enable market board pricing in settings window to see pricing data.\n\nRight-click table header to add more columns.");
 
-            ImGui.BeginChild("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), false);
-            ImGui.BeginTable($"loottable", 8, ImGuiTableFlags.Sortable | ImGuiTableFlags.Hideable | ImGuiTableFlags.Reorderable | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable
-                | ImGuiTableFlags.ScrollY, new Vector2(ImGui.GetContentRegionAvail().X, ImGui.GetContentRegionAvail().Y));
-            ImGui.TableSetupColumn("Category", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 55f, (uint)SortableColumn.Category);
-            ImGui.TableSetupColumn("Quality", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 55f, (uint)SortableColumn.IsHQ);
-            ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 200f, (uint)SortableColumn.Name);
-            ImGui.TableSetupColumn("Dropped", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 65f, (uint)SortableColumn.DroppedQuantity);
-            ImGui.TableSetupColumn("Obtained", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 70f, (uint)SortableColumn.ObtainedQuantity);
-            ImGui.TableSetupColumn("Unit Price", ImGuiTableColumnFlags.WidthStretch | ImGuiTableColumnFlags.DefaultHide, ImGuiHelpers.GlobalScale * 70f, (uint)SortableColumn.UnitPrice);
-            ImGui.TableSetupColumn("Dropped Value", ImGuiTableColumnFlags.WidthStretch | ImGuiTableColumnFlags.DefaultHide, ImGuiHelpers.GlobalScale * 70f, (uint)SortableColumn.DroppedValue);
-            ImGui.TableSetupColumn("Obtained Value", ImGuiTableColumnFlags.WidthStretch | ImGuiTableColumnFlags.DefaultHide, ImGuiHelpers.GlobalScale * 70f, (uint)SortableColumn.ObtainedValue);
+            using(ImRaii.Child("scrolling", new Vector2(0, -(25 + ImGui.GetStyle().ItemSpacing.Y) * ImGuiHelpers.GlobalScale), false)) {
+                using(var table = ImRaii.Table($"loottable", 8, ImGuiTableFlags.Sortable | ImGuiTableFlags.Hideable | ImGuiTableFlags.Reorderable | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable
+                    | ImGuiTableFlags.ScrollY, new Vector2(ImGui.GetContentRegionAvail().X, ImGui.GetContentRegionAvail().Y))) {
+                    if(table) {
+                        ImGui.TableSetupColumn("Category", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 55f, (uint)SortableColumn.Category);
+                        ImGui.TableSetupColumn("Quality", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 55f, (uint)SortableColumn.IsHQ);
+                        ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 200f, (uint)SortableColumn.Name);
+                        ImGui.TableSetupColumn("Dropped", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 65f, (uint)SortableColumn.DroppedQuantity);
+                        ImGui.TableSetupColumn("Obtained", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 70f, (uint)SortableColumn.ObtainedQuantity);
+                        ImGui.TableSetupColumn("Unit Price", ImGuiTableColumnFlags.WidthStretch | ImGuiTableColumnFlags.DefaultHide, ImGuiHelpers.GlobalScale * 70f, (uint)SortableColumn.UnitPrice);
+                        ImGui.TableSetupColumn("Dropped Value", ImGuiTableColumnFlags.WidthStretch | ImGuiTableColumnFlags.DefaultHide, ImGuiHelpers.GlobalScale * 70f, (uint)SortableColumn.DroppedValue);
+                        ImGui.TableSetupColumn("Obtained Value", ImGuiTableColumnFlags.WidthStretch | ImGuiTableColumnFlags.DefaultHide, ImGuiHelpers.GlobalScale * 70f, (uint)SortableColumn.ObtainedValue);
 
-            ImGui.TableSetupScrollFreeze(0, 1);
-            ImGui.TableHeadersRow();
+                        ImGui.TableSetupScrollFreeze(0, 1);
+                        ImGui.TableHeadersRow();
 
-            //column sorting
-            ImGuiTableSortSpecsPtr sortSpecs = ImGui.TableGetSortSpecs();
-            if(sortSpecs.SpecsDirty || _triggerSort) {
-                _triggerSort = false;
-                var columnIdDeRef = (SortableColumn)sortSpecs.Specs.ColumnUserID;
-                var sortDirectionDeRef = sortSpecs.Specs.SortDirection;
-                _plugin.DataQueue.QueueDataOperation(() => {
-                    SortByColumn(columnIdDeRef, sortDirectionDeRef);
-                });
-                sortSpecs.SpecsDirty = false;
-            }
-
-            ImGui.TableNextRow();
-            foreach(var lootResult in _lootResultsPage) {
-                bool isPinned = _plugin.Configuration.LootPins.Contains(lootResult.Key);
-                ImGui.TableNextColumn();
-                if(isPinned && _includePins) {
-                    ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(ImGuiColors.DalamudYellow - new Vector4(0f, 0f, 0f, 0.7f)));
-                }
-                ImGui.Text($"{lootResult.Value.Category}");
-                ImGui.TableNextColumn();
-                //ImGui.AlignTextToFramePadding();
-                //ImGui.SetCursorPosX(ImGui.GetCursorPosX() + 4f);
-                var qualityText = lootResult.Key.IsHQ ? "HQ" : "";
-                ImGuiHelper.CenterAlignCursor(qualityText);
-                ImGui.Text($"{qualityText}");
-                ImGui.TableNextColumn();
-                var textColor = ImGuiColors.DalamudWhite;
-                switch(lootResult.Value.Rarity) {
-                    default:
-                        textColor = ImGuiColors.DalamudWhite; break;
-                    case 2: //green
-                        textColor = ImGuiColors.HealerGreen; break;
-                    case 3: //blue
-                        textColor = ImGuiColors.TankBlue; break;
-                    case 4: //purple
-                        textColor = ImGuiColors.ParsedPurple; break;
-                    case 7: //pink
-                        textColor = ImGuiColors.ParsedPink; break;
-                }
-                ImGui.TextColored(textColor, $"{lootResult.Value.ItemName.PadRight(20)}");
-                if(ImGui.BeginPopupContextItem($"##{lootResult.Key.ItemId}{lootResult.Key.IsHQ}--ContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
-                    if(ImGui.MenuItem($"Pin item##{lootResult.Key.ItemId}{lootResult.Key.IsHQ}", null, isPinned)) {
-                        if(!isPinned) {
-                            _plugin.Log.Verbose($"pinning: {lootResult.Value.ItemName}");
-                            //_pins.Add(lootResult.Key);
-                            _plugin.Configuration.LootPins.Add(lootResult.Key);
-                            _plugin.Configuration.Save();
-                        } else {
-                            //_pins.Remove(lootResult.Key);
-                            _plugin.Configuration.LootPins.Remove(lootResult.Key);
-                            _plugin.Configuration.Save();
+                        //column sorting
+                        ImGuiTableSortSpecsPtr sortSpecs = ImGui.TableGetSortSpecs();
+                        if(sortSpecs.SpecsDirty || _triggerSort) {
+                            _triggerSort = false;
+                            var columnIdDeRef = (SortableColumn)sortSpecs.Specs.ColumnUserID;
+                            var sortDirectionDeRef = sortSpecs.Specs.SortDirection;
+                            _plugin.DataQueue.QueueDataOperation(() => {
+                                SortByColumn(columnIdDeRef, sortDirectionDeRef);
+                            });
+                            sortSpecs.SpecsDirty = false;
                         }
-                        _plugin.DataQueue.QueueDataOperation(() => {
-                            SortByColumn((SortableColumn)sortSpecs.Specs.ColumnUserID, sortSpecs.Specs.SortDirection);
-                        });
+
+                        ImGui.TableNextRow();
+                        foreach(var lootResult in _lootResultsPage) {
+                            bool isPinned = _plugin.Configuration.LootPins.Contains(lootResult.Key);
+                            ImGui.TableNextColumn();
+                            if(isPinned && _includePins) {
+                                ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(ImGuiColors.DalamudYellow - new Vector4(0f, 0f, 0f, 0.7f)));
+                            }
+                            ImGui.Text($"{lootResult.Value.Category}");
+                            ImGui.TableNextColumn();
+                            //ImGui.AlignTextToFramePadding();
+                            //ImGui.SetCursorPosX(ImGui.GetCursorPosX() + 4f);
+                            var qualityText = lootResult.Key.IsHQ ? "HQ" : "";
+                            ImGuiHelper.CenterAlignCursor(qualityText);
+                            ImGui.Text($"{qualityText}");
+                            ImGui.TableNextColumn();
+                            var textColor = ImGuiColors.DalamudWhite;
+                            switch(lootResult.Value.Rarity) {
+                                default:
+                                    textColor = ImGuiColors.DalamudWhite; break;
+                                case 2: //green
+                                    textColor = ImGuiColors.HealerGreen; break;
+                                case 3: //blue
+                                    textColor = ImGuiColors.TankBlue; break;
+                                case 4: //purple
+                                    textColor = ImGuiColors.ParsedPurple; break;
+                                case 7: //pink
+                                    textColor = ImGuiColors.ParsedPink; break;
+                            }
+                            ImGui.TextColored(textColor, $"{lootResult.Value.ItemName.PadRight(20)}");
+                            using(var popup = ImRaii.ContextPopupItem($"##{lootResult.Key.ItemId}{lootResult.Key.IsHQ}--ContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
+                                if(popup) {
+                                    if(ImGui.MenuItem($"Pin item##{lootResult.Key.ItemId}{lootResult.Key.IsHQ}", null, isPinned)) {
+                                        if(!isPinned) {
+                                            _plugin.Log.Verbose($"pinning: {lootResult.Value.ItemName}");
+                                            //_pins.Add(lootResult.Key);
+                                            _plugin.Configuration.LootPins.Add(lootResult.Key);
+                                            _plugin.Configuration.Save();
+                                        } else {
+                                            //_pins.Remove(lootResult.Key);
+                                            _plugin.Configuration.LootPins.Remove(lootResult.Key);
+                                            _plugin.Configuration.Save();
+                                        }
+                                        _plugin.DataQueue.QueueDataOperation(() => {
+                                            SortByColumn((SortableColumn)sortSpecs.Specs.ColumnUserID, sortSpecs.Specs.SortDirection);
+                                        });
+                                    }
+                                }
+                            }
+                            ImGui.TableNextColumn();
+                            ImGui.Text($"{lootResult.Value.DroppedQuantity.ToString("N0")}");
+                            ImGui.TableNextColumn();
+                            ImGui.Text($"{lootResult.Value.ObtainedQuantity.ToString("N0")}");
+                            ImGui.TableNextColumn();
+                            ImGui.Text($"{lootResult.Value.AveragePrice?.ToString("N0")}");
+                            ImGui.TableNextColumn();
+                            ImGui.Text($"{lootResult.Value.DroppedValue?.ToString("N0")}");
+                            ImGui.TableNextColumn();
+                            ImGui.Text($"{lootResult.Value.ObtainedValue?.ToString("N0")}");
+                        }
                     }
-                    ImGui.EndPopup();
                 }
-                ImGui.TableNextColumn();
-                ImGui.Text($"{lootResult.Value.DroppedQuantity.ToString("N0")}");
-                ImGui.TableNextColumn();
-                ImGui.Text($"{lootResult.Value.ObtainedQuantity.ToString("N0")}");
-                ImGui.TableNextColumn();
-                ImGui.Text($"{lootResult.Value.AveragePrice?.ToString("N0")}");
-                ImGui.TableNextColumn();
-                ImGui.Text($"{lootResult.Value.DroppedValue?.ToString("N0")}");
-                ImGui.TableNextColumn();
-                ImGui.Text($"{lootResult.Value.ObtainedValue?.ToString("N0")}");
             }
-            ImGui.EndTable();
-            ImGui.EndChild();
+
             ImGui.Text("");
             ImGui.SameLine();
 
