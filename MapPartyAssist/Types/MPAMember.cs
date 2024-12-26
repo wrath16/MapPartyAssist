@@ -28,6 +28,14 @@ namespace MapPartyAssist.Types {
             Maps = new();
         }
 
+        public MPAMember(string key, bool isSelf = false) {
+            var split = key.Split(" ");
+            Name = $"{split[0]} {split[1]}";
+            HomeWorld = split[2];
+            IsSelf = isSelf;
+            LastJoined = DateTime.Now;
+            Maps = new();
+        }
         public bool Equals(MPAMember? other) {
             if(other == null) {
                 return false;

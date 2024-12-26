@@ -349,8 +349,19 @@ namespace MapPartyAssist.Services {
                     }
                 }
             } else if(type == XivChatType.Party || type == XivChatType.Say || type == XivChatType.Alliance || type == XivChatType.Shout || type == XivChatType.Yell || type == XivChatType.TellIncoming) {
-                //getting map links
-                if(playerKey != null && mapLink != null && _plugin.GameStateManager.CurrentPartyList.ContainsKey(playerKey) && (_plugin.GameStateManager.CurrentPartyList[playerKey].MapLink == null || !_plugin.Configuration.NoOverwriteMapLink)) {
+                if(type == XivChatType.Party && mapLink != null && !_plugin.GameStateManager.CurrentPartyList.ContainsKey(playerKey)) {
+                    //special case for cross-world party members
+                    _plugin.DataQueue.QueueDataOperation(() => {
+                        var crossWorldPlayer = _plugin.StorageManager.GetPlayers().Query().Where(p => p.Key == playerKey).FirstOrDefault();
+                        if(crossWorldPlayer == null) {
+                            crossWorldPlayer = new MPAMember(playerKey);
+                            _plugin.StorageManager.AddPlayer(crossWorldPlayer);
+                        }
+                        crossWorldPlayer.SetMapLink(mapLink);
+                        _plugin.GameStateManager.CurrentPartyList.Add(playerKey, crossWorldPlayer);
+                        _plugin.StorageManager.UpdatePlayer(crossWorldPlayer);
+                    });
+                } else if(playerKey != null && mapLink != null && _plugin.GameStateManager.CurrentPartyList.ContainsKey(playerKey) && (_plugin.GameStateManager.CurrentPartyList[playerKey].MapLink == null || !_plugin.Configuration.NoOverwriteMapLink)) {
                     _plugin.GameStateManager.CurrentPartyList[playerKey].SetMapLink(mapLink);
                     _plugin.DataQueue.QueueDataOperation(() => _plugin.StorageManager.UpdatePlayer(_plugin.GameStateManager.CurrentPartyList[playerKey]));
                 }
