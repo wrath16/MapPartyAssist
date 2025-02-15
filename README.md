@@ -48,3 +48,4 @@ Tool for recording treasure map statistics and co-ordinating map parties.
 #### Loot tracker issues:
 * Gil earned from challenge logs will be counted.
 * Items dropped from non-treasure hunt monsters who are nearby will be counted.
+* If chat log display name settings is not set to "Full Name", it will not work.
