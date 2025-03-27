@@ -159,5 +159,17 @@ namespace MapPartyAssist.Services {
                 }
             }
         }
+
+        internal string? MatchAliasToPlayer(string? playerKey) {
+            foreach(var player in _plugin.GameStateManager.CurrentPartyList) {
+                //select first match
+                if(PlayerHelper.IsAliasMatch(player.Key, playerKey ?? "")) {
+                    _plugin.Log.Debug($"resolving {playerKey} to {player.Key}");
+                    return player.Key;
+                }
+            }
+            _plugin.Log.Warning($"Unable to match player alias: {playerKey}");
+            return null;
+        }
     }
 }
