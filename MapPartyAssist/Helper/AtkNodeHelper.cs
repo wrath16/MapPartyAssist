@@ -186,7 +186,7 @@ namespace MapPartyAssist.Helper {
                 case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.ManagedString:
                 case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.WideString:
                 case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.String8:
-                    return Marshal.PtrToStringUTF8((nint)value.String) ?? "";
+                    return value.String.AsDalamudSeString().TextValue ?? "";
                 default:
                     break;
             }
