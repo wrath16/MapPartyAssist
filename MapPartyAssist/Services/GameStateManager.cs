@@ -18,6 +18,8 @@ namespace MapPartyAssist.Services {
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
         public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
 
+        private Region currentPlayerRegion;
+
         public GameStateManager(Plugin plugin) {
             _plugin = plugin;
             _plugin.Framework.Update += OnFrameworkUpdate;
@@ -44,6 +46,7 @@ namespace MapPartyAssist.Services {
         private void OnFrameworkUpdate(IFramework framework) {
             var playerJob = _plugin.ClientState.LocalPlayer?.ClassJob.Value.Abbreviation;
             var currentPartySize = _plugin.PartyList.Length;
+            var currentPlayerRegion = _plugin.ClientState.LocalPlayer?.CurrentWorld.Value.DataCenter.Value.Region;
 
             if(!_plugin.Condition[ConditionFlag.BetweenAreas] && playerJob != null && currentPartySize != _lastPartySize) {
                 _plugin.Log.Debug($"Party size has changed: {_lastPartySize} to {currentPartySize}");
@@ -89,8 +92,8 @@ namespace MapPartyAssist.Services {
         }
 
         public Region GetCurrentRegion() {
-            var currentPlayerRegion = _plugin.ClientState.LocalPlayer?.CurrentWorld.Value.DataCenter.Value.Region;
-            return PlayerHelper.GetRegion(currentPlayerRegion);
+            // moved the region to run on framework per API 12 requirements.
+            return PlayerHelper.GetRegion((byte)currentPlayerRegion);
         }
 
         private void BuildPartyLists() {
