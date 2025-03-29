@@ -17,6 +17,8 @@ namespace MapPartyAssist.Services {
         internal ushort CurrentTerritory { get; private set; } = 0;
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
         public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
+        public string? CurrentPlayer { get; private set; }
+
 
         private Region currentPlayerRegion;
 
@@ -47,6 +49,13 @@ namespace MapPartyAssist.Services {
             var playerJob = _plugin.ClientState.LocalPlayer?.ClassJob.Value.Abbreviation;
             var currentPartySize = _plugin.PartyList.Length;
             var currentPlayerRegion = _plugin.ClientState.LocalPlayer?.CurrentWorld.Value.DataCenter.Value.Region;
+            string? currentPlayerName = _plugin.ClientState.LocalPlayer?.Name?.ToString();
+            string? currentPlayerWorld = _plugin.ClientState.LocalPlayer?.HomeWorld.Value.Name.ToString();
+            if(currentPlayerName != null || currentPlayerWorld != null) {
+                CurrentPlayer = $"{currentPlayerName} {currentPlayerWorld}";
+            } else {
+                CurrentPlayer = null;
+            }
 
             if(!_plugin.Condition[ConditionFlag.BetweenAreas] && playerJob != null && currentPartySize != _lastPartySize) {
                 _plugin.Log.Debug($"Party size has changed: {_lastPartySize} to {currentPartySize}");
@@ -81,14 +90,7 @@ namespace MapPartyAssist.Services {
         }
 
         public string? GetCurrentPlayer() {
-            string? currentPlayerName = _plugin.ClientState.LocalPlayer?.Name?.ToString();
-            string? currentPlayerWorld = _plugin.ClientState.LocalPlayer?.HomeWorld.Value.Name.ToString();
-            if(currentPlayerName == null || currentPlayerWorld == null) {
-                //throw exception?
-                //throw new InvalidOperationException("Cannot retrieve current player");
-                return null;
-            }
-            return $"{currentPlayerName} {currentPlayerWorld}";
+            return CurrentPlayer;
         }
 
         public Region GetCurrentRegion() {
@@ -104,22 +106,20 @@ namespace MapPartyAssist.Services {
         //builds current party list from scratch
         private void BuildCurrentPartyList(IPartyMember[] partyMembers) {
             _plugin.Log.Debug("Rebuilding current party list.");
-            string currentPlayerName = _plugin.ClientState.LocalPlayer!.Name.ToString()!;
-            string currentPlayerWorld = _plugin.ClientState.LocalPlayer!.HomeWorld.Value.Name.ToString();
-            string currentPlayerKey = GetCurrentPlayer()!;
+            MPAMember currentPlayerKey = new MPAMember(GetCurrentPlayer());
             CurrentPartyList = new();
             var allPlayers = _plugin.StorageManager.GetPlayers();
-            var currentPlayer = allPlayers.Query().Where(p => p.Key == currentPlayerKey).FirstOrDefault();
+            var currentPlayer = allPlayers.Query().Where(p => p.Key == currentPlayerKey.Key).FirstOrDefault();
             //enable for solo player
             if(partyMembers.Length <= 0) {
                 //add yourself for initial setup
                 if(currentPlayer == null) {
-                    var newPlayer = new MPAMember(currentPlayerName, currentPlayerWorld, true);
-                    CurrentPartyList.Add(currentPlayerKey, newPlayer);
+                    var newPlayer = new MPAMember(currentPlayerKey.Name, currentPlayerKey.HomeWorld, true);
+                    CurrentPartyList.Add(currentPlayerKey.Key, newPlayer);
                     _plugin.StorageManager.AddPlayer(newPlayer, false);
                 } else {
                     currentPlayer.LastJoined = DateTime.Now;
-                    CurrentPartyList.Add(currentPlayerKey, currentPlayer);
+                    CurrentPartyList.Add(currentPlayerKey.Key, currentPlayer);
                     _plugin.StorageManager.UpdatePlayer(currentPlayer, false);
                 }
             } else {
@@ -127,7 +127,7 @@ namespace MapPartyAssist.Services {
                     string partyMemberName = p.Name.ToString();
                     string partyMemberWorld = p.World.Value.Name.ToString();
                     var key = $"{partyMemberName} {partyMemberWorld}";
-                    bool isCurrentPlayer = partyMemberName.Equals(currentPlayerName) && partyMemberWorld.Equals(currentPlayerWorld);
+                    bool isCurrentPlayer = partyMemberName.Equals(currentPlayerKey.Name) && partyMemberWorld.Equals(currentPlayerKey.HomeWorld);
                     var findPlayer = allPlayers.Query().Where(p => p.Key == key).FirstOrDefault();
 
                     //new player!
