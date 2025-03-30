@@ -179,6 +179,7 @@ namespace MapPartyAssist {
 
                 //data migration
                 DataQueue.QueueDataOperation(MigrationManager.CheckAndMigrate);
+
                 Log.Information("Map Party Assist has started.");
             } catch(Exception e) {
                 //remove handlers and release database if we fail to start

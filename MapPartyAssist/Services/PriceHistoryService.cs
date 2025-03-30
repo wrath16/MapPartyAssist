@@ -16,7 +16,7 @@ namespace MapPartyAssist.Services {
         private const float _queryThresholdMinutes = 2f;
         private const int _updateCheckSeconds = 15;
         private const float _staleDataHours = 72f;
-        private const int _concurrentItemsMax = 50;
+        private const int _concurrentItemsMax = 100;
         private const int _maxSalesInAverage = 25;
         private const int _entriesToQuery = 100;
         private const int _maxSaleWindowDays = 90;
@@ -38,9 +38,11 @@ namespace MapPartyAssist.Services {
 
         internal PriceHistoryService(Plugin plugin) {
             _plugin = plugin;
-            if(_plugin.GameStateManager.GetCurrentRegion() != Region.Unknown) {
-                Initialize();
-            }
+            _plugin.DataQueue.QueueDataOperation(() => {
+                if(_plugin.GameStateManager.GetCurrentRegion() != Region.Unknown) {
+                    Initialize();
+                }
+            });
         }
 
         public void Dispose() {
@@ -51,14 +53,12 @@ namespace MapPartyAssist.Services {
 
         internal void Initialize() {
             if(!IsInitialized) {
-                _plugin.DataQueue.QueueDataOperation(() => {
-                    RebuildCache();
-                    IsInitialized = true;
-                    if(_plugin.Configuration.EnablePriceCheck) {
-                        EnablePolling();
-                    }
-                    _plugin.Refresh();
-                });
+                RebuildCache();
+                IsInitialized = true;
+                if(_plugin.Configuration.EnablePriceCheck) {
+                    EnablePolling();
+                }
+                _plugin.Refresh();
             }
         }
 
@@ -268,6 +268,7 @@ namespace MapPartyAssist.Services {
 
         private async Task UpdatePrices(uint[] itemIds) {
             try {
+                _plugin.Log.Debug($"{_plugin.GameStateManager.GetCurrentRegion()}");
                 HistoryResponse? results = await QueryUniversalisHistory(itemIds, _plugin.GameStateManager.GetCurrentRegion());
                 if(results is not null) {
                     foreach(var item in results.Value.Items) {

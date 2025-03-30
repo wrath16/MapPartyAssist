@@ -18,9 +18,7 @@ namespace MapPartyAssist.Services {
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
         public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
         public string? CurrentPlayer { get; private set; }
-
-
-        private Region currentPlayerRegion;
+        public Region? CurrentRegion { get; private set; }
 
         public GameStateManager(Plugin plugin) {
             _plugin = plugin;
@@ -48,7 +46,7 @@ namespace MapPartyAssist.Services {
         private void OnFrameworkUpdate(IFramework framework) {
             var playerJob = _plugin.ClientState.LocalPlayer?.ClassJob.Value.Abbreviation;
             var currentPartySize = _plugin.PartyList.Length;
-            var currentPlayerRegion = _plugin.ClientState.LocalPlayer?.CurrentWorld.Value.DataCenter.Value.Region;
+            CurrentRegion = PlayerHelper.GetRegion(_plugin.ClientState.LocalPlayer?.CurrentWorld.Value.DataCenter.Value.Region);
             string? currentPlayerName = _plugin.ClientState.LocalPlayer?.Name?.ToString();
             string? currentPlayerWorld = _plugin.ClientState.LocalPlayer?.HomeWorld.Value.Name.ToString();
             if(currentPlayerName != null || currentPlayerWorld != null) {
@@ -75,9 +73,9 @@ namespace MapPartyAssist.Services {
 
         private void OnLogin() {
             _plugin.DataQueue.QueueDataOperation(() => {
-                _plugin.PriceHistory.Initialize();
                 BuildPartyLists();
                 _plugin.MapManager.CheckAndArchiveMaps();
+                _plugin.PriceHistory.Initialize();
             });
         }
 
@@ -94,8 +92,7 @@ namespace MapPartyAssist.Services {
         }
 
         public Region GetCurrentRegion() {
-            // moved the region to run on framework per API 12 requirements.
-            return PlayerHelper.GetRegion((byte)currentPlayerRegion);
+            return CurrentRegion ?? Region.Unknown;
         }
 
         private void BuildPartyLists() {
