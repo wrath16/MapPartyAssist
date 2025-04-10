@@ -371,10 +371,10 @@ namespace MapPartyAssist.Services {
                         _plugin.GameStateManager.CurrentPartyList.Add(playerKey, crossWorldPlayer);
                         _plugin.StorageManager.UpdatePlayer(crossWorldPlayer);
                     });
-                } else if(playerKey != null 
-                    && mapLink != null 
+                } else if(playerKey != null
+                    && mapLink != null
                     && (AnnounceBlockUntil < messageTime || playerKey != _plugin.GameStateManager.GetCurrentPlayer())
-                    && _plugin.GameStateManager.CurrentPartyList.ContainsKey(playerKey) 
+                    && _plugin.GameStateManager.CurrentPartyList.ContainsKey(playerKey)
                     && (_plugin.GameStateManager.CurrentPartyList[playerKey].MapLink == null || !_plugin.Configuration.NoOverwriteMapLink)) {
                     _plugin.GameStateManager.CurrentPartyList[playerKey].SetMapLink(mapLink);
                     _plugin.DataQueue.QueueDataOperation(() => _plugin.StorageManager.UpdatePlayer(_plugin.GameStateManager.CurrentPartyList[playerKey]));
