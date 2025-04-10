@@ -7,6 +7,7 @@ using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Services {
     internal class GameStateManager : IDisposable {
@@ -49,7 +50,7 @@ namespace MapPartyAssist.Services {
             CurrentRegion = PlayerHelper.GetRegion(_plugin.ClientState.LocalPlayer?.CurrentWorld.Value.DataCenter.Value.Region);
             string? currentPlayerName = _plugin.ClientState.LocalPlayer?.Name?.ToString();
             string? currentPlayerWorld = _plugin.ClientState.LocalPlayer?.HomeWorld.Value.Name.ToString();
-            if(currentPlayerName != null || currentPlayerWorld != null) {
+            if(currentPlayerName != null && currentPlayerWorld != null) {
                 CurrentPlayer = $"{currentPlayerName} {currentPlayerWorld}";
             } else {
                 CurrentPlayer = null;
@@ -72,10 +73,12 @@ namespace MapPartyAssist.Services {
         }
 
         private void OnLogin() {
-            _plugin.DataQueue.QueueDataOperation(() => {
-                BuildPartyLists();
-                _plugin.MapManager.CheckAndArchiveMaps();
-                _plugin.PriceHistory.Initialize();
+            Task.Delay(5000).ContinueWith(t => {
+                _plugin.DataQueue.QueueDataOperation(() => {
+                    _plugin.MapManager.CheckAndArchiveMaps();
+                    _plugin.PriceHistory.Initialize();
+                    BuildPartyLists();
+                });
             });
         }
 

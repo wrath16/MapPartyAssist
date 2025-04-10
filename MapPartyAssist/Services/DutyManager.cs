@@ -6,6 +6,7 @@ using Dalamud.Hooking;
 using Dalamud.Utility;
 using Dalamud.Utility.Signatures;
 using Lumina.Excel.Sheets;
+using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
@@ -200,6 +201,14 @@ namespace MapPartyAssist.Services {
             { ClientLanguage.French, new Regex(@"(?<=obtient .?)(le|la|l'|un|une|[\.,\d]+)\b", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"(?<=hat .?)(ein|eine|einen|der|die|den|dem|des|[\.,\d]+)\b", RegexOptions.IgnoreCase) },
             { ClientLanguage.Japanese, new Regex(@"[\.,\d]*(?=を手に入れた。)", RegexOptions.IgnoreCase) }
+        };
+
+        //for retrieving playername when no payload
+        internal static readonly Dictionary<ClientLanguage, Regex> PlayerAliasRegex = new() {
+            { ClientLanguage.English, new Regex(@"^[A-Za-z-']+\.? [A-Za-z-']+\.?", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"^[A-Za-z-']+\.? [A-Za-z-']+\.?", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"^[A-Za-z-']+\.? [A-Za-z-']+\.?", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"^[A-Za-z-']+\.? [A-Za-z-']+\.?", RegexOptions.IgnoreCase) }
         };
 
         //LogMessage: 3777, 3800
@@ -568,6 +577,11 @@ namespace MapPartyAssist.Services {
             bool isChange = false;
             var duty = Duties[results.DutyId];
 
+            //handle abbreviated names
+            if(message.PlayerKey != null && message.PlayerKey.Contains('.')) {
+                message.PlayerKey = _plugin.GameStateManager.MatchAliasToPlayer(message.PlayerKey);
+            }
+
             //check for gil obtained
             if(message.Channel == 62) {
                 Match m = GilObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
@@ -579,12 +593,13 @@ namespace MapPartyAssist.Services {
                     isChange = true;
                 }
                 //self loot obtained
-            } else if(message.Channel == 2110) {
-                Match quantityMatch = SelfObtainedQuantityRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
-                Match itemMatch = SelfObtainedItemRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
-                if(quantityMatch.Success) {
-                    bool isNumber = Regex.IsMatch(quantityMatch.Value, @"\d+");
-                    int quantity = isNumber ? int.Parse(quantityMatch.Value.Replace(",", "").Replace(".", "")) : 1;
+            } else if(message.Channel == 8254 || message.Channel == 4158 || message.Channel == 2110) {
+                //check for self match
+                Match selfQuantityMatch = SelfObtainedQuantityRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
+                Match selfItemMatch = SelfObtainedItemRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
+                if(selfQuantityMatch.Success) {
+                    bool isNumber = Regex.IsMatch(selfQuantityMatch.Value, @"\d+");
+                    int quantity = isNumber ? int.Parse(selfQuantityMatch.Value.Replace(",", "").Replace(".", "")) : 1;
                     var currentPlayer = _plugin.GameStateManager.GetCurrentPlayer();
                     if(message.ItemId is not null) {
                         AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity, currentPlayer);
@@ -592,34 +607,36 @@ namespace MapPartyAssist.Services {
 #if DEBUG
                         _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", message.ItemId, message.IsHq, quantity, currentPlayer));
 #endif
-                    } else if(itemMatch.Success) {
+                    } else if(selfItemMatch.Success) {
                         //tomestones
                         //Japanese has no plural...
-                        var rowId = quantity != 1 && _plugin.ClientState.ClientLanguage != ClientLanguage.Japanese ? _plugin.GetRowId<Item>(itemMatch.Value, "Plural", GrammarCase.Accusative) : _plugin.GetRowId<Item>(itemMatch.Value, "Singular", GrammarCase.Accusative);
+                        var rowId = quantity != 1 && _plugin.ClientState.ClientLanguage != ClientLanguage.Japanese ? _plugin.GetRowId<Item>(selfItemMatch.Value, "Plural", GrammarCase.Accusative) : _plugin.GetRowId<Item>(selfItemMatch.Value, "Singular", GrammarCase.Accusative);
                         if(rowId is not null) {
                             AddLootResults(results, (uint)rowId, false, quantity, currentPlayer);
                             isChange = true;
                         } else {
-                            _plugin.Log.Warning($"Cannot find rowId for {itemMatch.Value}");
+                            _plugin.Log.Warning($"Cannot find rowId for {selfItemMatch.Value}");
+                        }
+                    }
+                } else {
+                    Match m = PartyMemberObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
+                    if(m.Success) {
+                        bool isNumber = Regex.IsMatch(m.Value, @"\d+");
+                        int quantity = isNumber ? int.Parse(m.Value.Replace(",", "").Replace(".", "")) : 1;
+                        if(message.ItemId is not null) {
+                            //chat log settings can make playerKey null
+                            if(message.PlayerKey is null) {
+                                var nominalAlias = PlayerAliasRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
+                                message.PlayerKey = _plugin.GameStateManager.MatchAliasToPlayer(nominalAlias.Value);
+                            }
+                            AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity, message.PlayerKey);
+                            isChange = true;
+#if DEBUG
+                            _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", message.ItemId, message.IsHq, quantity, message.PlayerKey));
+#endif
                         }
                     }
                 }
-                //party member loot obtained
-            } else if(message.Channel == 8254 || message.Channel == 4158) {
-                Match m = PartyMemberObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
-                if(m.Success) {
-                    //todo make this work for all languages...
-                    bool isNumber = Regex.IsMatch(m.Value, @"\d+");
-                    int quantity = isNumber ? int.Parse(m.Value.Replace(",", "").Replace(".", "")) : 1;
-                    if(message.ItemId is not null && !message.PlayerKey.IsNullOrEmpty()) {
-                        AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity, message.PlayerKey);
-                        isChange = true;
-#if DEBUG
-                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", message.ItemId, message.IsHq, quantity, message.PlayerKey));
-#endif
-                    }
-                }
-
                 //check for loot list
             } else if((XivChatType)message.Channel == XivChatType.SystemMessage) {
                 Match m = LootListRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
