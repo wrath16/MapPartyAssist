@@ -3,7 +3,7 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using MapPartyAssist.Windows.Filter;
@@ -313,7 +313,7 @@ namespace MapPartyAssist.Windows {
                 try {
                     if(ImGui.BeginMenu("Windows")) {
                         try {
-                            if(ImGui.MenuItem("Map Tracker", null, _plugin.MainWindow.IsOpen)) {
+                            if(ImGui.MenuItem("Map Tracker", string.Empty, _plugin.MainWindow.IsOpen)) {
                                 OpenMapWindow();
                             }
                         } finally {

@@ -5,7 +5,7 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using LiteDB;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
@@ -455,9 +455,9 @@ internal class MainWindow : Window {
     }
 
     private unsafe bool MapDragDropSource(MPAMap map) {
-        if(ImGui.GetDragDropPayload().NativePtr != null) {
+        if(! ImGui.GetDragDropPayload().IsNull) {
             byte[] data = new byte[12];
-            Marshal.Copy(ImGui.GetDragDropPayload().Data, data, 0, 12);
+            Marshal.Copy((nint)ImGui.GetDragDropPayload().Data, data, 0, 12);
             if(data.SequenceEqual(map.Id.ToByteArray())) {
                 //_plugin.Log.Debug($"{currentMap.Id} is being dragged!");
                 //using var style = ImRaii.PushColor(ImGuiCol.TableRowBg, ImGuiColors.DalamudViolet);
@@ -465,12 +465,10 @@ internal class MainWindow : Window {
             }
         }
 
-        using var drag = ImRaii.DragDropSource(ImGuiDragDropFlags.SourceAllowNullID);
+        using var drag = ImRaii.DragDropSource(ImGuiDragDropFlags.SourceAllowNullId);
         if(drag) {
             byte[] data = map.Id.ToByteArray();
-            fixed(byte* dataPtr = data) {
-                ImGui.SetDragDropPayload("map", (IntPtr)dataPtr, 0x12, ImGuiCond.Once);
-            }
+            ImGui.SetDragDropPayload("map", data, ImGuiCond.Once);
             ImGui.Text("Drag to name to re-assign...");
         }
         return drag.Success;
@@ -480,9 +478,9 @@ internal class MainWindow : Window {
         using var drag = ImRaii.DragDropTarget();
         if(drag) {
             ImGuiPayloadPtr acceptPayload = ImGui.AcceptDragDropPayload("map");
-            if(acceptPayload.NativePtr != null) {
+            if(! acceptPayload.IsNull) {
                 byte[] data = new byte[12];
-                Marshal.Copy(acceptPayload.Data, data, 0, 12);
+                Marshal.Copy((nint)acceptPayload.Data, data, 0, 12);
 
                 _plugin.Log.Debug($"Assigning map to {player.Key}");
                 _plugin.DataQueue.QueueDataOperation(() => {

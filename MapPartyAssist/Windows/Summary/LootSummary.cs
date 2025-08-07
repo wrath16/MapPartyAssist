@@ -2,7 +2,7 @@
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Lumina.Excel.Sheets;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
@@ -246,7 +246,7 @@ namespace MapPartyAssist.Windows.Summary {
                             ImGui.TextColored(textColor, $"{lootResult.Value.ItemName.PadRight(20)}");
                             using(var popup = ImRaii.ContextPopupItem($"##{lootResult.Key.ItemId}{lootResult.Key.IsHQ}--ContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
                                 if(popup) {
-                                    if(ImGui.MenuItem($"Pin item##{lootResult.Key.ItemId}{lootResult.Key.IsHQ}", null, isPinned)) {
+                                    if(ImGui.MenuItem($"Pin item##{lootResult.Key.ItemId}{lootResult.Key.IsHQ}", string.Empty, isPinned)) {
                                         if(!isPinned) {
                                             _plugin.Log.Verbose($"pinning: {lootResult.Value.ItemName}");
                                             //_pins.Add(lootResult.Key);
