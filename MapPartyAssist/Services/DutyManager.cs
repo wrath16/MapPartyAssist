@@ -17,7 +17,9 @@ namespace MapPartyAssist.Services {
     internal class DutyManager : IDisposable {
 
         private delegate IntPtr TreasureDungeonDirectorCtorDelegate(IntPtr p1, IntPtr p2, IntPtr p3, byte p4);
-        [Signature("48 89 5C 24 ?? 57 48 83 EC ?? 41 0F B6 D9 48 8B F9 E8", DetourName = nameof(TreasureDungeonDirectorCtorDetour))]
+        //48 89 5C 24 ?? 57 48 83 EC ?? 41 0F B6 D9 48 8B F9 E8
+        //48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? 41 0F B6 D9 48 8B F9 
+        [Signature("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? 41 0F B6 D9 48 8B F9 ", DetourName = nameof(TreasureDungeonDirectorCtorDetour))]
         private readonly Hook<TreasureDungeonDirectorCtorDelegate> _treasureDungeonDirectorCtorHook;
 
         private Plugin _plugin;
@@ -666,6 +668,7 @@ namespace MapPartyAssist.Services {
                     case DutyStructure.Roulette:
                         isChange = ProcessCheckpointsRoulette(results, message);
                         break;
+                    case DutyStructure.Slots:
                     default:
                         break;
                 }

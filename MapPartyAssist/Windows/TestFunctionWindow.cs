@@ -10,7 +10,7 @@ using Dalamud.Logging;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using MapPartyAssist.Types;
@@ -467,7 +467,7 @@ namespace MapPartyAssist.Windows {
 
                     ImGui.Text("Test move me!");
 
-                    using var drag = ImRaii.DragDropSource(ImGuiDragDropFlags.SourceAllowNullID);
+                    using var drag = ImRaii.DragDropSource(ImGuiDragDropFlags.SourceAllowNullId);
                     if(drag) {
                         ImGui.Text("Moving!");
                     }

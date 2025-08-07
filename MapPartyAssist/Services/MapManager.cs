@@ -162,7 +162,7 @@ namespace MapPartyAssist.Services {
 
         private unsafe void CheckForTreasureHunt(AddonEvent type, AddonArgs args) {
             //_plugin.Log.Debug("pre refresh todolist!");
-            var addon = (AtkUnitBase*)args.Addon;
+            var addon = (AtkUnitBase*)(nint)args.Addon;
             if(addon == null) {
                 return;
             }

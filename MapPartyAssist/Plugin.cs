@@ -225,24 +225,12 @@ namespace MapPartyAssist {
             PluginInterface.UiBuilder.OpenMainUi -= DrawMainUI;
             PluginInterface.UiBuilder.OpenConfigUi -= DrawConfigUI;
 
-            if(MapManager != null) {
-                MapManager.Dispose();
-            }
-            if(DutyManager != null) {
-                DutyManager.Dispose();
-            }
-            if(StorageManager != null) {
-                StorageManager.Dispose();
-            }
-            if(GameStateManager != null) {
-                GameStateManager.Dispose();
-            }
-            if(DataQueue != null) {
-                DataQueue.Dispose();
-            }
-            if(PriceHistory != null) {
-                PriceHistory.Dispose();
-            }
+            MapManager?.Dispose();
+            DutyManager?.Dispose();
+            StorageManager?.Dispose();
+            GameStateManager?.Dispose();
+            DataQueue?.Dispose();
+            PriceHistory?.Dispose();
         }
 
         private void OnCommand(string command, string args) {
@@ -321,8 +309,8 @@ namespace MapPartyAssist {
 
         public void Refresh() {
             Configuration.Save();
-            StatsWindow.Refresh();
-            MainWindow.Refresh();
+            StatsWindow?.Refresh();
+            MainWindow?.Refresh();
         }
 
         public bool IsLanguageSupported(ClientLanguage? language = null) {
