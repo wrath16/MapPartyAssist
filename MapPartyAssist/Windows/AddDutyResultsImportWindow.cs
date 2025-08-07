@@ -19,7 +19,7 @@ namespace MapPartyAssist.Windows {
 
         private string _statusMessage = "";
         private int _selectedDuty = 0;
-        private readonly int[] _dutyIdCombo = { 0, 179, 268, 276, 586, 688, 745, 819, 909, 993 };
+        private readonly int[] _dutyIdCombo = { 0, 179, 268, 276, 586, 688, 745, 819, 909, 993, 1060 };
         private readonly string[] _dutyNameCombo;
 
         private const float _inputWidth = 200f;
@@ -256,7 +256,8 @@ namespace MapPartyAssist.Windows {
                             }
                         }
 
-                        if(_model.DutyId != 0 && _plugin.DutyManager.Duties[_model.DutyId].Structure == DutyStructure.Roulette) {
+                        if(_model.DutyId != 0 && 
+                            (_plugin.DutyManager.Duties[_model.DutyId].Structure == DutyStructure.Roulette || _plugin.DutyManager.Duties[_model.DutyId].Structure == DutyStructure.Slots)) {
                             bool hasSummons = _model.SummonTotals != null;
                             if(ImGui.Checkbox($"##HasSummons", ref hasSummons)) {
                                 if(!hasSummons) {
@@ -297,9 +298,15 @@ namespace MapPartyAssist.Windows {
                                             break;
                                         case Summon.Gold:
                                             label = "Circle shifts";
+                                            if(_plugin.DutyManager.Duties[_model.DutyId].Structure == DutyStructure.Slots) {
+                                                label = "Final summons";
+                                            }
                                             break;
                                         case Summon.Silver:
                                             label = "Abominations";
+                                            if(_plugin.DutyManager.Duties[_model.DutyId].Structure == DutyStructure.Slots) {
+                                                label = "Fever dreams";
+                                            }
                                             break;
                                         default:
                                             label = "";

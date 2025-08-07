@@ -29,6 +29,7 @@ namespace MapPartyAssist.Helper {
             {2003463,  TreasureMap.ConceivablySpecial},
             {2003562,  TreasureMap.Loboskin},
             {2003563,  TreasureMap.Braaxskin},
+            {2003785,  TreasureMap.Gargantuaskin},
         };
 
         public static string GetMapName(TreasureMap map) {
@@ -57,6 +58,7 @@ namespace MapPartyAssist.Helper {
                 TreasureMap.ConceivablySpecial => "Conceivably Special Treasure Map",
                 TreasureMap.Loboskin => "Loboskin Treasure Map",
                 TreasureMap.Braaxskin => "Br'aaxskin Treasure Map",
+                TreasureMap.Gargantuaskin => "Gargantuaskin Treasure Map",
                 _ => "Unknown"
             };
         }

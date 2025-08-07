@@ -1,7 +1,7 @@
-﻿using Dalamud.Interface.Colors;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
-using Dalamud.Bindings.ImGui;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Settings;
 using MapPartyAssist.Types;
@@ -325,7 +325,7 @@ namespace MapPartyAssist.Windows.Summary {
                     ImGui.TextColored(ImGuiColors.DalamudViolet, _plugin.DutyManager.Duties[duty.Key].GetDisplayName());
                     //ImGui.TextColored(ImGuiColors.DalamudWhite, TimeFilter.RangeToString(_timeFilter.StatRange).ToUpper());
                     ProgressTable(duty.Key);
-                    if(_plugin.DutyManager.Duties[duty.Key].Structure == DutyStructure.Roulette) {
+                    if(_plugin.DutyManager.Duties[duty.Key].Structure == DutyStructure.Roulette || _plugin.DutyManager.Duties[duty.Key].Structure == DutyStructure.Slots) {
                         SummonTable(duty.Key);
                     }
                 }
@@ -477,6 +477,7 @@ namespace MapPartyAssist.Windows.Summary {
 
         private void SummonTable(int dutyId) {
             var dutyStat = _dutyStats[dutyId];
+            var structure = _plugin.DutyManager.Duties[dutyId].Structure;
             if(dutyStat.HasSummons) {
                 using(var table = ImRaii.Table($"##{dutyId}-SummonTable", 3, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip | ImGuiTableFlags.NoKeepColumnsVisible)) {
                     if(table) {
@@ -501,12 +502,20 @@ namespace MapPartyAssist.Windows.Summary {
                         ImGui.Text($"{dutyStat.SummonTotals[Summon.Elder]}");
                         ImGui.TableNextColumn();
                         ImGui.TableNextColumn();
-                        ImGui.Text("Circle shifts: ");
+                        if(structure == DutyStructure.Roulette) {
+                            ImGui.Text("Circle shifts: ");
+                        } else if(structure == DutyStructure.Slots) {
+                            ImGui.Text("Final summons: ");
+                        }
                         ImGui.TableNextColumn();
                         ImGui.Text($"{dutyStat.SummonTotals[Summon.Gold]}");
                         ImGui.TableNextColumn();
                         ImGui.TableNextColumn();
-                        ImGui.Text("Abominations: ");
+                        if(structure == DutyStructure.Roulette) {
+                            ImGui.Text("Abominations: ");
+                        } else if(structure == DutyStructure.Slots) {
+                            ImGui.Text("Fever dreams: ");
+                        }
                         ImGui.TableNextColumn();
                         ImGui.Text($"{dutyStat.SummonTotals[Summon.Silver]}");
                         ImGui.TableNextColumn();

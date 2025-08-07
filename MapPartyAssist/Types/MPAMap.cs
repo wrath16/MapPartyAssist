@@ -128,7 +128,8 @@ namespace MapPartyAssist.Types {
         PotentiallySpecial,
         ConceivablySpecial,
         Loboskin,
-        Braaxskin
+        Braaxskin,
+        Gargantuaskin,
     }
 
     public enum TreasureMapCategory {
