@@ -455,7 +455,7 @@ internal class MainWindow : Window {
     }
 
     private unsafe bool MapDragDropSource(MPAMap map) {
-        if(!ImGui.GetDragDropPayload().IsNull) {
+        if(! ImGui.GetDragDropPayload().IsNull) {
             byte[] data = new byte[12];
             Marshal.Copy((nint)ImGui.GetDragDropPayload().Data, data, 0, 12);
             if(data.SequenceEqual(map.Id.ToByteArray())) {
@@ -468,10 +468,7 @@ internal class MainWindow : Window {
         using var drag = ImRaii.DragDropSource(ImGuiDragDropFlags.SourceAllowNullId);
         if(drag) {
             byte[] data = map.Id.ToByteArray();
-            fixed(byte* dataPtr = data) {
-                //ImGui.SetDragDropPayload("map", (IntPtr)dataPtr, 0x12, ImGuiCond.Once);
-                ImGui.SetDragDropPayload("map", data, ImGuiCond.Once);
-            }
+            ImGui.SetDragDropPayload("map", data, ImGuiCond.Once);
             ImGui.Text("Drag to name to re-assign...");
         }
         return drag.Success;
