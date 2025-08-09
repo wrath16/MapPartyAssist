@@ -1,6 +1,10 @@
 ﻿using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Colors;
+using Dalamud.Interface;
+using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace MapPartyAssist.Helper {
     internal static class ImGuiHelper {
@@ -109,6 +113,23 @@ namespace MapPartyAssist.Helper {
                 }
             }
             return wrappedString;
+        }
+
+        internal static void DonateButton() {
+            using(_ = ImRaii.PushFont(UiBuilder.IconFont)) {
+                var text = $"{FontAwesomeIcon.Star.ToIconString()}{FontAwesomeIcon.Copy.ToIconString()}";
+                using(_ = ImRaii.PushColor(ImGuiCol.Text, ImGuiColors.DalamudRed)) {
+                    if(ImGui.Button($"{FontAwesomeIcon.Heart.ToIconString()}##--Donate")) {
+                        Task.Run(() => {
+                            Process.Start(new ProcessStartInfo() {
+                                UseShellExecute = true,
+                                FileName = "https://ko-fi.com/samoxiv"
+                            });
+                        });
+                    }
+                }
+            }
+            WrappedTooltip("Support the dev");
         }
     }
 }

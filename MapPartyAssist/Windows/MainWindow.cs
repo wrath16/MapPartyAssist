@@ -188,6 +188,9 @@ internal class MainWindow : Window {
             ImGui.TextColored(ImGuiColors.DalamudRed, "Unknown owner.");
         });
 
+        ImGui.SameLine();
+        ImGuiHelper.DonateButton();
+
         //if(!_refreshLock.Wait(0)) {
         //    return;
         //}
@@ -455,7 +458,7 @@ internal class MainWindow : Window {
     }
 
     private unsafe bool MapDragDropSource(MPAMap map) {
-        if(! ImGui.GetDragDropPayload().IsNull) {
+        if(!ImGui.GetDragDropPayload().IsNull) {
             byte[] data = new byte[12];
             Marshal.Copy((nint)ImGui.GetDragDropPayload().Data, data, 0, 12);
             if(data.SequenceEqual(map.Id.ToByteArray())) {
