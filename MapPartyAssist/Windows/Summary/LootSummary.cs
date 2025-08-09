@@ -246,7 +246,7 @@ namespace MapPartyAssist.Windows.Summary {
                             ImGui.TextColored(textColor, $"{lootResult.Value.ItemName.PadRight(20)}");
                             using(var popup = ImRaii.ContextPopupItem($"##{lootResult.Key.ItemId}{lootResult.Key.IsHQ}--ContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
                                 if(popup) {
-                                    if(ImGui.MenuItem($"Pin item##{lootResult.Key.ItemId}{lootResult.Key.IsHQ}", string.Empty, isPinned)) {
+                                    if(ImGui.MenuItem($"Pin item##{lootResult.Key.ItemId}{lootResult.Key.IsHQ}", ImU8String.Empty, isPinned)) {
                                         if(!isPinned) {
                                             _plugin.Log.Verbose($"pinning: {lootResult.Value.ItemName}");
                                             //_pins.Add(lootResult.Key);

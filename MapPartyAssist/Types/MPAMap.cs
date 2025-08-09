@@ -128,7 +128,8 @@ namespace MapPartyAssist.Types {
         PotentiallySpecial,
         ConceivablySpecial,
         Loboskin,
-        Braaxskin
+        Braaxskin,
+        Gargantuaskin,
     }
 
     public enum TreasureMapCategory {
@@ -139,6 +140,7 @@ namespace MapPartyAssist.Types {
         Shadowbringers,
         Endwalker,
         Elpis,
-        Dawntrail
+        Dawntrail,
+        LivingMemory
     }
 }

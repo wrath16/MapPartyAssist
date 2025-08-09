@@ -478,7 +478,7 @@ internal class MainWindow : Window {
         using var drag = ImRaii.DragDropTarget();
         if(drag) {
             ImGuiPayloadPtr acceptPayload = ImGui.AcceptDragDropPayload("map");
-            if(! acceptPayload.IsNull) {
+            if(!acceptPayload.IsNull) {
                 byte[] data = new byte[12];
                 Marshal.Copy((nint)acceptPayload.Data, data, 0, 12);
 

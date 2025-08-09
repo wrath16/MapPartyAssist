@@ -1,4 +1,5 @@
-﻿using Dalamud.Interface.Colors;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Bindings.ImGui;
@@ -72,7 +73,7 @@ namespace MapPartyAssist.Windows.Summary {
                 var onlyDutyResults = dutyResults.Where(dr => dr.DutyId == kvp.Key).ToList();
                 var onlyImports = imports.Where(dr => dr.DutyId == kvp.Key).ToList();
                 var duty = _plugin.DutyManager.Duties[kvp.Key];
-                bool isRoulette = duty.Structure == DutyStructure.Roulette;
+                bool isRoulette = duty.Structure == DutyStructure.Roulette || duty.Structure == DutyStructure.Slots;
                 int numChambers = duty.ChamberCount;
                 string successVerb = isRoulette ? "Complete" : "Open";
                 string passiveSuccessVerb = isRoulette ? "Completed" : "Reached";
@@ -241,7 +242,7 @@ namespace MapPartyAssist.Windows.Summary {
                 }
 
                 //summon data
-                if(duty.Structure == DutyStructure.Roulette) {
+                if(duty.Structure == DutyStructure.Roulette || duty.Structure == DutyStructure.Slots) {
                     //check import data
                     foreach(var import in onlyImports) {
                         if(import.SummonTotals != null) {
@@ -325,7 +326,7 @@ namespace MapPartyAssist.Windows.Summary {
                     ImGui.TextColored(ImGuiColors.DalamudViolet, _plugin.DutyManager.Duties[duty.Key].GetDisplayName());
                     //ImGui.TextColored(ImGuiColors.DalamudWhite, TimeFilter.RangeToString(_timeFilter.StatRange).ToUpper());
                     ProgressTable(duty.Key);
-                    if(_plugin.DutyManager.Duties[duty.Key].Structure == DutyStructure.Roulette) {
+                    if(_plugin.DutyManager.Duties[duty.Key].Structure == DutyStructure.Roulette || _plugin.DutyManager.Duties[duty.Key].Structure == DutyStructure.Slots) {
                         SummonTable(duty.Key);
                     }
                 }
@@ -477,6 +478,7 @@ namespace MapPartyAssist.Windows.Summary {
 
         private void SummonTable(int dutyId) {
             var dutyStat = _dutyStats[dutyId];
+            var structure = _plugin.DutyManager.Duties[dutyId].Structure;
             if(dutyStat.HasSummons) {
                 using(var table = ImRaii.Table($"##{dutyId}-SummonTable", 3, ImGuiTableFlags.NoBordersInBody | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoClip | ImGuiTableFlags.NoKeepColumnsVisible)) {
                     if(table) {
@@ -501,12 +503,20 @@ namespace MapPartyAssist.Windows.Summary {
                         ImGui.Text($"{dutyStat.SummonTotals[Summon.Elder]}");
                         ImGui.TableNextColumn();
                         ImGui.TableNextColumn();
-                        ImGui.Text("Circle shifts: ");
+                        if(structure == DutyStructure.Roulette) {
+                            ImGui.Text("Circle shifts: ");
+                        } else if(structure == DutyStructure.Slots) {
+                            ImGui.Text("Final summons: ");
+                        }
                         ImGui.TableNextColumn();
                         ImGui.Text($"{dutyStat.SummonTotals[Summon.Gold]}");
                         ImGui.TableNextColumn();
                         ImGui.TableNextColumn();
-                        ImGui.Text("Abominations: ");
+                        if(structure == DutyStructure.Roulette) {
+                            ImGui.Text("Abominations: ");
+                        } else if(structure == DutyStructure.Slots) {
+                            ImGui.Text("Fever dreams: ");
+                        }
                         ImGui.TableNextColumn();
                         ImGui.Text($"{dutyStat.SummonTotals[Summon.Silver]}");
                         ImGui.TableNextColumn();

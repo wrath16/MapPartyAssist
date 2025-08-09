@@ -313,7 +313,7 @@ namespace MapPartyAssist.Windows {
                 try {
                     if(ImGui.BeginMenu("Windows")) {
                         try {
-                            if(ImGui.MenuItem("Map Tracker", string.Empty, _plugin.MainWindow.IsOpen)) {
+                            if(ImGui.MenuItem("Map Tracker", ImU8String.Empty, _plugin.MainWindow.IsOpen)) {
                                 OpenMapWindow();
                             }
                         } finally {

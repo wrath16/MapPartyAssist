@@ -29,6 +29,7 @@ namespace MapPartyAssist.Helper {
             {2003463,  TreasureMap.ConceivablySpecial},
             {2003562,  TreasureMap.Loboskin},
             {2003563,  TreasureMap.Braaxskin},
+            {2003785,  TreasureMap.Gargantuaskin},
         };
 
         public static string GetMapName(TreasureMap map) {
@@ -57,6 +58,7 @@ namespace MapPartyAssist.Helper {
                 TreasureMap.ConceivablySpecial => "Conceivably Special Treasure Map",
                 TreasureMap.Loboskin => "Loboskin Treasure Map",
                 TreasureMap.Braaxskin => "Br'aaxskin Treasure Map",
+                TreasureMap.Gargantuaskin => "Gargantuaskin Treasure Map",
                 _ => "Unknown"
             };
         }
@@ -70,6 +72,7 @@ namespace MapPartyAssist.Helper {
                 TreasureMapCategory.Endwalker => "Endwalker",
                 TreasureMapCategory.Elpis => "Elpis",
                 TreasureMapCategory.Dawntrail => "Dawntrail",
+                TreasureMapCategory.LivingMemory => "Living Memory",
                 TreasureMapCategory.Unknown => "Unknown/Unrecorded",
                 _ => "Unknown/Unrecorded",
             };
@@ -90,35 +93,11 @@ namespace MapPartyAssist.Helper {
                 return TreasureMapCategory.Elpis;
             } else if(territoryId <= 1185) {
                 return TreasureMapCategory.Endwalker;
+            } else if(territoryId == 1192) {
+                return TreasureMapCategory.LivingMemory;
             } else {
                 return TreasureMapCategory.Dawntrail;
             }
-            //switch(territoryId) {
-            //    case 612:
-            //    case 613:
-            //    case 614:
-            //    case 620:
-            //    case 621:
-            //    case 622:
-            //        return TreasureMapCategory.Stormblood;
-            //    case 813:
-            //    case 814:
-            //    case 815:
-            //    case 816:
-            //    case 817:
-            //    case 818:
-            //        return TreasureMapCategory.Shadowbringers;
-            //    case 956:
-            //    case 957:
-            //    case 958:
-            //    case 959:
-            //    case 960:
-            //        return TreasureMapCategory.Endwalker;
-            //    case 961: 
-            //        return TreasureMapCategory.Elpis;
-            //    default:
-            //        return TreasureMapCategory.Unknown;
-            //}
         }
     }
 }

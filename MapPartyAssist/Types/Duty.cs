@@ -94,6 +94,7 @@ namespace MapPartyAssist.Types {
 
     public enum DutyStructure {
         Doors,
-        Roulette
+        Roulette,
+        Slots
     }
 }

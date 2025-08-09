@@ -36,7 +36,7 @@ namespace MapPartyAssist.Services {
         //internal CheckpointResults? LastCheckpoint => CurrentDutyResults?.CheckpointResults.LastOrDefault();
 
         internal readonly Dictionary<int, Duty> Duties = new Dictionary<int, Duty>() {
-            { 179 , new Duty(179, "the aquapolis", DutyStructure.Doors, 7, new() {
+            { 179, new Duty(179, "the aquapolis", DutyStructure.Doors, 7, new() {
                 new Checkpoint("Clear 1st chamber", EmptyCagesRegex),
                 new Checkpoint("Open 2nd chamber", SecondChamberRegex),
                 new Checkpoint("Clear 2nd chamber", EmptyCagesRegex),
@@ -66,7 +66,7 @@ namespace MapPartyAssist.Services {
                 new Checkpoint("Open final chamber", FinalChamberRegex),
                 new Checkpoint("Clear final chamber", EmptyCagesRegex)
             }, new Checkpoint("Failure", "The Lost Canals of Uznair has ended")) },
-            { 276 , new Duty(276, "the hidden canals of uznair", DutyStructure.Doors, 7, new() {
+            { 276, new Duty(276, "the hidden canals of uznair", DutyStructure.Doors, 7, new() {
                 new Checkpoint("Clear 1st chamber", EmptyCagesRegex),
                 new Checkpoint("Open 2nd chamber", SecondChamberRegex),
                 new Checkpoint("Clear 2nd chamber", EmptyCagesRegex),
@@ -97,7 +97,7 @@ namespace MapPartyAssist.Services {
                 new string[] {"altar arachne", "altar kelpie", "the older one", "the winged" },
                 new string[] {"altar airavata", "altar mandragora", "the great gold whisker" },
                 new string[] {"altar apanda", "altar diresaur", "altar manticore" }) },
-            { 688 , new Duty(688, "the dungeons of lyhe ghiah", DutyStructure.Doors, 5, new() {
+            { 688, new Duty(688, "the dungeons of lyhe ghiah", DutyStructure.Doors, 5, new() {
                 new Checkpoint("Clear 1st chamber", EmptyCagesRegex),
                 new Checkpoint("Open 2nd chamber", SecondChamberRegex),
                 new Checkpoint("Clear 2nd chamber", EmptyCagesRegex),
@@ -108,7 +108,7 @@ namespace MapPartyAssist.Services {
                 new Checkpoint("Open final chamber", FinalChamberRegex),
                 new Checkpoint("Clear final chamber", EmptyCagesRegex)
             }, new Checkpoint("Failure", "The Dungeons of Lyhe Ghiah has ended")) },
-            { 745 , new Duty(745, "the shifting oubliettes of lyhe ghiah", DutyStructure.Roulette, 5, new() {
+            { 745, new Duty(745, "the shifting oubliettes of lyhe ghiah", DutyStructure.Roulette, 5, new() {
                 new Checkpoint("Complete 1st Summon"),
                 new Checkpoint("Defeat 1st Summon"),
                 new Checkpoint("Complete 2nd Summon"),
@@ -124,7 +124,7 @@ namespace MapPartyAssist.Services {
                 new string[] {"greedy pixie", "secret basket", "secret pegasus", "secret porxie" },
                 new string[] {"secret korrigan", "secret keeper", "fuath troublemaker" },
                 new string[] {"daen ose the avaricious" }) },
-            { 819 , new Duty(819, "the excitatron 6000", DutyStructure.Doors, 5, new() {
+            { 819, new Duty(819, "the excitatron 6000", DutyStructure.Doors, 5, new() {
                 new Checkpoint("Clear 1st chamber", EmptyCagesRegex),
                 new Checkpoint("Open 2nd chamber", SecondChamberRegex),
                 new Checkpoint("Clear 2nd chamber", EmptyCagesRegex),
@@ -135,7 +135,7 @@ namespace MapPartyAssist.Services {
                 new Checkpoint("Open final chamber", FinalChamberRegex),
                 new Checkpoint("Clear final chamber", EmptyCagesRegex)
             }, new Checkpoint("Failure", "The Excitatron 6000 has ended")) },
-            { 909 , new Duty(909, "the shifting gymnasion agonon", DutyStructure.Roulette, 5, new() {
+            { 909, new Duty(909, "the shifting gymnasion agonon", DutyStructure.Roulette, 5, new() {
                 new Checkpoint("Complete 1st Summon"),
                 new Checkpoint("Defeat 1st Summon"),
                 new Checkpoint("Complete 2nd Summon"),
@@ -151,7 +151,7 @@ namespace MapPartyAssist.Services {
                 new string[] {"gymnasiou styphnolobion", "gymnasiou meganereis", "gymnasiou sphinx", "gymnasiou acheloios" },
                 new string[] {"lyssa chrysine", "lampas chrysine", "gymnasiou mandragoras" },
                 new string[] {"hippomenes", "phaethon", "narkissos" }) },
-            { 993 , new Duty(993, "cenote ja ja gural", DutyStructure.Doors, 5, new() {
+            { 993, new Duty(993, "cenote ja ja gural", DutyStructure.Doors, 5, new() {
                 new Checkpoint("Clear 1st chamber", EmptyCagesRegex),
                 new Checkpoint("Open 2nd chamber", SecondChamberRegex),
                 new Checkpoint("Clear 2nd chamber", EmptyCagesRegex),
@@ -162,6 +162,18 @@ namespace MapPartyAssist.Services {
                 new Checkpoint("Open final chamber", FinalChamberRegex),
                 new Checkpoint("Clear final chamber", EmptyCagesRegex)
             }, new Checkpoint("Failure", "Cenote Ja Ja Gural has ended")) },
+            { 1060, new Duty(1060, "vault oneiron", DutyStructure.Slots, 5, new() {
+                new Checkpoint("Complete 1st Summon"),
+                new Checkpoint("Defeat 1st Summon"),
+                new Checkpoint("Complete 2nd Summon"),
+                new Checkpoint("Defeat 2nd Summon"),
+                new Checkpoint("Complete 3rd Summon"),
+                new Checkpoint("Defeat 3rd Summon"),
+                new Checkpoint("Complete 4th Summon"),
+                new Checkpoint("Defeat 4th Summon"),
+                new Checkpoint("Complete final Summon"),
+                new Checkpoint("Defeat final Summon")
+            }, new Checkpoint("Failure", "Vault Oneiron has ended")) },
         };
 
         internal static readonly Dictionary<ClientLanguage, Regex> GilObtainedRegex = new() {
@@ -277,12 +289,68 @@ namespace MapPartyAssist.Services {
             { ClientLanguage.Japanese, new Regex(@"(魔物は立ち去ったようだ|観察者の幻体は去ったようだ)", RegexOptions.IgnoreCase) }
         };
 
-        //LogMessage: 9360, 9366
+        //LogMessage: 9360, 9366, 11270
         internal static readonly Dictionary<ClientLanguage, Regex> SummonDefeatedRegex = new() {
-            { ClientLanguage.English, new Regex(@"^(The summon is dispelled|The trial is passed)", RegexOptions.IgnoreCase) },
-            { ClientLanguage.French, new Regex(@"Vous avez terrassé tous les ennemis", RegexOptions.IgnoreCase) },
-            { ClientLanguage.German, new Regex(@"(Alle Wächter sind besiegt|Alle Beobachter sind besiegt)", RegexOptions.IgnoreCase) },
-            { ClientLanguage.Japanese, new Regex(@"すべての魔物を倒した", RegexOptions.IgnoreCase) }
+            { ClientLanguage.English, new Regex(@"^(The summon is dispelled|The trial is passed|All enemies have been defeated)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"(Vous avez terrassé tous les ennemis|Vous avez vaincu tous les monstres)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"(Alle Wächter sind besiegt|Alle Beobachter sind besiegt|Alle Feinde wurden besiegt)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"(すべての魔物を倒した|すべての敵を倒した)", RegexOptions.IgnoreCase) }
+        };
+
+        //LogMessage: 11262
+        internal static readonly Dictionary<ClientLanguage, Regex> SlotsSpecialStartRegex = new() {
+            { ClientLanguage.English, new Regex(@"^Grab \d* shining sacks in \d* seconds", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"^Ramassez \d* sacs brillants en \d* secondes", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"^Sammle \d* schimmernde Säcke in \d* Sekunden!", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"^\d*秒以内に「輝く袋」を\d*個拾え", RegexOptions.IgnoreCase) }
+        };
+
+        //LogMessage: 11265, 11274
+        internal static readonly Dictionary<ClientLanguage, Regex> SlotsSpecialEndedRegex = new() {
+            { ClientLanguage.English, new Regex(@"^(The fever dream has ended|You collected \d* shining sacks and receive)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"(La fantasmagorie a pris fin|Vous avez ramassé \d* sac(s)? brilliant(s)? et un coffre en)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"(Der Fiebertraum ist ausgeträumt|Du hast \d* schimmernde(n)? (Sack|Säcke) erhalten und eine)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"(「スペシャルドリーム」が終了した|「輝く袋」を\d*個取得し)", RegexOptions.IgnoreCase) }
+        };
+
+        ////LogMessage: 11269
+        //internal static readonly Dictionary<ClientLanguage, Regex> SlotsSummonRegex = new() {
+        //    { ClientLanguage.English, new Regex(@"^The hypnoslot machine envisions\s*(.*?)!", RegexOptions.IgnoreCase) },
+        //    { ClientLanguage.French, new Regex(@"^(Rêverie mineure|Mirage majeur|Songe merveilleux|Fantaisie finale)", RegexOptions.IgnoreCase) },
+        //    { ClientLanguage.German, new Regex(@"", RegexOptions.IgnoreCase) },
+        //    { ClientLanguage.Japanese, new Regex(@"", RegexOptions.IgnoreCase) }
+        //};
+
+        //LogMessage: 11269
+        internal static readonly Dictionary<ClientLanguage, Regex> SlotsLesserSummonRegex = new() {
+            { ClientLanguage.English, new Regex(@"^The hypnoslot machine envisions (a lesser notion)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"^Rêverie mineure", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"^Leise Ahnung", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"^スモールドリーム", RegexOptions.IgnoreCase) }
+        };
+
+        //LogMessage: 11269
+        internal static readonly Dictionary<ClientLanguage, Regex> SlotsGreaterSummonRegex = new() {
+            { ClientLanguage.English, new Regex(@"^The hypnoslot machine envisions (a greater fancy)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"^Mirage majeur", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"^Fixe Idee", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"^ミドルドリーム", RegexOptions.IgnoreCase) }
+        };
+
+        //LogMessage: 11269
+        internal static readonly Dictionary<ClientLanguage, Regex> SlotsElderSummonRegex = new() {
+            { ClientLanguage.English, new Regex(@"^The hypnoslot machine envisions (an elder imagining)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"^Songe merveilleux", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"^Großer Gedanke", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"^ビッグドリーム", RegexOptions.IgnoreCase) }
+        };
+
+        //LogMessage: 11269
+        internal static readonly Dictionary<ClientLanguage, Regex> SlotsFinalSummonRegex = new() {
+            { ClientLanguage.English, new Regex(@"^The hypnoslot machine envisions (its final fantasy)", RegexOptions.IgnoreCase) },
+            { ClientLanguage.French, new Regex(@"^Fantaisie finale", RegexOptions.IgnoreCase) },
+            { ClientLanguage.German, new Regex(@"^Finale Fantasie", RegexOptions.IgnoreCase) },
+            { ClientLanguage.Japanese, new Regex(@"^ファイナルドリーム", RegexOptions.IgnoreCase) }
         };
 
         //LogMessage: 6997
@@ -666,6 +734,9 @@ namespace MapPartyAssist.Services {
                     case DutyStructure.Roulette:
                         isChange = ProcessCheckpointsRoulette(results, message);
                         break;
+                    case DutyStructure.Slots:
+                        isChange = ProcessCheckpointsSlots(results, message);
+                        break;
                     default:
                         break;
                 }
@@ -764,6 +835,39 @@ namespace MapPartyAssist.Services {
                 //check for unknown enemy
                 //Match unknownMatch = Regex.Match(message.ToString(), ".*(?=,? appears?)", RegexOptions.IgnoreCase);
                 //(?<=\ban?\b ).*(?=,? appears\.*\!*$)
+            }
+            return false;
+        }
+
+        private bool ProcessCheckpointsSlots(DutyResults results, Message message) {
+            var duty = Duties[results.DutyId];
+            if(duty.Structure != DutyStructure.Slots) {
+                throw new ArgumentException("Incorrect duty type.");
+            }
+
+            if(message.Channel == 2105 || message.Channel == 2233) {
+                if(SlotsLesserSummonRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
+                    AddRouletteCheckpointResults(results, Summon.Lesser);
+                    return true;
+                } else if(SlotsGreaterSummonRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
+                    AddRouletteCheckpointResults(results, Summon.Greater);
+                    return true;
+                } else if(SlotsElderSummonRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
+                    AddRouletteCheckpointResults(results, Summon.Elder);
+                    return true;
+                } else if(SlotsFinalSummonRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
+                    AddRouletteCheckpointResults(results, Summon.Gold);
+                    return true;
+                } else if(SummonDefeatedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
+                    AddRouletteCheckpointResults(results, null);
+                    return true;
+                } else if(SlotsSpecialStartRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
+                    AddRouletteCheckpointResults(results, Summon.Silver);
+                    return true;
+                } else if(SlotsSpecialEndedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
+                    AddRouletteCheckpointResults(results, null);
+                    return true;
+                }
             }
             return false;
         }
