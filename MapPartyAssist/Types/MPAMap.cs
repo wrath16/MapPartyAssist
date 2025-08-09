@@ -140,6 +140,7 @@ namespace MapPartyAssist.Types {
         Shadowbringers,
         Endwalker,
         Elpis,
-        Dawntrail
+        Dawntrail,
+        LivingMemory
     }
 }
