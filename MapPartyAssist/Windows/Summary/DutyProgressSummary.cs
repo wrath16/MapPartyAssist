@@ -72,7 +72,7 @@ namespace MapPartyAssist.Windows.Summary {
                 var onlyDutyResults = dutyResults.Where(dr => dr.DutyId == kvp.Key).ToList();
                 var onlyImports = imports.Where(dr => dr.DutyId == kvp.Key).ToList();
                 var duty = _plugin.DutyManager.Duties[kvp.Key];
-                bool isRoulette = duty.Structure == DutyStructure.Roulette;
+                bool isRoulette = duty.Structure == DutyStructure.Roulette || duty.Structure == DutyStructure.Slots;
                 int numChambers = duty.ChamberCount;
                 string successVerb = isRoulette ? "Complete" : "Open";
                 string passiveSuccessVerb = isRoulette ? "Completed" : "Reached";
@@ -241,7 +241,7 @@ namespace MapPartyAssist.Windows.Summary {
                 }
 
                 //summon data
-                if(duty.Structure == DutyStructure.Roulette) {
+                if(duty.Structure == DutyStructure.Roulette || duty.Structure == DutyStructure.Slots) {
                     //check import data
                     foreach(var import in onlyImports) {
                         if(import.SummonTotals != null) {
