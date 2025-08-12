@@ -366,7 +366,7 @@ namespace MapPartyAssist.Windows.Summary {
                         ImGui.Text($"{dutyStat.TotalClears}");
                         ImGui.TableNextColumn();
                         if(dutyStat.TotalRuns > 0) {
-                            ImGui.Text($"{string.Format("{0:P}%", (double)dutyStat.TotalClears / dutyStat.TotalRuns)}");
+                            ImGui.Text($"{string.Format("{0:P}", (double)dutyStat.TotalClears / dutyStat.TotalRuns)}");
                         }
                         ImGui.TableNextColumn();
                     }
@@ -399,10 +399,10 @@ namespace MapPartyAssist.Windows.Summary {
                                 ImGui.TableNextColumn();
                                 if(_plugin.Configuration.ProgressTableRate == ProgressTableRate.Previous
                                     && i != dutyStat.EndChambers.Length - 1 && ((i == 0 && dutyStat.TotalRuns != 0) || (i != 0 && dutyStat.OpenChambers[i - 1] != 0))) {
-                                    ImGui.Text($"{string.Format("{0:P}%", (double)1d - dutyStat.OpenChambersRates[i])}");
+                                    ImGui.Text($"{string.Format("{0:P}", (double)1d - dutyStat.OpenChambersRates[i])}");
                                     Tooltip("Calculated from previous stage.");
                                 } else if(_plugin.Configuration.ProgressTableRate == ProgressTableRate.Total && dutyStat.TotalRuns != 0) {
-                                    ImGui.Text($"{string.Format("{0:P}%", (double)dutyStat.EndChambers[i] / dutyStat.TotalRuns)}");
+                                    ImGui.Text($"{string.Format("{0:P}", (double)dutyStat.EndChambers[i] / dutyStat.TotalRuns)}");
                                     Tooltip("Calculated from total runs.");
                                 }
                                 ImGui.TableNextColumn();
@@ -418,10 +418,10 @@ namespace MapPartyAssist.Windows.Summary {
                                 ImGui.Text($"{dutyStat.OpenChambers[i]}");
                                 ImGui.TableNextColumn();
                                 if(_plugin.Configuration.ProgressTableRate == ProgressTableRate.Previous && ((i == 0 && dutyStat.TotalRuns != 0) || (i != 0 && dutyStat.OpenChambers[i - 1] != 0))) {
-                                    ImGui.Text($"{string.Format("{0:P}%", dutyStat.OpenChambersRates[i])}");
+                                    ImGui.Text($"{string.Format("{0:P}", dutyStat.OpenChambersRates[i])}");
                                     Tooltip("Calculated from previous stage.");
                                 } else if(_plugin.Configuration.ProgressTableRate == ProgressTableRate.Total && dutyStat.TotalRuns != 0) {
-                                    ImGui.Text($"{string.Format("{0:P}%", (double)dutyStat.OpenChambers[i] / dutyStat.TotalRuns)}");
+                                    ImGui.Text($"{string.Format("{0:P}", (double)dutyStat.OpenChambers[i] / dutyStat.TotalRuns)}");
                                     Tooltip("Calculated from total runs.");
                                 }
                                 ImGui.TableNextColumn();
