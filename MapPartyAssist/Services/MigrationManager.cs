@@ -108,6 +108,7 @@ namespace MapPartyAssist.Services {
                     var duty = _plugin.DutyManager.Duties[result.DutyId];
                     if(duty.Checkpoints.Count == result.CheckpointResults.Count && result.CheckpointResults.Last().IsReached) {
                         result.IsComplete = true;
+                        result.CompletionTime = result.Time;
                     }
                 } catch {
                     continue;
