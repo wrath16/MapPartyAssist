@@ -25,6 +25,7 @@ namespace MapPartyAssist.Settings {
     public class Configuration : IPluginConfiguration {
         public static int CurrentVersion = 3;
         public int Version { get; set; } = CurrentVersion;
+        public string LastPluginVersion { get; set; } = "0.0.0.0";
         public bool MasterSwitch { get; set; } = true;
         public uint ArchiveThresholdHours { get; set; } = 24;
         public bool UndockZoneWindow { get; set; } = false;

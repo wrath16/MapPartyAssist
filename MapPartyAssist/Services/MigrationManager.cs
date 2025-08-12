@@ -2,10 +2,12 @@
 using Dalamud.Utility;
 using Lumina.Excel.Sheets;
 using MapPartyAssist.Helper;
+using MapPartyAssist.Settings;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace MapPartyAssist.Services {
     internal class MigrationManager {
@@ -96,6 +98,22 @@ namespace MapPartyAssist.Services {
             _plugin.StorageManager.UpdateMaps(updatedMaps, false);
             _plugin.Configuration.Version = 3;
             _plugin.Refresh();
+        }
+
+        internal void SetClearedDutiesToComplete() {
+            _plugin.Log.Information("Setting cleared duties to complete");
+            var results = _plugin.StorageManager.GetDutyResults().Query().Where(m => !m.IsComplete).ToList();
+            foreach(var result in results) {
+                try {
+                    var duty = _plugin.DutyManager.Duties[result.DutyId];
+                    if(duty.Checkpoints.Count == result.CheckpointResults.Count && result.CheckpointResults.Last().IsReached) {
+                        result.IsComplete = true;
+                    }
+                } catch {
+                    continue;
+                }
+            }
+            _plugin.StorageManager.UpdateDutyResults(results, false);
         }
     }
 }

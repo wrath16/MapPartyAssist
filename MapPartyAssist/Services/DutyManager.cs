@@ -640,7 +640,7 @@ namespace MapPartyAssist.Services {
         }
 
         //return true if change occured
-        private bool ProcessChatMessage(DutyResults results, Message message) {
+        internal bool ProcessChatMessage(DutyResults results, Message message) {
             bool isChange = false;
             var duty = Duties[results.DutyId];
 
@@ -727,7 +727,7 @@ namespace MapPartyAssist.Services {
                 results!.CompletionTime = DateTime.Now;
                 isChange = true;
             } else {
-                switch(CurrentDuty!.Structure) {
+                switch(duty.Structure) {
                     case DutyStructure.Doors:
                         isChange = ProcessCheckpointsDoors(results, message);
                         break;
@@ -860,6 +860,10 @@ namespace MapPartyAssist.Services {
                     return true;
                 } else if(SummonDefeatedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
                     AddRouletteCheckpointResults(results, null);
+                    if(results.CheckpointResults.Count == duty.Checkpoints.Count) {
+                        results.IsComplete = true;
+                        results.CompletionTime = DateTime.Now;
+                    }
                     return true;
                 } else if(SlotsSpecialStartRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
                     AddRouletteCheckpointResults(results, Summon.Silver);
@@ -874,9 +878,10 @@ namespace MapPartyAssist.Services {
 
         private void AddRouletteCheckpointResults(DutyResults results, Summon? summon, string? monsterName = null, bool isSaved = false) {
             int size = results.CheckpointResults.Count;
-            _plugin.Log.Information($"Adding new checkpoint: {CurrentDuty!.Checkpoints![size].Name}");
+            var duty = Duties[results.DutyId];
+            _plugin.Log.Information($"Adding new checkpoint: {duty.Checkpoints[size].Name}");
             results.CheckpointResults.Add(new RouletteCheckpointResults {
-                Checkpoint = CurrentDuty!.Checkpoints![size],
+                Checkpoint = duty.Checkpoints![size],
                 SummonType = summon,
                 MonsterName = monsterName,
                 IsSaved = isSaved,

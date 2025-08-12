@@ -23,6 +23,7 @@ using System.Numerics;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using MapPartyAssist.Services;
 
 namespace MapPartyAssist.Windows {
     //for testing purposes only
@@ -284,15 +285,26 @@ namespace MapPartyAssist.Windows {
                         _plugin.Log.Debug($"{_plugin.DutyManager.CurrentDuty.CircleShiftsRegex[_plugin.ClientState.ClientLanguage].ToString()}");
                     }
 
-                    if(ImGui.Button("test ref")) {
+                    if(ImGui.Button("test slots final summon")) {
+                        var dutyResults = new DutyResults {
+                            DutyId = 1060,
+                            DutyName = "Vault Oneiron",
+                            Players = _plugin.GameStateManager.CurrentPartyList.Keys.ToArray(),
+                            Owner = "Sarah Montcroix Siren",
+                        };
 
-                        SeStringBuilder sb = new SeStringBuilder();
-                        sb.AddText("hehe!");
-                        var x = sb.BuiltString;
-                        testRef(ref x);
-                        sb.AddText("wow!");
-
-                        //SeString message = new([new RawPayload("")])
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "The hypnoslot machine envisions a lesser notion! A hexapod appears!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "All enemies have been defeated!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "The hypnoslot machine envisions a greater fancy! A hexapod appears!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "All enemies have been defeated!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "The hypnoslot machine envisions an elder imagining! A hexapod appears!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "All enemies have been defeated!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "Grab 100 shining sacks in 90 seconds!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "You collected 100 shining sacks and receive a gold treasure coffer as your reward!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "The hypnoslot machine envisions its final fantasy! A hexapod appears!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "All enemies have been defeated!"));
+                        dutyResults.IsComplete = true;
+                        _plugin.StorageManager.AddDutyResults(dutyResults);
                     }
 
                     if(ImGui.Button("Get Wipes")) {

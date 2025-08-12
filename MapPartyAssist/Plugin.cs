@@ -15,11 +15,14 @@ using MapPartyAssist.Services;
 using MapPartyAssist.Settings;
 using MapPartyAssist.Windows;
 using Newtonsoft.Json;
+using Serilog;
 using System;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist {
 
@@ -178,7 +181,7 @@ namespace MapPartyAssist {
                 ChatGui.CheckMessageHandled += OnChatMessage;
 
                 //data migration
-                DataQueue.QueueDataOperation(MigrationManager.CheckAndMigrate);
+                DataQueue.QueueDataOperation(Initialize);
 
                 Log.Information("Map Party Assist has started.");
             } catch(Exception e) {
@@ -189,6 +192,26 @@ namespace MapPartyAssist {
                 //re-throw to prevent constructor from initializing
                 throw;
             }
+        }
+
+        private async Task Initialize() {
+            var lastVersion = new Version(Configuration.LastPluginVersion);
+            var currentVersion = Assembly.GetExecutingAssembly().GetName().Version;
+
+            //MigrationManager.CheckAndMigrate();
+
+            //version update validations
+            var validationTask = Task.Run(() => {
+                if(lastVersion < new Version(2, 5, 0, 1)) {
+                    MigrationManager.SetClearedDutiesToComplete();
+                }
+            });
+            await Task.WhenAll(validationTask);
+
+            Configuration.LastPluginVersion = currentVersion?.ToString() ?? "0.0.0.0";
+            Configuration.Save();
+            Refresh();
+            Log.Information("Map Party Assist initialized.");
         }
 
         //Custom config loader. Unused

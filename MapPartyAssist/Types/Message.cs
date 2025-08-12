@@ -10,7 +10,7 @@ namespace MapPartyAssist.Types {
         public bool? IsHq { get; set; }
         public string? PlayerKey { get; set; }
 
-        public Message(DateTime time, int channel, string text, uint? itemId, bool? isHq, string? playerKey) {
+        public Message(DateTime time, int channel, string text, uint? itemId = null, bool? isHq = null, string? playerKey = null) {
             Time = time;
             Channel = channel;
             Text = text;
