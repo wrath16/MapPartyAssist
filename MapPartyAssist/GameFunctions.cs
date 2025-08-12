@@ -52,7 +52,8 @@ internal unsafe class GameFunctions {
 
     internal void SetFlagMarker(uint territoryId, uint mapId, float mapX, float mapY) {
         //AgentMap.MemberFunctionPointers.SetFlagMapMarker(AgentMap.Instance(), territoryId, mapId, mapX, mapY, 60561u);
-        AgentMap.Instance()->FlagMapMarkers.Clear();
+        //AgentMap.Instance()->FlagMapMarkers.Clear();
+        AgentMap.Instance()->FlagMarkerCount = 0;
         AgentMap.Instance()->SetFlagMapMarker(territoryId, mapId, mapX, mapY);
     }
 
