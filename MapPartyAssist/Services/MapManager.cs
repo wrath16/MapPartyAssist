@@ -126,7 +126,7 @@ namespace MapPartyAssist.Services {
             { ClientLanguage.English, new Regex(@"^You use Dig\.$", RegexOptions.IgnoreCase) },
             { ClientLanguage.French, new Regex(@"^Vous utilisez Excavation\.$", RegexOptions.IgnoreCase) },
             { ClientLanguage.German, new Regex(@"^Du setzt Ausgraben ein\.$", RegexOptions.IgnoreCase) },
-            { ClientLanguage.Japanese, new Regex(@"の「ディグ」", RegexOptions.IgnoreCase) }
+            { ClientLanguage.Japanese, new Regex(@"^の「ディグ」の「ディグ」$", RegexOptions.IgnoreCase) } //should always fail
         };
 
         //Addon: 2276, 8107
