@@ -188,9 +188,6 @@ internal class MainWindow : Window {
             ImGui.TextColored(ImGuiColors.DalamudRed, "Unknown owner.");
         });
 
-        ImGui.SameLine();
-        ImGuiHelper.DonateButton();
-
         //if(!_refreshLock.Wait(0)) {
         //    return;
         //}
