@@ -78,6 +78,7 @@ namespace MapPartyAssist.Services {
                     _plugin.MapManager.CheckAndArchiveMaps();
                     _plugin.PriceHistory.Initialize();
                     BuildPartyLists();
+                    _plugin.Refresh();
                 });
             });
         }
