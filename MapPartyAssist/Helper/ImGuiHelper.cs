@@ -1,10 +1,10 @@
-﻿using Dalamud.Interface.Utility;
-using Dalamud.Interface.Utility.Raii;
-using Dalamud.Bindings.ImGui;
-using Dalamud.Interface.Colors;
+﻿using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
-using System.Threading.Tasks;
+using Dalamud.Interface.Colors;
+using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Helper {
     internal static class ImGuiHelper {

@@ -1,9 +1,9 @@
-﻿using Dalamud.Interface;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
-using Dalamud.Bindings.ImGui;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using MapPartyAssist.Windows.Filter;
@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows {
 
@@ -54,20 +55,21 @@ namespace MapPartyAssist.Windows {
             _dutyResultsList = new(plugin, this);
             _mapList = new(plugin, this);
             //_lootSummary.Refresh(_dutyResults);
-            _plugin.DataQueue.QueueDataOperation(Refresh);
         }
 
-        public void Refresh() {
+        public async Task Refresh() {
             try {
-                //_plugin.Log.Debug("start!");
+                //Plugin.Log.Debug("start!");
                 //DateTime dt = DateTime.Now;
-                RefreshLock.Wait();
+                Plugin.Log.Verbose("Refreshing stats window start");
+                await RefreshLock.WaitAsync();
+                Plugin.Log.Debug("Refreshing stats window");
                 var dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).OrderBy(dr => dr.Time).ToList();
                 var maps = _plugin.StorageManager.GetMaps().Query().OrderBy(m => m.Time).ToList();
                 var imports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted).OrderBy(i => i.Time).ToList();
 
                 //DateTime dt2 = DateTime.Now;
-                //_plugin.Log.Debug($"from db: {(dt2 - dt).TotalMilliseconds}ms");
+                //Plugin.Log.Debug($"from db: {(dt2 - dt).TotalMilliseconds}ms");
 
                 if(_plugin.Configuration.CurrentCharacterStatsOnly && !_plugin.GameStateManager.GetCurrentPlayer().IsNullOrEmpty()) {
                     dutyResults = dutyResults.Where(dr => dr.Players.Contains(_plugin.GameStateManager.GetCurrentPlayer())).ToList();
@@ -254,41 +256,42 @@ namespace MapPartyAssist.Windows {
                     }
                 }
                 //DateTime dt3 = DateTime.Now;
-                //_plugin.Log.Debug($"filters: {(dt3 - dt2).TotalMilliseconds}ms");
+                //Plugin.Log.Debug($"filters: {(dt3 - dt2).TotalMilliseconds}ms");
 
                 _lootSummary.Refresh(dutyResults, maps);
 
                 //DateTime dt4 = DateTime.Now;
-                //_plugin.Log.Debug($"loot summary refresh: {(dt4 - dt3).TotalMilliseconds}ms");
+                //Plugin.Log.Debug($"loot summary refresh: {(dt4 - dt3).TotalMilliseconds}ms");
 
                 _dutySummary.Refresh(dutyResults, imports);
 
                 //DateTime dt5 = DateTime.Now;
-                //_plugin.Log.Debug($"duty summary refresh: {(dt5 - dt4).TotalMilliseconds}ms");
+                //Plugin.Log.Debug($"duty summary refresh: {(dt5 - dt4).TotalMilliseconds}ms");
 
                 _dutyResultsList.Refresh(dutyResults);
 
                 //DateTime dt6 = DateTime.Now;
-                //_plugin.Log.Debug($"duty list refresh: {(dt6 - dt5).TotalMilliseconds}ms");
+                //Plugin.Log.Debug($"duty list refresh: {(dt6 - dt5).TotalMilliseconds}ms");
 
                 _mapList.Refresh(maps);
 
                 //DateTime dt7 = DateTime.Now;
-                //_plugin.Log.Debug($"map list refresh: {(dt7 - dt6).TotalMilliseconds}ms");
+                //Plugin.Log.Debug($"map list refresh: {(dt7 - dt6).TotalMilliseconds}ms");
 
                 _viewImportsWindow.Refresh();
 
                 //DateTime dt8 = DateTime.Now;
-                //_plugin.Log.Debug($"imports refresh: {(dt8 - dt7).TotalMilliseconds}ms");
+                //Plugin.Log.Debug($"imports refresh: {(dt8 - dt7).TotalMilliseconds}ms");
 
-                _plugin.Configuration.Save();
+                await _plugin.Configuration.Save();
 
                 //DateTime dt9 = DateTime.Now;
-                //_plugin.Log.Debug($"save plugin: {(dt9 - dt8).TotalMilliseconds}ms");
+                //Plugin.Log.Debug($"save plugin: {(dt9 - dt8).TotalMilliseconds}ms");
 
 
             } finally {
                 RefreshLock.Release();
+                Plugin.Log.Verbose("Refreshing stats window end");
             }
         }
 

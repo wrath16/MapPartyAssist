@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using static Dalamud.Interface.Windowing.Window;
 
 namespace MapPartyAssist.Windows.Summary {
@@ -271,7 +272,7 @@ namespace MapPartyAssist.Windows.Summary {
             _dutyStats = dutyStats;
         }
 
-        public void UpdateFiltersAndRefresh() {
+        public async Task UpdateFiltersAndRefresh() {
             //set filters
             var dutyFilter = (DutyFilter)_statsWindow.Filters.Where(f => f.GetType() == typeof(DutyFilter)).First();
             foreach(var duty in dutyFilter.FilterState) {
@@ -283,7 +284,7 @@ namespace MapPartyAssist.Windows.Summary {
             var timeFilter = (TimeFilter)_statsWindow.Filters.Where(f => f.GetType() == typeof(TimeFilter)).First();
             timeFilter.StatRange = _timeFilter.StatRange;
 
-            _statsWindow.Refresh();
+            await _statsWindow.Refresh();
         }
 
         private void UpdateDutyFilter() {

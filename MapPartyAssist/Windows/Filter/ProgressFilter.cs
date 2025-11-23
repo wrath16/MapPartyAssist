@@ -1,5 +1,6 @@
 ﻿using Dalamud.Bindings.ImGui;
 using System;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows.Filter {
     public class ProgressFilter : DataFilter {
@@ -9,7 +10,7 @@ namespace MapPartyAssist.Windows.Filter {
 
         public ProgressFilter() { }
 
-        internal ProgressFilter(Plugin plugin, Action action, ProgressFilter? filter = null) : base(plugin, action) {
+        internal ProgressFilter(Plugin plugin, Func<Task> action, ProgressFilter? filter = null) : base(plugin, action) {
             if(filter is not null) {
                 OnlyClears = filter.OnlyClears;
             }

@@ -3,6 +3,7 @@ using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Settings {
 
@@ -81,12 +82,15 @@ namespace MapPartyAssist.Settings {
             }
         }
 
-        public void Save() {
+        public async Task Save() {
             try {
-                _fileLock.Wait();
+                Plugin.Log.Verbose("Saving configuration start");
+                await _fileLock.WaitAsync();
+                Plugin.Log.Debug("Saving configuration");
                 _plugin!.PluginInterface.SavePluginConfig(this);
             } finally {
                 _fileLock.Release();
+                Plugin.Log.Verbose("Saving configuration end");
             }
         }
     }

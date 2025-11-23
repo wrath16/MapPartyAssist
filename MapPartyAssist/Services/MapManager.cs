@@ -161,7 +161,7 @@ namespace MapPartyAssist.Services {
         }
 
         private unsafe void CheckForTreasureHunt(AddonEvent type, AddonArgs args) {
-            //_plugin.Log.Debug("pre refresh todolist!");
+            //Plugin.Log.Debug("pre refresh todolist!");
             var addon = (AtkUnitBase*)args.Addon.Address;
             if(addon == null) {
                 return;
@@ -178,14 +178,14 @@ namespace MapPartyAssist.Services {
 
             if(baseNode->IsVisible() && TreasureHuntRegex[_plugin.ClientState.ClientLanguage].IsMatch(dutyName)) {
                 if(!_boundByMapDuty) {
-                    _plugin.Log.Debug($"Bound by map duty!");
+                    Plugin.Log.Debug($"Bound by map duty!");
                     _portalBlockUntil = DateTime.UnixEpoch;
                 }
                 _boundByMapDuty = true;
                 _boundByMapDutyDelayed = true;
 
             } else if(_boundByMapDuty) {
-                _plugin.Log.Debug($"No longer bound by map duty!");
+                Plugin.Log.Debug($"No longer bound by map duty!");
                 //_boundByMapDuty = false;
                 ////add delay since we can miss some loot messages otherwise
                 //_plugin.DataQueue.QueueDataOperation(() => {
@@ -239,12 +239,12 @@ namespace MapPartyAssist.Services {
             bool isHq = item is not null ? item.IsHQ : false;
             var mapPayload = (MapLinkPayload?)message.Payloads.FirstOrDefault(p => p.Type == PayloadType.MapLink);
             MPAMapLink? mapLink = mapPayload is not null ? new(mapPayload) : null;
-            _plugin.DataQueue.QueueDataOperation(() => {
-                ProcessChatMessage(type, messageText, playerKey, itemId, isHq, mapLink, DateTime.Now);
+            _plugin.DataQueue.QueueDataOperation(async () => {
+                await ProcessChatMessage(type, messageText, playerKey, itemId, isHq, mapLink, DateTime.Now);
             });
         }
 
-        private void ProcessChatMessage(XivChatType type, string message, string? playerKey, uint? itemId, bool isHQ, MPAMapLink? mapLink, DateTime messageTime) {
+        private async Task ProcessChatMessage(XivChatType type, string message, string? playerKey, uint? itemId, bool isHQ, MPAMapLink? mapLink, DateTime messageTime) {
             bool isChange = false;
             bool newMapFound = false;
             bool isPortal = false;
@@ -260,7 +260,7 @@ namespace MapPartyAssist.Services {
             if((int)type == 2361) {
                 //party member opens portal while not blocked
                 if(EnterPortalRegex[_plugin.ClientState.ClientLanguage].IsMatch(message)) {
-                    _plugin.Log.Debug("Entering portal...");
+                    Plugin.Log.Debug("Entering portal...");
                     if(_portalBlockUntil <= messageTime) {
                         //thief's maps
                         //key = playerKey ?? "";
@@ -277,7 +277,7 @@ namespace MapPartyAssist.Services {
             } else if((int)type == 2105 || (int)type == 2233) {
                 //self map detection
                 if(ConsumedMapRegex[_plugin.ClientState.ClientLanguage].IsMatch(message)) {
-                    _plugin.Log.Debug("Map consumed...");
+                    Plugin.Log.Debug("Map consumed...");
                     newMapFound = true;
                     mapType = MapNameRegex[_plugin.ClientState.ClientLanguage].Match(message).ToString();
                     if(!mapType.IsNullOrEmpty()) {
@@ -293,34 +293,36 @@ namespace MapPartyAssist.Services {
                     //clear dig info just in case to prevent double-counting map if another player uses dig at the same time
                     ResetDigStatus();
                 } else if(DiscoverCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(message)) {
-                    _plugin.Log.Debug("Coffer discovered...");
+                    Plugin.Log.Debug("Coffer discovered...");
                     //find (non-current PC) party member with the closest matching dig time and assume they are owner
                     _boundByMapDuty = true;
                     _boundByMapDutyDelayed = true;
                     _lockedInDiggerKey = GetLikelyMapOwner(messageTime, _plugin.GameStateManager.GetCurrentPlayer());
                     if(_lockedInDiggerKey.IsNullOrEmpty() && !IsPlayerCandidateOwner(messageTime, _plugin.GameStateManager.GetCurrentPlayer())) {
-                        _plugin.Log.Warning($"No eligible map owner detected for discovered coffer!");
+                        Plugin.Log.Warning($"No eligible map owner detected for discovered coffer!");
                         SetStatus("Unable to determine map owner!", StatusLevel.ERROR);
                     }
                     //LogMessage: 3756, 9361, 9363
                     //this can trigger in excitatron 6000
                 } else if(OpenCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(message) && _plugin.Functions.GetCurrentDutyId() == 0) {
-                    _plugin.Log.Debug("Coffer opened...");
+                    Plugin.Log.Debug("Coffer opened...");
                     //add delay because this message occurs before "crumbles into dust" to avoid double-counting with self-dig
-                    Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
-                        _plugin.DataQueue.QueueDataOperation(() => {
+                    _ = Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
+                        _plugin.DataQueue.QueueDataOperation(async () => {
                             if(!_lockedInDiggerKey.IsNullOrEmpty()) {
                                 bool isAmbiguous = _candidateCount > 1;
-                                AddMap(_plugin.GameStateManager.CurrentPartyList[_lockedInDiggerKey], null, null, false, false, isAmbiguous);
+                                await AddMap(_plugin.GameStateManager.CurrentPartyList[_lockedInDiggerKey], null, null, false, false, isAmbiguous);
+                                await _plugin.Refresh();
                                 if(isAmbiguous) {
-                                    _plugin.Log.Warning($"Multiple map owner candidates detected!");
+                                    Plugin.Log.Warning($"Multiple map owner candidates detected!");
                                     SetStatus("Multiple map owner candidates found, verify last map ownership.", StatusLevel.CAUTION);
                                 }
 
                             } else if((messageTime - _lastMapTime).TotalMilliseconds > _lastMapAddedThresholdMS) {
                                 //need this in case player used a false dig out of range
-                                AddMap(null);
-                                _plugin.Log.Warning($"No eligible map owner detected on opened coffer!");
+                                await AddMap(null);
+                                await _plugin.Refresh();
+                                Plugin.Log.Warning($"No eligible map owner detected on opened coffer!");
                                 SetStatus("Unable to determine map owner, drag map to player name!", StatusLevel.ERROR);
                             }
                             //have to reset here in case you fail to defeat the treasure chest enemies -_-
@@ -329,7 +331,7 @@ namespace MapPartyAssist.Services {
                     });
                     //LogMessage: 3765
                 } else if(DefeatAllRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
-                    _plugin.Log.Debug("Enemies defeated...");
+                    Plugin.Log.Debug("Enemies defeated...");
                     ResetDigStatus();
                     //block portals from adding maps for a brief period to avoid double counting
                     //this can cause issues where someone opens a thief map immediately after, but whatever
@@ -342,7 +344,7 @@ namespace MapPartyAssist.Services {
                     } else {
                         _diggers.Add(_plugin.GameStateManager.GetCurrentPlayer(), messageTime);
                     }
-                    _plugin.Log.Debug($"You used Dig...");
+                    Plugin.Log.Debug($"You used Dig...");
                 } else if(PartyMemberDigRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
                     //no payload on Japanese self-dig or maybe others from same world...?
                     if(playerKey is null) {
@@ -351,7 +353,7 @@ namespace MapPartyAssist.Services {
                     }
 
                     var diggerKey = _plugin.GameStateManager.MatchAliasToPlayer(playerKey ?? _plugin.GameStateManager.GetCurrentPlayer());
-                    _plugin.Log.Debug($"{diggerKey} used Dig...");
+                    Plugin.Log.Debug($"{diggerKey} used Dig...");
                     if(_diggers.ContainsKey(diggerKey)) {
                         _diggers[diggerKey] = messageTime;
                     } else {
@@ -361,15 +363,16 @@ namespace MapPartyAssist.Services {
             } else if(type == XivChatType.Party || type == XivChatType.Say || type == XivChatType.Alliance || type == XivChatType.Shout || type == XivChatType.Yell || type == XivChatType.TellIncoming) {
                 if(type == XivChatType.Party && mapLink != null && !_plugin.GameStateManager.CurrentPartyList.ContainsKey(playerKey)) {
                     //special case for cross-world party members
-                    _plugin.DataQueue.QueueDataOperation(() => {
+                    _ = _plugin.DataQueue.QueueDataOperation(async () => {
                         var crossWorldPlayer = _plugin.StorageManager.GetPlayers().Query().Where(p => p.Key == playerKey).FirstOrDefault();
                         if(crossWorldPlayer == null) {
                             crossWorldPlayer = new MPAMember(playerKey);
-                            _plugin.StorageManager.AddPlayer(crossWorldPlayer);
+                            await _plugin.StorageManager.AddPlayer(crossWorldPlayer);
                         }
                         crossWorldPlayer.SetMapLink(mapLink);
                         _plugin.GameStateManager.CurrentPartyList.Add(playerKey, crossWorldPlayer);
-                        _plugin.StorageManager.UpdatePlayer(crossWorldPlayer);
+                        await _plugin.StorageManager.UpdatePlayer(crossWorldPlayer);
+                        await _plugin.Refresh();
                     });
                 } else if(playerKey != null
                     && mapLink != null
@@ -377,7 +380,10 @@ namespace MapPartyAssist.Services {
                     && _plugin.GameStateManager.CurrentPartyList.ContainsKey(playerKey)
                     && (_plugin.GameStateManager.CurrentPartyList[playerKey].MapLink == null || !_plugin.Configuration.NoOverwriteMapLink)) {
                     _plugin.GameStateManager.CurrentPartyList[playerKey].SetMapLink(mapLink);
-                    _plugin.DataQueue.QueueDataOperation(() => _plugin.StorageManager.UpdatePlayer(_plugin.GameStateManager.CurrentPartyList[playerKey]));
+                    _ = _plugin.DataQueue.QueueDataOperation(async () => {
+                        await _plugin.StorageManager.UpdatePlayer(_plugin.GameStateManager.CurrentPartyList[playerKey]);
+                        await _plugin.Refresh();
+                    });
                 }
             } else if(_boundByMapDutyDelayed) {
                 //gil
@@ -402,7 +408,7 @@ namespace MapPartyAssist.Services {
                             AddLootResults(lastMap, (uint)itemId, isHQ, quantity, currentPlayer);
                             isChange = true;
 #if DEBUG
-                            _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, currentPlayer));
+                            Plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, currentPlayer));
 #endif
                         } else if(selfItemMatch.Success) {
                             //tomestones...
@@ -412,7 +418,7 @@ namespace MapPartyAssist.Services {
                                 AddLootResults(lastMap, (uint)rowId, false, quantity, currentPlayer);
                                 isChange = true;
                             } else {
-                                _plugin.Log.Warning($"Cannot find rowId for {selfItemMatch.Value}");
+                                Plugin.Log.Warning($"Cannot find rowId for {selfItemMatch.Value}");
                             }
                         }
                     } else {
@@ -429,7 +435,7 @@ namespace MapPartyAssist.Services {
                                 AddLootResults(lastMap, (uint)itemId, isHQ, quantity, playerKey);
                                 isChange = true;
 #if DEBUG
-                                _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, playerKey));
+                                Plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", itemId, isHQ, quantity, playerKey));
 #endif
                             }
                         }
@@ -445,26 +451,27 @@ namespace MapPartyAssist.Services {
                             AddLootResults(lastMap, (uint)itemId, isHQ, quantity, playerKey);
                             isChange = true;
 #if DEBUG
-                            _plugin.Log.Verbose(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", itemId, isHQ, quantity));
-                            _plugin.Log.Debug($"value: {m.Value} isNumber: {isNumber} quantity: {quantity}");
+                            Plugin.Log.Verbose(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", itemId, isHQ, quantity));
+                            Plugin.Log.Debug($"value: {m.Value} isNumber: {isNumber} quantity: {quantity}");
 #endif
                         }
                     }
                 }
                 if(isChange && lastMap != null) {
                     //very first map...?
-                    _plugin.StorageManager.UpdateMap(lastMap);
-                    //_plugin.Save();
+                    await _plugin.StorageManager.UpdateMap(lastMap);
+                    await _plugin.Refresh();
                 }
             }
 
             if(newMapFound && _plugin.GameStateManager.CurrentPartyList.Count > 0 && !playerKey.IsNullOrEmpty()) {
-                AddMap(_plugin.GameStateManager.CurrentPartyList[playerKey], null, mapType, false, isPortal);
+                await AddMap(_plugin.GameStateManager.CurrentPartyList[playerKey], null, mapType, false, isPortal);
+                await _plugin.Refresh();
             }
         }
 
-        public void AddMap(MPAMember? player, string? zone = null, string? mapName = null, bool isManual = false, bool isPortal = false, bool isAmbiguous = false) {
-            _plugin.Log.Information(string.Format("Adding new{0} map for {1}", isManual ? " manual" : "", player?.Key));
+        public async Task AddMap(MPAMember? player, string? zone = null, string? mapName = null, bool isManual = false, bool isPortal = false, bool isAmbiguous = false) {
+            Plugin.Log.Information(string.Format("Adding new{0} map for {1}", isManual ? " manual" : "", player?.Key));
             DateTime currentTime = DateTime.Now;
 
             if(_plugin.IsLanguageSupported()) {
@@ -504,47 +511,44 @@ namespace MapPartyAssist.Services {
             _lastMapTime = currentTime;
             if(player != null) {
                 player.SetMapLink(null);
-                _plugin.StorageManager.UpdatePlayer(player, false);
+                await _plugin.StorageManager.UpdatePlayer(player);
             }
 
             //add to DB
-            _plugin.StorageManager.AddMap(newMap);
+            await _plugin.StorageManager.AddMap(newMap);
             //LastMap = newMap;
             //Plugin.Save();
 
             ClearStatus();
         }
 
-        public void ClearAllMaps() {
-            _plugin.Log.Information("Archiving all maps...");
+        public async Task ClearAllMaps() {
+            Plugin.Log.Information("Archiving all maps...");
             var maps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived).ToList();
             maps.ForEach(m => m.IsArchived = true);
-            _plugin.StorageManager.UpdateMaps(maps, false);
+            await _plugin.StorageManager.UpdateMaps(maps);
             _plugin.GameStateManager.BuildRecentPartyList();
-            _plugin.Refresh();
             ClearStatus();
         }
 
-        public void ArchiveMaps(IEnumerable<MPAMap> maps) {
-            _plugin.Log.Information("Archiving maps...");
+        public async Task ArchiveMaps(IEnumerable<MPAMap> maps) {
+            Plugin.Log.Information("Archiving maps...");
             maps.ToList().ForEach(m => m.IsArchived = true);
-            _plugin.StorageManager.UpdateMaps(maps, false);
+            await _plugin.StorageManager.UpdateMaps(maps);
             _plugin.GameStateManager.BuildRecentPartyList();
-            _plugin.Refresh();
         }
 
-        public void DeleteMaps(IEnumerable<MPAMap> maps) {
-            _plugin.Log.Information("Deleting maps...");
+        public async Task DeleteMaps(IEnumerable<MPAMap> maps) {
+            Plugin.Log.Information("Deleting maps...");
             maps.ToList().ForEach(m => m.IsDeleted = true);
-            _plugin.StorageManager.UpdateMaps(maps, false);
+            await _plugin.StorageManager.UpdateMaps(maps);
             _plugin.GameStateManager.BuildRecentPartyList();
-            _plugin.Refresh();
         }
 
-        public void ReassignMap(MPAMap map, MPAMember newOwner) {
-            _plugin.Log.Information($"Changing map owner: {map.Owner} to {newOwner.Key}");
+        public async Task ReassignMap(MPAMap map, MPAMember newOwner) {
+            Plugin.Log.Information($"Changing map owner: {map.Owner} to {newOwner.Key}");
             if(map.Owner != null && map.Owner.Equals(newOwner.Key)) {
-                _plugin.Log.Warning($"Attempting to re-assign map to same owner!");
+                Plugin.Log.Warning($"Attempting to re-assign map to same owner!");
                 return;
             }
 
@@ -557,30 +561,28 @@ namespace MapPartyAssist.Services {
                 var dutyResults = FindDutyResultsForMap(map);
                 if(dutyResults != null) {
                     dutyResults.Owner = newOwner.Key;
-                    _plugin.StorageManager.UpdateDutyResults(dutyResults, false);
+                    await _plugin.StorageManager.UpdateDutyResults(dutyResults);
                 }
             }
 
             if(map.Id.Equals(GetLastMap()?.Id)) {
                 newOwner.SetMapLink(null);
-                _plugin.StorageManager.UpdatePlayer(newOwner, false);
+                await _plugin.StorageManager.UpdatePlayer(newOwner);
             }
 
-            _plugin.StorageManager.UpdateMap(map, false);
-            _plugin.Refresh();
+            await _plugin.StorageManager.UpdateMap(map);
         }
 
-        public void CheckAndArchiveMaps() {
-            _plugin.Log.Information("Checking and archiving old maps...");
+        public async Task CheckAndArchiveMaps() {
+            Plugin.Log.Information("Checking and archiving old maps...");
             DateTime currentTime = DateTime.Now;
             var storageMaps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived).ToList();
             foreach(var map in storageMaps) {
                 TimeSpan timeSpan = currentTime - map.Time;
                 map.IsArchived = timeSpan.TotalHours > _plugin.Configuration.ArchiveThresholdHours;
             }
-            _plugin.StorageManager.UpdateMaps(storageMaps, false);
+            await _plugin.StorageManager.UpdateMaps(storageMaps);
             _plugin.GameStateManager.BuildRecentPartyList();
-            _plugin.Refresh();
         }
 
         //returns map coords
@@ -677,7 +679,7 @@ namespace MapPartyAssist.Services {
                 }
                 double timeDiffMS = (cofferTime - digger.Value).TotalMilliseconds;
                 double diffFromIdealMS = Math.Abs(timeDiffMS - _digTargetMS);
-                _plugin.Log.Debug($"digger: {digger.Key} timediffMS: {timeDiffMS} diffFromIdeal: {diffFromIdealMS}");
+                Plugin.Log.Debug($"digger: {digger.Key} timediffMS: {timeDiffMS} diffFromIdeal: {diffFromIdealMS}");
                 if(timeDiffMS < _digThresholdMS) {
                     _candidateCount++;
                     if(diffFromIdealMS < closestTimeMS) {
@@ -717,14 +719,14 @@ namespace MapPartyAssist.Services {
             //}
 
             if(map is null) {
-                _plugin.Log.Warning("Unable to add loot results: no map");
+                Plugin.Log.Warning("Unable to add loot results: no map");
                 return;
             } else if(map.LootResults is null) {
                 throw new InvalidOperationException("Unable to add loot result to map!");
                 //10 minute fallback
             } else if((DateTime.Now - map.Time).TotalMinutes > 10) {
                 //throw new InvalidOperationException("");
-                _plugin.Log.Warning("Last map time exceeded loot threshold window.");
+                Plugin.Log.Warning("Last map time exceeded loot threshold window.");
                 return;
             }
 

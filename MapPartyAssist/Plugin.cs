@@ -15,7 +15,6 @@ using MapPartyAssist.Services;
 using MapPartyAssist.Settings;
 using MapPartyAssist.Windows;
 using Newtonsoft.Json;
-using Serilog;
 using System;
 using System.Globalization;
 using System.IO;
@@ -64,7 +63,8 @@ namespace MapPartyAssist {
         internal IFramework Framework { get; init; }
         internal IAddonLifecycle AddonLifecycle { get; init; }
         internal IGameInteropProvider InteropProvider { get; init; }
-        internal IPluginLog Log { get; init; }
+
+        internal static IPluginLog Log;
 
         //Custom services
         internal GameStateManager GameStateManager { get; init; }
@@ -132,7 +132,7 @@ namespace MapPartyAssist {
                 }
 
                 //order is important here
-                DataQueue = new(this);
+                DataQueue = new();
                 StorageManager = new(this, $"{PluginInterface.GetPluginConfigDirectory()}\\{DatabaseName}");
                 Functions = new(this);
                 DutyManager = new(this);
@@ -182,8 +182,6 @@ namespace MapPartyAssist {
 
                 //data migration
                 DataQueue.QueueDataOperation(Initialize);
-
-                Log.Information("Map Party Assist has started.");
             } catch(Exception e) {
                 //remove handlers and release database if we fail to start
                 Dispose();
@@ -201,16 +199,15 @@ namespace MapPartyAssist {
             //MigrationManager.CheckAndMigrate();
 
             //version update validations
-            var validationTask = Task.Run(() => {
+            var validationTask = Task.Run(async () => {
                 if(lastVersion < new Version(2, 5, 0, 1)) {
-                    MigrationManager.SetClearedDutiesToComplete();
+                    await MigrationManager.SetClearedDutiesToComplete();
                 }
             });
             await Task.WhenAll(validationTask);
 
             Configuration.LastPluginVersion = currentVersion?.ToString() ?? "0.0.0.0";
-            Configuration.Save();
-            Refresh();
+            await Refresh();
             Log.Information("Map Party Assist initialized.");
         }
 
@@ -330,10 +327,12 @@ namespace MapPartyAssist {
             GameGui.OpenMapWithMapLink(mapLink);
         }
 
-        public void Refresh() {
-            Configuration.Save();
-            StatsWindow?.Refresh();
-            MainWindow?.Refresh();
+        public async Task Refresh() {
+            Log.Debug("Refreshing windows");
+            await Task.WhenAll(
+                Task.Run(StatsWindow.Refresh), 
+                Task.Run(MainWindow.Refresh)
+            );
         }
 
         public bool IsLanguageSupported(ClientLanguage? language = null) {

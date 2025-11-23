@@ -1,8 +1,8 @@
-﻿using Dalamud.Interface.Colors;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
-using Dalamud.Bindings.ImGui;
 using Lumina.Excel.Sheets;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
@@ -132,7 +132,7 @@ namespace MapPartyAssist.Windows.Summary {
             }
             if(hasChange) {
 #if DEBUG
-                _plugin.Log.Verbose($"loot changes detected!");
+                Plugin.Log.Verbose($"loot changes detected!");
 #endif
                 _lootResults = newLootResults;
                 LootCSV = newLootCSV;
@@ -248,14 +248,18 @@ namespace MapPartyAssist.Windows.Summary {
                                 if(popup) {
                                     if(ImGui.MenuItem($"Pin item##{lootResult.Key.ItemId}{lootResult.Key.IsHQ}", ImU8String.Empty, isPinned)) {
                                         if(!isPinned) {
-                                            _plugin.Log.Verbose($"pinning: {lootResult.Value.ItemName}");
+                                            Plugin.Log.Verbose($"pinning: {lootResult.Value.ItemName}");
                                             //_pins.Add(lootResult.Key);
                                             _plugin.Configuration.LootPins.Add(lootResult.Key);
-                                            _plugin.Configuration.Save();
+                                            _plugin.DataQueue.QueueDataOperation(async () => {
+                                                await _plugin.Configuration.Save();
+                                            });
                                         } else {
                                             //_pins.Remove(lootResult.Key);
                                             _plugin.Configuration.LootPins.Remove(lootResult.Key);
-                                            _plugin.Configuration.Save();
+                                            _plugin.DataQueue.QueueDataOperation(async () => {
+                                                await _plugin.Configuration.Save();
+                                            });
                                         }
                                         _plugin.DataQueue.QueueDataOperation(() => {
                                             SortByColumn((SortableColumn)sortSpecs.Specs.ColumnUserID, sortSpecs.Specs.SortDirection);
@@ -322,13 +326,13 @@ namespace MapPartyAssist.Windows.Summary {
                     comparator = (r) => r.Value.Category;
                     break;
                 case SortableColumn.UnitPrice:
-                    comparator = (r) => r.Value.AveragePrice;
+                    comparator = (r) => r.Value.AveragePrice ?? 0;
                     break;
                 case SortableColumn.DroppedValue:
-                    comparator = (r) => r.Value.DroppedValue;
+                    comparator = (r) => r.Value.DroppedValue ?? 0;
                     break;
                 case SortableColumn.ObtainedValue:
-                    comparator = (r) => r.Value.ObtainedValue;
+                    comparator = (r) => r.Value.ObtainedValue ?? 0;
                     break;
                 default:
                     comparator = (r) => r;

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows.Filter {
     internal class SingleDutyFilter : DataFilter {
@@ -12,7 +13,7 @@ namespace MapPartyAssist.Windows.Filter {
 
         internal SingleDutyFilter() { }
 
-        internal SingleDutyFilter(Plugin plugin, Action action, bool includeNone, SingleDutyFilter? filter = null) : base(plugin, action) {
+        internal SingleDutyFilter(Plugin plugin, Func<Task> action, bool includeNone, SingleDutyFilter? filter = null) : base(plugin, action) {
             _plugin = plugin;
             if(filter is not null) {
                 DutyId = filter.DutyId;

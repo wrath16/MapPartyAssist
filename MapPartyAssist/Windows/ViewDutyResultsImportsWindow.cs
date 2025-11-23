@@ -1,7 +1,7 @@
-﻿using Dalamud.Interface.Utility;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
-using Dalamud.Bindings.ImGui;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using System.Collections.Generic;
@@ -123,9 +123,10 @@ namespace MapPartyAssist.Windows {
                 if(popup) {
                     ImGui.Text("Are you sure?");
                     if(ImGui.Button($"Yes##{import.Id.ToString()}-ConfirmDelete")) {
-                        _plugin.DataQueue.QueueDataOperation(() => {
+                        _plugin.DataQueue.QueueDataOperation(async () => {
                             import.IsDeleted = true;
-                            _plugin.StorageManager.UpdateDutyResultsImport(import);
+                            await _plugin.StorageManager.UpdateDutyResultsImport(import);
+                            await _plugin.Refresh();
                         });
                     }
                     ImGui.SameLine();

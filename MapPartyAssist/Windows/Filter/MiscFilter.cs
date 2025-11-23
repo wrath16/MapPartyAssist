@@ -1,7 +1,8 @@
-﻿using Dalamud.Interface.Utility;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
-using Dalamud.Bindings.ImGui;
 using System;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows.Filter {
     public class MiscFilter : DataFilter {
@@ -13,7 +14,7 @@ namespace MapPartyAssist.Windows.Filter {
 
         public MiscFilter() { }
 
-        internal MiscFilter(Plugin plugin, Action action, MiscFilter? filter = null) : base(plugin, action) {
+        internal MiscFilter(Plugin plugin, Func<Task> action, MiscFilter? filter = null) : base(plugin, action) {
             if(filter is not null) {
                 LootOnly = filter.LootOnly;
                 ShowDeleted = filter.ShowDeleted;

@@ -1,5 +1,6 @@
 ﻿using MapPartyAssist.Types;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Services {
     //internal class for handling duty results imports
@@ -25,7 +26,7 @@ namespace MapPartyAssist.Services {
             }
         }
 
-        internal void AddorEditImport(DutyResultsImport import, bool validate = true) {
+        internal async Task AddorEditImport(DutyResultsImport import, bool validate = true) {
             //validate
             if(validate && !ValidateImport(import)) {
                 return;
@@ -34,10 +35,10 @@ namespace MapPartyAssist.Services {
             //check to see if already exists
             if(_plugin.StorageManager.GetDutyResultsImports().Query().Where(i => i.Id == import.Id).FirstOrDefault() != null) {
                 //update
-                _plugin.StorageManager.UpdateDutyResultsImport(import);
+                await _plugin.StorageManager.UpdateDutyResultsImport(import);
             } else {
                 //new
-                _plugin.StorageManager.AddDutyResultsImport(import);
+                await _plugin.StorageManager.AddDutyResultsImport(import);
             }
         }
 
