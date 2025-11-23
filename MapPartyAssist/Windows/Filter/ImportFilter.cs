@@ -1,5 +1,6 @@
 ﻿using Dalamud.Bindings.ImGui;
 using System;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows.Filter {
     public class ImportFilter : DataFilter {
@@ -11,7 +12,7 @@ namespace MapPartyAssist.Windows.Filter {
 
         public ImportFilter() { }
 
-        internal ImportFilter(Plugin plugin, Action action, ImportFilter? filter = null) : base(plugin, action) {
+        internal ImportFilter(Plugin plugin, Func<Task> action, ImportFilter? filter = null) : base(plugin, action) {
             if(filter is not null) {
                 IncludeImports = filter.IncludeImports;
             }

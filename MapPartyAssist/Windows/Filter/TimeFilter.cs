@@ -1,7 +1,8 @@
-﻿using Dalamud.Interface.Utility;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
-using Dalamud.Bindings.ImGui;
 using System;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows.Filter {
 
@@ -45,7 +46,7 @@ namespace MapPartyAssist.Windows.Filter {
 
         public TimeFilter() { }
 
-        internal TimeFilter(Plugin plugin, Action action, TimeFilter? filter = null) : base(plugin, action) {
+        internal TimeFilter(Plugin plugin, Func<Task> action, TimeFilter? filter = null) : base(plugin, action) {
             if(filter is not null) {
                 StatRange = filter.StatRange;
                 StartTime = filter.StartTime;

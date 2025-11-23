@@ -1,8 +1,9 @@
-﻿using Dalamud.Interface.Utility;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
-using Dalamud.Bindings.ImGui;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows.Filter {
     public class DutyFilter : DataFilter {
@@ -14,7 +15,7 @@ namespace MapPartyAssist.Windows.Filter {
 
         internal DutyFilter() { }
 
-        internal DutyFilter(Plugin plugin, Action action, DutyFilter? filter = null) : base(plugin, action) {
+        internal DutyFilter(Plugin plugin, Func<Task> action, DutyFilter? filter = null) : base(plugin, action) {
             _plugin = plugin;
             foreach(var duty in _plugin.DutyManager.Duties) {
                 FilterState.Add(duty.Key, true);

@@ -2,12 +2,11 @@
 using Dalamud.Utility;
 using Lumina.Excel.Sheets;
 using MapPartyAssist.Helper;
-using MapPartyAssist.Settings;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Services {
     internal class MigrationManager {
@@ -16,26 +15,27 @@ namespace MapPartyAssist.Services {
             _plugin = plugin;
         }
 
-        internal void CheckAndMigrate() {
+        internal async Task CheckAndMigrate() {
             try {
                 if(_plugin.Configuration.Version < 2) {
-                    _plugin.Log.Information("Migration: Importing from configuration to DB...");
-                    ImportFromConfiguration();
+                    Plugin.Log.Information("Migration: Importing from configuration to DB...");
+                    await ImportFromConfiguration();
                 }
                 if(_plugin.Configuration.Version < 3) {
-                    _plugin.Log.Information("Migration: Setting map types and territory IDs...");
-                    UpdateMapTypeAndTerritoryIdFromNameAndZone();
+                    Plugin.Log.Information("Migration: Setting map types and territory IDs...");
+                    await UpdateMapTypeAndTerritoryIdFromNameAndZone();
                 }
+                await _plugin.Refresh();
             } catch(Exception e) {
-                _plugin.Log.Error("Migration failed!");
-                _plugin.Log.Error(e.Message);
-                _plugin.Log.Error(e.StackTrace ?? "");
+                Plugin.Log.Error("Migration failed!");
+                Plugin.Log.Error(e.Message);
+                Plugin.Log.Error(e.StackTrace ?? "");
             }
         }
 
 #pragma warning disable 612, 618
-        private void ImportFromConfiguration() {
-            _plugin.Log.Information("Importing data from config file into database...");
+        private async Task ImportFromConfiguration() {
+            Plugin.Log.Information("Importing data from config file into database...");
 
             List<MPAMap> maps = new();
 
@@ -47,9 +47,9 @@ namespace MapPartyAssist.Services {
                     maps.Add(map);
                 }
                 player.Value.Maps = null;
-                _plugin.StorageManager.AddPlayer(player.Value);
+                await _plugin.StorageManager.AddPlayer(player.Value);
             }
-            _plugin.StorageManager.AddMaps(maps);
+            await _plugin.StorageManager.AddMaps(maps);
 
             foreach(var dutyResults in _plugin.Configuration.DutyResults) {
                 //find map...
@@ -59,17 +59,16 @@ namespace MapPartyAssist.Services {
                 //    map.DutyResults = dutyResults;
                 //}
             }
-            _plugin.StorageManager.AddDutyResults(_plugin.Configuration.DutyResults);
+            await _plugin.StorageManager.AddDutyResults(_plugin.Configuration.DutyResults);
 
             _plugin.Configuration.DutyResults = new();
             _plugin.Configuration.RecentPartyList = new();
 
             _plugin.Configuration.Version = 2;
-            _plugin.Refresh();
         }
 #pragma warning restore 612, 618
 
-        private void UpdateMapTypeAndTerritoryIdFromNameAndZone() {
+        private async Task UpdateMapTypeAndTerritoryIdFromNameAndZone() {
             var allMaps = _plugin.StorageManager.GetMaps().Query().Where(m => m.MapType == null || m.TerritoryId == null).ToList();
             List<MPAMap> updatedMaps = new();
 
@@ -95,13 +94,12 @@ namespace MapPartyAssist.Services {
                     }
                 }
             }
-            _plugin.StorageManager.UpdateMaps(updatedMaps, false);
+            await _plugin.StorageManager.UpdateMaps(updatedMaps);
             _plugin.Configuration.Version = 3;
-            _plugin.Refresh();
         }
 
-        internal void SetClearedDutiesToComplete() {
-            _plugin.Log.Information("Setting cleared duties to complete");
+        internal async Task SetClearedDutiesToComplete() {
+            Plugin.Log.Information("Setting cleared duties to complete");
             var results = _plugin.StorageManager.GetDutyResults().Query().Where(m => !m.IsComplete).ToList();
             foreach(var result in results) {
                 try {
@@ -114,7 +112,7 @@ namespace MapPartyAssist.Services {
                     continue;
                 }
             }
-            _plugin.StorageManager.UpdateDutyResults(results, false);
+            await _plugin.StorageManager.UpdateDutyResults(results);
         }
     }
 }

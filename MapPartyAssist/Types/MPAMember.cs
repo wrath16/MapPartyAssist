@@ -24,7 +24,7 @@ namespace MapPartyAssist.Types {
             Name = name;
             HomeWorld = homeWorld;
             IsSelf = isSelf;
-            LastJoined = DateTime.Now;
+            LastJoined = DateTime.UtcNow;
             Maps = new();
         }
 
@@ -33,7 +33,7 @@ namespace MapPartyAssist.Types {
             Name = $"{split[0]} {split[1]}";
             HomeWorld = split[2];
             IsSelf = isSelf;
-            LastJoined = DateTime.Now;
+            LastJoined = DateTime.UtcNow;
             Maps = new();
         }
         public bool Equals(MPAMember? other) {

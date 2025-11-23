@@ -1,7 +1,7 @@
-﻿using Dalamud.Interface.Utility;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
-using Dalamud.Bindings.ImGui;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using System.Collections.Generic;
@@ -74,7 +74,7 @@ namespace MapPartyAssist.Windows {
                     if(child) {
                         using var table = ImRaii.Table($"AddTable", 4, ImGuiTableFlags.NoHostExtendX);
                         if(table) {
-                            ImGui.TableSetupColumn("time", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 130);
+                            ImGui.TableSetupColumn("time", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 160);
                             ImGui.TableSetupColumn("duty", ImGuiTableColumnFlags.WidthStretch, ImGuiHelpers.GlobalScale * 200);
                             ImGui.TableSetupColumn("edit", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 30);
                             ImGui.TableSetupColumn("delete", ImGuiTableColumnFlags.WidthFixed, ImGuiHelpers.GlobalScale * 50);
@@ -111,7 +111,7 @@ namespace MapPartyAssist.Windows {
         }
 
         private void DrawImport(DutyResultsImport import) {
-            ImGui.Text($"{import.Time.ToString()}");
+            ImGui.Text($"{import.Time.ToLocalTime().ToString()}");
             ImGui.TableNextColumn();
             ImGui.Text($"{_plugin.DutyManager.Duties[import.DutyId].GetDisplayName()}");
             ImGui.TableNextColumn();
@@ -123,9 +123,10 @@ namespace MapPartyAssist.Windows {
                 if(popup) {
                     ImGui.Text("Are you sure?");
                     if(ImGui.Button($"Yes##{import.Id.ToString()}-ConfirmDelete")) {
-                        _plugin.DataQueue.QueueDataOperation(() => {
+                        _plugin.DataQueue.QueueDataOperation(async () => {
                             import.IsDeleted = true;
-                            _plugin.StorageManager.UpdateDutyResultsImport(import);
+                            await _plugin.StorageManager.UpdateDutyResultsImport(import);
+                            await _plugin.Refresh();
                         });
                     }
                     ImGui.SameLine();

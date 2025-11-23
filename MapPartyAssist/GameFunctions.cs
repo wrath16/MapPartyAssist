@@ -20,7 +20,7 @@ internal unsafe class GameFunctions {
         try {
             plugin.InteropProvider.InitializeFromAttributes(this);
         } catch(Exception ex) {
-            plugin.Log.Error(ex, "Failed to find signatures.");
+            Plugin.Log.Error(ex, "Failed to find signatures.");
         }
     }
 
@@ -40,7 +40,7 @@ internal unsafe class GameFunctions {
             x.SanitizeString(combinedEntities);
             UIModule.Instance()->ProcessChatBoxEntry(&x);
         } catch(Exception ex) {
-            _plugin.Log.Error(ex, $"Failed to send message.");
+            Plugin.Log.Error(ex, $"Failed to send message.");
         }
     }
 

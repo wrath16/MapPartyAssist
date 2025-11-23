@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows.Filter {
     public abstract class DataFilter {
@@ -9,13 +10,13 @@ namespace MapPartyAssist.Windows.Filter {
         public virtual string Name => "";
         [JsonIgnore]
         public virtual string? HelpMessage { get; }
-        private Action? RefreshData { get; init; }
+        private Func<Task>? RefreshData { get; init; }
 
         [JsonConstructor]
         public DataFilter() {
         }
 
-        protected DataFilter(Plugin plugin, Action action) {
+        protected DataFilter(Plugin plugin, Func<Task> action) {
             _plugin = plugin;
             RefreshData = action;
         }

@@ -1,5 +1,6 @@
 ﻿using Dalamud.Bindings.ImGui;
 using System;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows.Filter {
     public class PartyMemberFilter : DataFilter {
@@ -12,7 +13,7 @@ namespace MapPartyAssist.Windows.Filter {
 
         public PartyMemberFilter() { }
 
-        internal PartyMemberFilter(Plugin plugin, Action action, PartyMemberFilter? filter = null) : base(plugin, action) {
+        internal PartyMemberFilter(Plugin plugin, Func<Task> action, PartyMemberFilter? filter = null) : base(plugin, action) {
             if(filter is not null) {
                 PartyMembersRaw = filter.PartyMembersRaw;
                 SetPartyMemberArray(PartyMembersRaw);

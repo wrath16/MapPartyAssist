@@ -21,7 +21,7 @@ namespace MapPartyAssist.Types {
 
         public DutyResultsRaw() {
             Id = new();
-            Time = DateTime.Now;
+            Time = DateTime.UtcNow;
             Messages = new();
         }
     }

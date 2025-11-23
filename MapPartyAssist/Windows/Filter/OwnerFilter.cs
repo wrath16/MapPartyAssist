@@ -1,5 +1,6 @@
 ﻿using Dalamud.Bindings.ImGui;
 using System;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows.Filter {
     public class OwnerFilter : DataFilter {
@@ -9,7 +10,7 @@ namespace MapPartyAssist.Windows.Filter {
 
         public OwnerFilter() { }
 
-        internal OwnerFilter(Plugin plugin, Action action, OwnerFilter? filter = null) : base(plugin, action) {
+        internal OwnerFilter(Plugin plugin, Func<Task> action, OwnerFilter? filter = null) : base(plugin, action) {
             if(filter is not null) {
                 Owner = filter.Owner;
                 _lastValue = Owner;

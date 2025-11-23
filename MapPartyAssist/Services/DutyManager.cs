@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Services {
     //internal service for managing duties and duty results
@@ -30,8 +31,6 @@ namespace MapPartyAssist.Services {
                 return IsDutyInProgress() ? Duties[CurrentDutyResults!.DutyId] : null;
             }
         }
-
-        internal DutyResultsRaw? CurrentDutyResultsRaw { get; private set; }
 
         //internal CheckpointResults? LastCheckpoint => CurrentDutyResults?.CheckpointResults.LastOrDefault();
 
@@ -393,14 +392,15 @@ namespace MapPartyAssist.Services {
 
 #if DEBUG
             _plugin.InteropProvider.InitializeFromAttributes(this);
-            _plugin.Log.Debug($"thd director .ctor address: 0x{_treasureDungeonDirectorCtorHook!.Address.ToString("X2")}");
+            Plugin.Log.Debug($"thd director .ctor address: 0x{_treasureDungeonDirectorCtorHook!.Address.ToString("X2")}");
             _treasureDungeonDirectorCtorHook.Enable();
 #endif
 
             //attempt to pickup
             if(_plugin.ClientState.IsLoggedIn && _plugin.IsLanguageSupported() && !IsDutyInProgress()) {
-                _plugin.DataQueue.QueueDataOperation(() => {
-                    PickupLastDuty();
+                _plugin.DataQueue.QueueDataOperation(async () => {
+                    await PickupLastDuty();
+                    //await _plugin.Refresh();
                 });
             }
         }
@@ -418,24 +418,24 @@ namespace MapPartyAssist.Services {
         }
 
         private IntPtr TreasureDungeonDirectorCtorDetour(IntPtr p1, IntPtr p2, IntPtr p3, byte p4) {
-            _plugin.Log.Debug("Treasure Hunt Dungeon Director .ctor occurred!");
+            Plugin.Log.Debug("Treasure Hunt Dungeon Director .ctor occurred!");
             try {
                 var currentDuty = _plugin.Functions.GetCurrentDutyId();
-                _plugin.Log.Debug($"Current duty: {currentDuty}");
+                Plugin.Log.Debug($"Current duty: {currentDuty}");
                 if(!Duties.ContainsKey(currentDuty)) {
-                    _plugin.Log.Information($"Unknown duty: {currentDuty}, starting message logging.");
+                    Plugin.Log.Information($"Unknown duty: {currentDuty}, starting message logging.");
                 }
 
             } catch(Exception e) {
                 //suppress all exceptions so game doesn't crash if something fails here
-                _plugin.Log.Error(e, $"Error in THD director ctor");
+                Plugin.Log.Error(e, $"Error in THD director ctor");
             }
             return _treasureDungeonDirectorCtorHook.Original(p1, p2, p3, p4);
         }
 
         //attempt to start new duty results
         //returns true if succesfully started
-        private bool StartNewDuty(int dutyId) {
+        private async Task StartNewDuty(int dutyId) {
 
             //abort if not in English-language client
             //if(!_plugin.IsEnglishClient()) {
@@ -444,7 +444,7 @@ namespace MapPartyAssist.Services {
 
             if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null) {
                 //var lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().LastOrDefault();
-                _plugin.Log.Information($"Starting new duty results for duty id: {dutyId}");
+                Plugin.Log.Information($"Starting new duty results for duty id: {dutyId}");
                 //_currentDutyResults = new DutyResults(dutyId, Duties[dutyId].Name, _plugin.CurrentPartyList, "");
                 CurrentDutyResults = new DutyResults {
                     DutyId = dutyId,
@@ -456,46 +456,38 @@ namespace MapPartyAssist.Services {
 
                 var lastMap = _plugin.MapManager.GetLastMap();
                 //check last map, 10 min fallback for linking to most recent map
-                if(lastMap != null && (DateTime.Now - lastMap.Time).TotalMinutes < 10) {
+                if(lastMap != null && (DateTime.UtcNow - lastMap.Time).TotalMinutes < 10) {
                     CurrentDutyResults.Map = lastMap;
                     CurrentDutyResults.Owner = lastMap.Owner;
                     lastMap.IsPortal = true;
                     lastMap.DutyName = Duties[dutyId].GetDisplayName();
                     lastMap.DutyId = dutyId;
-                    _plugin.StorageManager.UpdateMap(lastMap);
+                    await _plugin.StorageManager.UpdateMap(lastMap);
                 } else {
-                    _plugin.Log.Warning("Unknown map owner for current duty.");
+                    Plugin.Log.Warning("Unknown map owner for current duty.");
                     CurrentDutyResults.Map = null;
                     CurrentDutyResults.Owner = "";
                 }
 
-                _plugin.StorageManager.AddDutyResults(CurrentDutyResults);
-                //_plugin.Save();
-                return true;
+                await _plugin.StorageManager.AddDutyResults(CurrentDutyResults);
             }
-            return false;
         }
 
         //attempt to pickup duty that did not complete
         //returns true if duty results was succesfully picked up
-        private bool PickupLastDuty(bool toSave = true) {
+        private async Task<bool> PickupLastDuty() {
             int dutyId = _plugin.Functions.GetCurrentDutyId();
             var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
             var lastDutyResults = _plugin.StorageManager.GetDutyResults().Query().OrderBy(dr => dr.Time).ToList().LastOrDefault();
             if(lastDutyResults != null) {
-                TimeSpan lastTimeDiff = DateTime.Now - lastDutyResults.Time;
+                TimeSpan lastTimeDiff = DateTime.UtcNow - lastDutyResults.Time;
                 //pickup if duty is valid, and matches the last duty which was not completed and not more than an hour has elapsed (fallback)
                 if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null && lastDutyResults.DutyId == dutyId && !lastDutyResults.IsComplete && !_firstTerritoryChange && lastTimeDiff.TotalHours < 1) {
-                    _plugin.Log.Information($"re-picking up last duty results id:{lastDutyResults.Id.ToString()}");
+                    Plugin.Log.Information($"re-picking up last duty results id:{lastDutyResults.Id.ToString()}");
                     CurrentDutyResults = lastDutyResults;
                     CurrentDutyResults.IsPickup = true;
-
-                    _plugin.StorageManager.UpdateDutyResults(CurrentDutyResults);
-                    //if(toSave) {
-                    //    Plugin.StorageManager.UpdateDutyResults(_currentDutyResults);
-                    //    Plugin.Save();
-                    //}
-
+                    await _plugin.StorageManager.UpdateDutyResults(CurrentDutyResults);
+                    await _plugin.Refresh();
                     return true;
                 } else {
                     return false;
@@ -504,36 +496,13 @@ namespace MapPartyAssist.Services {
             return false;
         }
 
-
-        private void StartNewUnknownDuty(int dutyId) {
-
-            _plugin.Log.Information($"Starting new raw duty results for duty id: {dutyId}");
-
-            CurrentDutyResultsRaw = new() {
-                Language = _plugin.ClientState.ClientLanguage,
-                DutyId = dutyId,
-                Players = _plugin.GameStateManager.CurrentPartyList.Keys.ToArray(),
-            };
-            var lastMap = _plugin.MapManager.GetLastMap();
-            if(lastMap != null && (DateTime.Now - lastMap.Time).TotalMinutes < 10) {
-                CurrentDutyResultsRaw.Map = lastMap;
-                CurrentDutyResultsRaw.Owner = lastMap.Owner;
-                lastMap.IsPortal = true;
-                lastMap.DutyId = dutyId;
-                _plugin.StorageManager.UpdateMap(lastMap);
-            } else {
-                CurrentDutyResultsRaw.Map = null;
-                CurrentDutyResultsRaw.Owner = "";
-            }
-        }
-
         //validate duty results and fill in missing data if possible
         private bool ValidateUpdateDutyResults(DutyResults dutyResults) {
             //check for no players
             if(dutyResults.Players == null || dutyResults.Players.Length <= 0) {
-                _plugin.Log.Warning($"No players on duty results {dutyResults.Id.ToString()}");
+                Plugin.Log.Warning($"No players on duty results {dutyResults.Id.ToString()}");
                 if(dutyResults.Owner.IsNullOrEmpty()) {
-                    _plugin.Log.Warning($"No owner on duty results {dutyResults.Id.ToString()}");
+                    Plugin.Log.Warning($"No owner on duty results {dutyResults.Id.ToString()}");
                 } else {
                     //dutyResults.Players = new[] { dutyResults.Owner };
                 }
@@ -544,61 +513,56 @@ namespace MapPartyAssist.Services {
         }
 
         private void OnDutyStart(object? sender, ushort territoryId) {
-            _plugin.Log.Debug($"Duty has started with territory id: {territoryId} name: {_plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId).PlaceName.Value.Name} ");
+            Plugin.Log.Debug($"Duty has started with territory id: {territoryId} name: {_plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId).PlaceName.Value.Name} ");
             var dutyId = _plugin.Functions.GetCurrentDutyId();
-            _plugin.Log.Debug($"Current duty ID: {dutyId}");
+            Plugin.Log.Debug($"Current duty ID: {dutyId}");
             var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
-            _plugin.Log.Debug($"Duty Name: {duty?.Name}");
+            Plugin.Log.Debug($"Duty Name: {duty?.Name}");
 
             //check if duty is ongoing to attempt to pickup...
-            _plugin.Log.Debug($"Current duty ongoing? {CurrentDutyResults != null}");
+            Plugin.Log.Debug($"Current duty ongoing? {CurrentDutyResults != null}");
         }
 
         private void OnDutyCompleted(object? sender, ushort param1) {
-            _plugin.Log.Verbose("Duty completed!");
+            Plugin.Log.Verbose("Duty completed!");
             //EndDuty();
         }
 
         private void OnDutyWiped(object? sender, ushort param1) {
-            _plugin.Log.Verbose("Duty wiped!");
+            Plugin.Log.Verbose("Duty wiped!");
             //EndDuty();
         }
 
         private void OnDutyRecommenced(object? sender, ushort param1) {
-            _plugin.Log.Verbose("Duty recommenced!");
+            Plugin.Log.Verbose("Duty recommenced!");
             //EndDuty();
         }
 
         private void OnTerritoryChanged(ushort territoryId) {
             var dutyId = _plugin.Functions.GetCurrentDutyId();
-            _plugin.DataQueue.QueueDataOperation(() => {
+            _plugin.DataQueue.QueueDataOperation(async () => {
                 var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
-                _plugin.Log.Debug($"Territory changed: {territoryId}, Current duty: {_plugin.Functions.GetCurrentDutyId()}, Content Type: {_plugin.Functions.GetInstanceContentType().ToString() ?? ""}");
+                Plugin.Log.Debug($"Territory changed: {territoryId}, Current duty: {_plugin.Functions.GetCurrentDutyId()}, Content Type: {_plugin.Functions.GetInstanceContentType().ToString() ?? ""}");
 
                 if(!Duties.ContainsKey(dutyId) && _plugin.Functions.GetInstanceContentType() == FFXIVClientStructs.FFXIV.Client.Game.InstanceContent.InstanceContentType.TreasureHuntDungeon) {
-                    _plugin.Log.Information($"Unknown treasure hunt duty: {dutyId}");
+                    Plugin.Log.Information($"Unknown treasure hunt duty: {dutyId}");
                 }
 
                 if(IsDutyInProgress()) {
                     //clear current duty if it was completed successfully or clear as a fallback. attempt to pickup otherwise on disconnect
                     if(CurrentDutyResults!.IsComplete || dutyId != CurrentDutyResults.DutyId) {
-                        EndCurrentDuty();
-                    }
-                } else if(IsUnknownDutyInProgress()) {
-                    if(CurrentDutyResultsRaw!.IsComplete || dutyId != CurrentDutyResultsRaw.DutyId) {
-                        EndCurrentDuty();
+                        await EndCurrentDuty();
                     }
                 } else if(duty != null) {
                     if(Duties.ContainsKey(dutyId)) {
                         //attempt to pickup if game closed without completing properly
-                        if(!PickupLastDuty(true)) {
-                            StartNewDuty(dutyId);
+                        if(!await PickupLastDuty()) {
+                            await StartNewDuty(dutyId);
                         }
-                    } else if(_plugin.Functions.GetInstanceContentType() == FFXIVClientStructs.FFXIV.Client.Game.InstanceContent.InstanceContentType.TreasureHuntDungeon) {
-                        //StartNewUnknownDuty(dutyId);
                     }
                 }
                 _firstTerritoryChange = true;
+                await _plugin.Refresh();
             });
         }
 
@@ -623,13 +587,12 @@ namespace MapPartyAssist.Services {
                     bool isHq = item is not null ? item.IsHQ : false;
                     var player = (PlayerPayload?)message.Payloads.FirstOrDefault(m => m is PlayerPayload);
                     string? playerKey = player is not null ? $"{player.PlayerName} {player.World.Value.Name}" : null;
-                    Message record = new(DateTime.Now, (int)type, messageText, itemId, isHq, playerKey);
-                    _plugin.DataQueue.QueueDataOperation(() => {
-                        if(IsUnknownDutyInProgress()) {
-                            CurrentDutyResultsRaw!.Messages.Add(record);
-                        } else if(IsDutyInProgress()) {
+                    Message record = new(DateTime.UtcNow, (int)type, messageText, itemId, isHq, playerKey);
+                    _plugin.DataQueue.QueueDataOperation(async () => {
+                        if(IsDutyInProgress()) {
                             if(ProcessChatMessage(CurrentDutyResults!, record)) {
-                                _plugin.StorageManager.UpdateDutyResults(CurrentDutyResults!);
+                                await _plugin.StorageManager.UpdateDutyResults(CurrentDutyResults!);
+                                await _plugin.Refresh();
                             }
                         }
                     });
@@ -672,7 +635,7 @@ namespace MapPartyAssist.Services {
                         AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity, currentPlayer);
                         isChange = true;
 #if DEBUG
-                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", message.ItemId, message.IsHq, quantity, currentPlayer));
+                        Plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", message.ItemId, message.IsHq, quantity, currentPlayer));
 #endif
                     } else if(selfItemMatch.Success) {
                         //tomestones
@@ -682,7 +645,7 @@ namespace MapPartyAssist.Services {
                             AddLootResults(results, (uint)rowId, false, quantity, currentPlayer);
                             isChange = true;
                         } else {
-                            _plugin.Log.Warning($"Cannot find rowId for {selfItemMatch.Value}");
+                            Plugin.Log.Warning($"Cannot find rowId for {selfItemMatch.Value}");
                         }
                     }
                 } else {
@@ -699,7 +662,7 @@ namespace MapPartyAssist.Services {
                             AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity, message.PlayerKey);
                             isChange = true;
 #if DEBUG
-                            _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", message.ItemId, message.IsHq, quantity, message.PlayerKey));
+                            Plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", message.ItemId, message.IsHq, quantity, message.PlayerKey));
 #endif
                         }
                     }
@@ -715,8 +678,8 @@ namespace MapPartyAssist.Services {
                         AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity);
                         isChange = true;
 #if DEBUG
-                        _plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", message.ItemId, message.IsHq, quantity));
-                        _plugin.Log.Debug($"value: {m.Value} isNumber: {isNumber} quantity: {quantity}");
+                        Plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", message.ItemId, message.IsHq, quantity));
+                        Plugin.Log.Debug($"value: {m.Value} isNumber: {isNumber} quantity: {quantity}");
 #endif
                     }
                 }
@@ -724,7 +687,7 @@ namespace MapPartyAssist.Services {
                 //check for failure
             } else if((message.Channel == 2233 || message.Channel == 2105) && duty.FailureCheckpoint!.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
                 results!.IsComplete = true;
-                results!.CompletionTime = DateTime.Now;
+                results!.CompletionTime = DateTime.UtcNow;
                 isChange = true;
             } else {
                 switch(duty.Structure) {
@@ -755,7 +718,7 @@ namespace MapPartyAssist.Services {
             if(results.CheckpointResults.Count < duty.Checkpoints!.Count) {
                 var nextCheckpoint = duty.Checkpoints![results.CheckpointResults.Count];
                 if((message.Channel == 2233 || message.Channel == 2105) && nextCheckpoint.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
-                    _plugin.Log.Information($"Adding new checkpoint: {nextCheckpoint.Name}");
+                    Plugin.Log.Information($"Adding new checkpoint: {nextCheckpoint.Name}");
                     results.CheckpointResults.Add(new() {
                         Checkpoint = nextCheckpoint,
                         IsReached = true,
@@ -769,7 +732,7 @@ namespace MapPartyAssist.Services {
                     //if all checkpoints reached, set to duty complete
                     if(results.CheckpointResults.Where(cr => cr.IsReached).Count() == duty.Checkpoints!.Count) {
                         results.IsComplete = true;
-                        results.CompletionTime = DateTime.Now;
+                        results.CompletionTime = DateTime.UtcNow;
                     }
                     return true;
                 }
@@ -800,7 +763,7 @@ namespace MapPartyAssist.Services {
                     AddRouletteCheckpointResults(results, null);
                     if(results!.CheckpointResults.Where(cr => cr.IsReached).Count() == duty.Checkpoints!.Count) {
                         results.IsComplete = true;
-                        results.CompletionTime = DateTime.Now;
+                        results.CompletionTime = DateTime.UtcNow;
                     }
                     return true;
                 }
@@ -827,7 +790,7 @@ namespace MapPartyAssist.Services {
                     AddRouletteCheckpointResults(results, null);
                     if(results.CheckpointResults.Where(cr => cr.IsReached).Count() == duty.Checkpoints!.Count) {
                         results.IsComplete = true;
-                        results.CompletionTime = DateTime.Now;
+                        results.CompletionTime = DateTime.UtcNow;
                     }
                     return true;
                 }
@@ -862,7 +825,7 @@ namespace MapPartyAssist.Services {
                     AddRouletteCheckpointResults(results, null);
                     if(results.CheckpointResults.Count == duty.Checkpoints.Count) {
                         results.IsComplete = true;
-                        results.CompletionTime = DateTime.Now;
+                        results.CompletionTime = DateTime.UtcNow;
                     }
                     return true;
                 } else if(SlotsSpecialStartRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
@@ -879,7 +842,7 @@ namespace MapPartyAssist.Services {
         private void AddRouletteCheckpointResults(DutyResults results, Summon? summon, string? monsterName = null, bool isSaved = false) {
             int size = results.CheckpointResults.Count;
             var duty = Duties[results.DutyId];
-            _plugin.Log.Information($"Adding new checkpoint: {duty.Checkpoints[size].Name}");
+            Plugin.Log.Information($"Adding new checkpoint: {duty.Checkpoints[size].Name}");
             results.CheckpointResults.Add(new RouletteCheckpointResults {
                 Checkpoint = duty.Checkpoints![size],
                 SummonType = summon,
@@ -901,7 +864,7 @@ namespace MapPartyAssist.Services {
             var matchingLootResults = results.GetMatchingLootResult(itemId, isHQ, quantity);
             if(matchingLootResults is null) {
                 LootResult lootResult = new() {
-                    Time = DateTime.Now,
+                    Time = DateTime.UtcNow,
                     ItemId = itemId,
                     IsHQ = isHQ,
                     Quantity = quantity,
@@ -917,32 +880,23 @@ namespace MapPartyAssist.Services {
             }
         }
 
-        private void EndCurrentDuty() {
+        private async Task EndCurrentDuty() {
             if(IsDutyInProgress()) {
-                _plugin.Log.Information($"Ending duty results id: {CurrentDutyResults!.Id}");
+                Plugin.Log.Information($"Ending duty results id: {CurrentDutyResults!.Id}");
                 //CurrentDutyResults!.IsComplete = true;
                 //if(CurrentDutyResults.CompletionTime.Ticks == 0) {
-                //    CurrentDutyResults.CompletionTime = DateTime.Now;
+                //    CurrentDutyResults.CompletionTime = DateTime.UtcNow;
                 //}
                 //check for malformed/missing data
                 ValidateUpdateDutyResults(CurrentDutyResults);
-                _plugin.StorageManager.UpdateDutyResults(CurrentDutyResults);
+                await _plugin.StorageManager.UpdateDutyResults(CurrentDutyResults);
                 //_firstLootResults = new();
-            } else if(IsUnknownDutyInProgress()) {
-                _plugin.Log.Information($"Ending raw duty results id: {CurrentDutyResultsRaw!.Id}");
-                CurrentDutyResultsRaw.IsComplete = true;
-                _plugin.StorageManager.UpdateDutyResultsRaw(CurrentDutyResultsRaw);
             }
             CurrentDutyResults = null;
-            CurrentDutyResultsRaw = null;
         }
 
         internal bool IsDutyInProgress() {
             return CurrentDutyResults != null;
-        }
-
-        internal bool IsUnknownDutyInProgress() {
-            return CurrentDutyResultsRaw != null;
         }
 
         private Dictionary<ClientLanguage, Regex> GetFailureRegex(int dutyId) {

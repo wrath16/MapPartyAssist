@@ -3,10 +3,10 @@ using MapPartyAssist.Types;
 using MapPartyAssist.Types.Attributes;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Services {
     //internal service for managing connections to LiteDB database
@@ -35,6 +35,10 @@ namespace MapPartyAssist.Services {
 
             //set mapper properties
             BsonMapper.Global.EmptyStringToNull = false;
+            BsonMapper.Global.RegisterType<DateTime>(
+                serialize: dt => new BsonValue(dt.ToUniversalTime()),
+                deserialize: v => v.AsDateTime.ToUniversalTime()
+            );
 
             //create indices
             var mapCollection = Database.GetCollection<MPAMap>(MapTable);
@@ -66,126 +70,100 @@ namespace MapPartyAssist.Services {
         public void Dispose() {
             Database.Dispose();
         }
-        internal void AddMap(MPAMap map, bool toSave = true) {
-            LogUpdate(map.Id.ToString());
-            WriteToDatabase(() => GetMaps().Insert(map), toSave);
+        internal async Task AddMap(MPAMap map) {
+            Plugin.Log.Debug($"DB: adding map: {map.Id}");
+            await WriteToDatabase(() => GetMaps().Insert(map));
         }
 
-        internal void AddMaps(IEnumerable<MPAMap> maps, bool toSave = true) {
-            LogUpdate(null, maps.Count());
-            WriteToDatabase(() => GetMaps().Insert(maps), toSave);
+        internal async Task AddMaps(IEnumerable<MPAMap> maps) {
+            Plugin.Log.Debug($"DB: adding maps list: {maps.Count()}");
+            await WriteToDatabase(() => GetMaps().Insert(maps));
         }
 
-        internal void UpdateMap(MPAMap map, bool toSave = true) {
-            LogUpdate(map.Id.ToString());
-            WriteToDatabase(() => GetMaps().Update(map), toSave);
+        internal async Task UpdateMap(MPAMap map) {
+            Plugin.Log.Debug($"DB: updating map: {map.Id}");
+            await WriteToDatabase(() => GetMaps().Update(map));
         }
 
-        internal void UpdateMaps(IEnumerable<MPAMap> maps, bool toSave = true) {
-            LogUpdate(null, maps.Count());
-            WriteToDatabase(() => GetMaps().Update(maps.Where(m => m.Id != null)), toSave);
+        internal async Task UpdateMaps(IEnumerable<MPAMap> maps) {
+            Plugin.Log.Debug($"DB: updating maps list: {maps.Count()}");
+            await WriteToDatabase(() => GetMaps().Update(maps.Where(m => m.Id != null)));
         }
 
         internal ILiteCollection<MPAMap> GetMaps() {
             return Database.GetCollection<MPAMap>(MapTable);
         }
 
-        internal void AddPlayer(MPAMember player, bool toSave = true) {
-            LogUpdate(player.Key);
-            WriteToDatabase(() => GetPlayers().Insert(player), toSave);
+        internal async Task AddPlayer(MPAMember player) {
+            Plugin.Log.Debug($"DB: adding player: {player.Key}");
+            await WriteToDatabase(() => GetPlayers().Insert(player));
         }
 
-        internal void UpdatePlayer(MPAMember player, bool toSave = true) {
-            LogUpdate(player.Key);
-            WriteToDatabase(() => GetPlayers().Update(player), toSave);
+        internal async Task UpdatePlayer(MPAMember player) {
+            Plugin.Log.Debug($"DB: updating player: {player.Key}");
+            await WriteToDatabase(() => GetPlayers().Update(player));
         }
 
         internal ILiteCollection<MPAMember> GetPlayers() {
             return Database.GetCollection<MPAMember>(PlayerTable);
         }
 
-        internal void AddDutyResults(DutyResults results, bool toSave = true) {
-            LogUpdate(results.Id.ToString());
-            WriteToDatabase(() => GetDutyResults().Insert(results), toSave);
+        internal async Task AddDutyResults(DutyResults results) {
+            Plugin.Log.Debug($"DB: adding duty results: {results.Id}");
+            await WriteToDatabase(() => GetDutyResults().Insert(results));
         }
 
-        internal void AddDutyResults(IEnumerable<DutyResults> results, bool toSave = true) {
-            LogUpdate(null, results.Count());
-            WriteToDatabase(() => GetDutyResults().Insert(results), toSave);
+        internal async Task AddDutyResults(IEnumerable<DutyResults> results) {
+            Plugin.Log.Debug($"DB: adding duty results list: {results.Count()}");
+            await WriteToDatabase(() => GetDutyResults().Insert(results));
         }
 
-        internal void UpdateDutyResults(DutyResults results, bool toSave = true) {
-            LogUpdate(results.Id.ToString());
-            WriteToDatabase(() => GetDutyResults().Update(results), toSave);
+        internal async Task UpdateDutyResults(DutyResults results) {
+            Plugin.Log.Debug($"DB: updating duty results: {results.Id}");
+            await WriteToDatabase(() => GetDutyResults().Update(results));
         }
 
-        internal void UpdateDutyResults(IEnumerable<DutyResults> results, bool toSave = true) {
-            LogUpdate(null, results.Count());
-            WriteToDatabase(() => GetDutyResults().Update(results), toSave);
+        internal async Task UpdateDutyResults(IEnumerable<DutyResults> results) {
+            Plugin.Log.Debug($"DB: updating duty results list: {results.Count()}");
+            await WriteToDatabase(() => GetDutyResults().Update(results));
         }
 
         internal ILiteCollection<DutyResults> GetDutyResults() {
             return Database.GetCollection<DutyResults>(DutyResultsTable);
         }
 
-        internal void AddDutyResultsRaw(DutyResultsRaw results, bool toSave = true) {
-            LogUpdate(results.Id.ToString());
-            WriteToDatabase(() => GetDutyResultsRaw().Insert(results), toSave);
+        internal async Task AddDutyResultsImport(DutyResultsImport import) {
+            Plugin.Log.Debug($"DB: adding import: {import.Id}");
+            await WriteToDatabase(() => GetDutyResultsImports().Insert(import));
         }
 
-        internal void UpdateDutyResultsRaw(DutyResultsRaw results, bool toSave = true) {
-            LogUpdate(results.Id.ToString());
-            WriteToDatabase(() => GetDutyResultsRaw().Update(results), toSave);
-        }
-
-        internal ILiteCollection<DutyResultsRaw> GetDutyResultsRaw() {
-            return Database.GetCollection<DutyResultsRaw>(DutyResultsRawTable);
-        }
-
-        internal void AddDutyResultsImport(DutyResultsImport import, bool toSave = true) {
-            LogUpdate(import.Id.ToString());
-            WriteToDatabase(() => GetDutyResultsImports().Insert(import), toSave);
-        }
-
-        internal void UpdateDutyResultsImport(DutyResultsImport import, bool toSave = true) {
-            LogUpdate(import.Id.ToString());
-            WriteToDatabase(() => GetDutyResultsImports().Update(import), toSave);
+        internal async Task UpdateDutyResultsImport(DutyResultsImport import) {
+            Plugin.Log.Debug($"DB: updating import: {import.Id}");
+            await WriteToDatabase(() => GetDutyResultsImports().Update(import));
         }
 
         internal ILiteCollection<DutyResultsImport> GetDutyResultsImports() {
             return Database.GetCollection<DutyResultsImport>(StatsImportTable);
         }
 
-        internal void AddPrices(IEnumerable<PriceCheck> prices, bool toSave = true) {
-            LogUpdate(null, prices.Count());
-            WriteToDatabase(() => GetPrices().Insert(prices), toSave);
+        internal async Task AddPrices(IEnumerable<PriceCheck> prices) {
+            Plugin.Log.Debug("DB: adding prices");
+            await WriteToDatabase(() => GetPrices().Insert(prices));
         }
 
-        internal void UpdatePrices(IEnumerable<PriceCheck> prices, bool toSave = true) {
-            LogUpdate(null, prices.Count());
-            WriteToDatabase(() => GetPrices().Update(prices), toSave);
+        internal async Task UpdatePrices(IEnumerable<PriceCheck> prices) {
+            Plugin.Log.Debug("DB: updating prices");
+            await WriteToDatabase(() => GetPrices().Update(prices));
         }
 
         internal ILiteCollection<PriceCheck> GetPrices() {
             return Database.GetCollection<PriceCheck>(PriceTable);
         }
 
-        private void LogUpdate(string? id = null, int count = 0) {
-            var callingMethod = new StackFrame(2, true).GetMethod();
-            var writeMethod = new StackFrame(1, true).GetMethod();
-
-            _plugin.Log.Debug(string.Format("Invoking {0,-25} {2,-30}{3,-30} Caller: {1,-70}",
-                writeMethod?.Name, $"{callingMethod?.DeclaringType?.ToString() ?? ""}.{callingMethod?.Name ?? ""}", id != null ? $"ID: {id}" : "", count != 0 ? $"Count: {count}" : ""));
-        }
-
-        //synchronous write
-        private void WriteToDatabase(Func<object> action, bool toSave = true) {
+        private async Task WriteToDatabase(Func<object> action) {
             try {
-                _dbLock.Wait();
+                await _dbLock.WaitAsync();
                 action.Invoke();
-                if(toSave) {
-                    _plugin.Refresh();
-                }
             } finally {
                 _dbLock.Release();
             }
@@ -217,7 +195,7 @@ namespace MapPartyAssist.Services {
 
             bool isValid = true;
             NullabilityInfoContext nullabilityContext = new();
-            //_plugin.Log.Debug($"Type: {toValidate.GetType().Name}");
+            //Plugin.Plugin.Log.Debug($"Type: {toValidate.GetType().Name}");
             foreach(var prop in toValidate.GetType().GetProperties()) {
                 var nullabilityInfo = nullabilityContext.Create(prop);
                 bool nullable = nullabilityInfo.WriteState is NullabilityState.Nullable;
@@ -236,7 +214,7 @@ namespace MapPartyAssist.Services {
                 bool isReference = prop.GetCustomAttribute(typeof(BsonRefAttribute), true) != null;
                 //bool isDataType = typeof(MPADataType).IsAssignableFrom(prop.PropertyType);
                 bool isDataType = prop.PropertyType.GetCustomAttribute(typeof(ValidatedDataTypeAttribute), true) != null;
-                //_plugin.Log.Debug(string.Format("Name:  {0, -20} Type: {1, -15} IsEnumerable: {7,-6} HasEnumerableData: {4, -6} IsDataType: {5, -6} IsReference: {6, -6} Nullable: {2, -6} IsNull: {3,-6}", prop.Name, prop.PropertyType.Name, nullable, isNull, hasEnumerableData, isDataType, isReference, isEnumerable));
+                //Plugin.Plugin.Log.Debug(string.Format("Name:  {0, -20} Type: {1, -15} IsEnumerable: {7,-6} HasEnumerableData: {4, -6} IsDataType: {5, -6} IsReference: {6, -6} Nullable: {2, -6} IsNull: {3,-6}", prop.Name, prop.PropertyType.Name, nullable, isNull, hasEnumerableData, isDataType, isReference, isEnumerable));
 
                 //check recursive data type
                 if(isDataType && !isReference && !isNull && !ValidateDataType(curValue!, correctErrors)) {
@@ -260,7 +238,7 @@ namespace MapPartyAssist.Services {
                         if(defaultCtor != null) {
                             prop.SetValue(toValidate, defaultCtor.Invoke(null));
                         } else {
-                            //_plugin.Log.Warning($"No default constructor for type: {prop.PropertyType.Name}");
+                            //Plugin.Plugin.Log.Warning($"No default constructor for type: {prop.PropertyType.Name}");
                             //initialize empty strings
                             if(prop.PropertyType == typeof(string)) {
                                 prop.SetValue(toValidate, "");
@@ -269,7 +247,7 @@ namespace MapPartyAssist.Services {
                     }
                 }
             }
-            //_plugin.Log.Debug($"");
+            //Plugin.Plugin.Log.Debug($"");
             return isValid;
         }
     }

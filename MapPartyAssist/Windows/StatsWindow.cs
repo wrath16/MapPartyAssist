@@ -1,9 +1,9 @@
-﻿using Dalamud.Interface;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
-using Dalamud.Bindings.ImGui;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using MapPartyAssist.Windows.Filter;
@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows {
 
@@ -54,20 +55,21 @@ namespace MapPartyAssist.Windows {
             _dutyResultsList = new(plugin, this);
             _mapList = new(plugin, this);
             //_lootSummary.Refresh(_dutyResults);
-            _plugin.DataQueue.QueueDataOperation(Refresh);
         }
 
-        public void Refresh() {
+        public async Task Refresh() {
             try {
-                //_plugin.Log.Debug("start!");
-                //DateTime dt = DateTime.Now;
-                RefreshLock.Wait();
+                //Plugin.Log.Debug("start!");
+                //DateTime dt = DateTime.UtcNow;
+                Plugin.Log.Verbose("Refreshing stats window start");
+                await RefreshLock.WaitAsync();
+                Plugin.Log.Debug("Refreshing stats window");
                 var dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).OrderBy(dr => dr.Time).ToList();
                 var maps = _plugin.StorageManager.GetMaps().Query().OrderBy(m => m.Time).ToList();
                 var imports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted).OrderBy(i => i.Time).ToList();
 
-                //DateTime dt2 = DateTime.Now;
-                //_plugin.Log.Debug($"from db: {(dt2 - dt).TotalMilliseconds}ms");
+                //DateTime dt2 = DateTime.UtcNow;
+                //Plugin.Log.Debug($"from db: {(dt2 - dt).TotalMilliseconds}ms");
 
                 if(_plugin.Configuration.CurrentCharacterStatsOnly && !_plugin.GameStateManager.GetCurrentPlayer().IsNullOrEmpty()) {
                     dutyResults = dutyResults.Where(dr => dr.Players.Contains(_plugin.GameStateManager.GetCurrentPlayer())).ToList();
@@ -170,35 +172,35 @@ namespace MapPartyAssist.Windows {
                                     imports = new();
                                     break;
                                 case StatRange.PastDay:
-                                    dutyResults = dutyResults.Where(dr => (DateTime.Now - dr.Time).TotalHours < 24).ToList();
-                                    maps = maps.Where(m => (DateTime.Now - m.Time).TotalHours < 24).ToList();
-                                    imports = imports.Where(i => (DateTime.Now - i.Time).TotalHours < 24).ToList();
+                                    dutyResults = dutyResults.Where(dr => (DateTime.UtcNow - dr.Time).TotalHours < 24).ToList();
+                                    maps = maps.Where(m => (DateTime.UtcNow - m.Time).TotalHours < 24).ToList();
+                                    imports = imports.Where(i => (DateTime.UtcNow - i.Time).TotalHours < 24).ToList();
                                     break;
                                 case StatRange.PastWeek:
-                                    dutyResults = dutyResults.Where(dr => (DateTime.Now - dr.Time).TotalDays < 7).ToList();
-                                    maps = maps.Where(m => (DateTime.Now - m.Time).TotalDays < 7).ToList();
-                                    imports = imports.Where(i => (DateTime.Now - i.Time).TotalDays < 7).ToList();
+                                    dutyResults = dutyResults.Where(dr => (DateTime.UtcNow - dr.Time).TotalDays < 7).ToList();
+                                    maps = maps.Where(m => (DateTime.UtcNow - m.Time).TotalDays < 7).ToList();
+                                    imports = imports.Where(i => (DateTime.UtcNow - i.Time).TotalDays < 7).ToList();
                                     break;
                                 case StatRange.ThisMonth:
-                                    dutyResults = dutyResults.Where(dr => dr.Time.Month == DateTime.Now.Month && dr.Time.Year == DateTime.Now.Year).ToList();
-                                    maps = maps.Where(m => m.Time.Month == DateTime.Now.Month && m.Time.Year == DateTime.Now.Year).ToList();
-                                    imports = imports.Where(i => i.Time.Month == DateTime.Now.Month && i.Time.Year == DateTime.Now.Year).ToList();
+                                    dutyResults = dutyResults.Where(dr => dr.Time.Month == DateTime.UtcNow.Month && dr.Time.Year == DateTime.UtcNow.Year).ToList();
+                                    maps = maps.Where(m => m.Time.Month == DateTime.UtcNow.Month && m.Time.Year == DateTime.UtcNow.Year).ToList();
+                                    imports = imports.Where(i => i.Time.Month == DateTime.UtcNow.Month && i.Time.Year == DateTime.UtcNow.Year).ToList();
                                     break;
                                 case StatRange.LastMonth:
-                                    var lastMonth = DateTime.Now.AddMonths(-1);
+                                    var lastMonth = DateTime.UtcNow.AddMonths(-1);
                                     dutyResults = dutyResults.Where(dr => dr.Time.Month == lastMonth.Month && dr.Time.Year == lastMonth.Year).ToList();
                                     maps = maps.Where(m => m.Time.Month == lastMonth.Month && m.Time.Year == lastMonth.Year).ToList();
                                     imports = imports.Where(i => i.Time.Month == lastMonth.Month && i.Time.Year == lastMonth.Year).ToList();
                                     break;
                                 case StatRange.ThisYear:
-                                    dutyResults = dutyResults.Where(dr => dr.Time.Year == DateTime.Now.Year).ToList();
-                                    maps = maps.Where(m => m.Time.Year == DateTime.Now.Year).ToList();
-                                    imports = imports.Where(i => i.Time.Year == DateTime.Now.Year).ToList();
+                                    dutyResults = dutyResults.Where(dr => dr.Time.Year == DateTime.UtcNow.Year).ToList();
+                                    maps = maps.Where(m => m.Time.Year == DateTime.UtcNow.Year).ToList();
+                                    imports = imports.Where(i => i.Time.Year == DateTime.UtcNow.Year).ToList();
                                     break;
                                 case StatRange.LastYear:
-                                    dutyResults = dutyResults.Where(dr => dr.Time.Year == DateTime.Now.AddYears(-1).Year).ToList();
-                                    maps = maps.Where(m => m.Time.Year == DateTime.Now.AddYears(-1).Year).ToList();
-                                    imports = imports.Where(i => i.Time.Year == DateTime.Now.AddYears(-1).Year).ToList();
+                                    dutyResults = dutyResults.Where(dr => dr.Time.Year == DateTime.UtcNow.AddYears(-1).Year).ToList();
+                                    maps = maps.Where(m => m.Time.Year == DateTime.UtcNow.AddYears(-1).Year).ToList();
+                                    imports = imports.Where(i => i.Time.Year == DateTime.UtcNow.AddYears(-1).Year).ToList();
                                     break;
                                 case StatRange.SinceLastClear:
                                     foreach(var duty in _plugin.DutyManager.Duties.Where(d => dutyFilter.FilterState[d.Key])) {
@@ -253,42 +255,43 @@ namespace MapPartyAssist.Windows {
                             break;
                     }
                 }
-                //DateTime dt3 = DateTime.Now;
-                //_plugin.Log.Debug($"filters: {(dt3 - dt2).TotalMilliseconds}ms");
+                //DateTime dt3 = DateTime.UtcNow;
+                //Plugin.Log.Debug($"filters: {(dt3 - dt2).TotalMilliseconds}ms");
 
                 _lootSummary.Refresh(dutyResults, maps);
 
-                //DateTime dt4 = DateTime.Now;
-                //_plugin.Log.Debug($"loot summary refresh: {(dt4 - dt3).TotalMilliseconds}ms");
+                //DateTime dt4 = DateTime.UtcNow;
+                //Plugin.Log.Debug($"loot summary refresh: {(dt4 - dt3).TotalMilliseconds}ms");
 
                 _dutySummary.Refresh(dutyResults, imports);
 
-                //DateTime dt5 = DateTime.Now;
-                //_plugin.Log.Debug($"duty summary refresh: {(dt5 - dt4).TotalMilliseconds}ms");
+                //DateTime dt5 = DateTime.UtcNow;
+                //Plugin.Log.Debug($"duty summary refresh: {(dt5 - dt4).TotalMilliseconds}ms");
 
                 _dutyResultsList.Refresh(dutyResults);
 
-                //DateTime dt6 = DateTime.Now;
-                //_plugin.Log.Debug($"duty list refresh: {(dt6 - dt5).TotalMilliseconds}ms");
+                //DateTime dt6 = DateTime.UtcNow;
+                //Plugin.Log.Debug($"duty list refresh: {(dt6 - dt5).TotalMilliseconds}ms");
 
                 _mapList.Refresh(maps);
 
-                //DateTime dt7 = DateTime.Now;
-                //_plugin.Log.Debug($"map list refresh: {(dt7 - dt6).TotalMilliseconds}ms");
+                //DateTime dt7 = DateTime.UtcNow;
+                //Plugin.Log.Debug($"map list refresh: {(dt7 - dt6).TotalMilliseconds}ms");
 
                 _viewImportsWindow.Refresh();
 
-                //DateTime dt8 = DateTime.Now;
-                //_plugin.Log.Debug($"imports refresh: {(dt8 - dt7).TotalMilliseconds}ms");
+                //DateTime dt8 = DateTime.UtcNow;
+                //Plugin.Log.Debug($"imports refresh: {(dt8 - dt7).TotalMilliseconds}ms");
 
-                _plugin.Configuration.Save();
+                await _plugin.Configuration.Save();
 
-                //DateTime dt9 = DateTime.Now;
-                //_plugin.Log.Debug($"save plugin: {(dt9 - dt8).TotalMilliseconds}ms");
+                //DateTime dt9 = DateTime.UtcNow;
+                //Plugin.Log.Debug($"save plugin: {(dt9 - dt8).TotalMilliseconds}ms");
 
 
             } finally {
                 RefreshLock.Release();
+                Plugin.Log.Verbose("Refreshing stats window end");
             }
         }
 

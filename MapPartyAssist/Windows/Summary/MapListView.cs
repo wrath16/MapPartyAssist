@@ -1,8 +1,8 @@
-﻿using Dalamud.Interface;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
-using Dalamud.Bindings.ImGui;
 using LiteDB;
 using Lumina.Excel.Sheets;
 using MapPartyAssist.Helper;
@@ -138,17 +138,17 @@ namespace MapPartyAssist.Windows.Summary {
                         ImGui.PopFont();
                     }
                     if(ImGui.Button("Save")) {
-                        _plugin.DataQueue.QueueDataOperation(() => {
-                            _plugin.StorageManager.UpdateMaps(_mapsPage.Where(m => m.IsEdited));
-                            //_plugin.Save();
+                        _plugin.DataQueue.QueueDataOperation(async () => {
+                            await _plugin.StorageManager.UpdateMaps(_mapsPage.Where(m => m.IsEdited));
+                            await _plugin.Refresh();
                         });
                     }
 
                     ImGui.SameLine();
                     if(ImGui.Button("Cancel")) {
-                        _plugin.DataQueue.QueueDataOperation(() => {
+                        _plugin.DataQueue.QueueDataOperation(async () => {
                             _plugin.AllowEdit = false;
-                            _statsWindow.Refresh();
+                            await _statsWindow.Refresh();
                         });
                     }
                 }
@@ -170,7 +170,7 @@ namespace MapPartyAssist.Windows.Summary {
                             float targetWidth1 = 150f * ImGuiHelpers.GlobalScale;
                             float targetWidth2 = 200f * ImGuiHelpers.GlobalScale;
                             float targetWidth3 = 215f * ImGuiHelpers.GlobalScale;
-                            var text1 = map.Time.ToString();
+                            var text1 = map.Time.ToLocalTime().ToString();
                             var text2 = map.Zone;
                             _plugin.DutyManager.Duties.TryGetValue(map.DutyId ?? 0, out var duty);
                             var text3 = duty?.GetDisplayName() ?? map.DutyName ?? "";

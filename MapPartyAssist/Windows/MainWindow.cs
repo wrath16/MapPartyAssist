@@ -1,3 +1,4 @@
+using Dalamud.Bindings.ImGui;
 using Dalamud.Game.Text;
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
@@ -5,7 +6,6 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
-using Dalamud.Bindings.ImGui;
 using LiteDB;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
@@ -15,6 +15,7 @@ using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows;
 
@@ -57,9 +58,11 @@ internal class MainWindow : Window {
         _plugin.WindowSystem.AddWindow(_statusMessageWindow);
     }
 
-    internal void Refresh() {
+    internal async Task Refresh() {
         try {
-            _refreshLock.WaitAsync();
+            Plugin.Log.Verbose("Refreshing main window start");
+            await _refreshLock.WaitAsync();
+            Plugin.Log.Debug("Refreshing main window");
             _currentMapCount = 0;
             //_recentMapCount = 0;
             _currentPortalCount = 0;
@@ -97,6 +100,7 @@ internal class MainWindow : Window {
             _zoneCountWindow.Refresh();
         } finally {
             _refreshLock.Release();
+            Plugin.Log.Verbose("Refreshing main window end");
         }
     }
 
@@ -143,8 +147,9 @@ internal class MainWindow : Window {
 
         if(ImGui.Button("Clear All")) {
             if(!_plugin.Configuration.RequireDoubleClickOnClearAll) {
-                _plugin.DataQueue.QueueDataOperation(() => {
-                    _plugin.MapManager.ClearAllMaps();
+                _plugin.DataQueue.QueueDataOperation(async () => {
+                    await _plugin.MapManager.ClearAllMaps();
+                    await _plugin.Refresh();
                 });
             }
         }
@@ -152,8 +157,9 @@ internal class MainWindow : Window {
             //check for double clicks
             if(ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)) {
                 if(_plugin.Configuration.RequireDoubleClickOnClearAll) {
-                    _plugin.DataQueue.QueueDataOperation(() => {
-                        _plugin.MapManager.ClearAllMaps();
+                    _plugin.DataQueue.QueueDataOperation(async () => {
+                        await _plugin.MapManager.ClearAllMaps();
+                        await _plugin.Refresh();
                     });
                 }
             }
@@ -230,7 +236,7 @@ internal class MainWindow : Window {
         } catch {
             //suppress all exceptions while a refresh is in progress
             if(refreshLockAcquired) {
-                _plugin.Log.Debug("draw error on refresh lock acquired.");
+                Plugin.Log.Debug("draw error on refresh lock acquired.");
                 throw;
             }
         } finally {
@@ -280,7 +286,7 @@ internal class MainWindow : Window {
                                     message = message.Replace("<name>", playerMaps.Key.Name);
                                     message = message.Replace("<fullname>", playerMaps.Key.Key);
                                     message = message.Replace("<firstname>", playerMaps.Key.FirstName);
-                                    _plugin.MapManager.AnnounceBlockUntil = DateTime.Now + TimeSpan.FromSeconds(1);
+                                    _plugin.MapManager.AnnounceBlockUntil = DateTime.UtcNow + TimeSpan.FromSeconds(1);
 #if DEBUG
                                     if(_plugin.GameStateManager.CurrentPartyList.Count <= 1) {
                                         _plugin.Functions.SendChatMessage($"/say {message}");
@@ -288,25 +294,30 @@ internal class MainWindow : Window {
 #endif
                                     _plugin.Functions.SendChatMessage($"/p {message}");
                                 } catch(Exception ex) {
-                                    _plugin.Log.Error(ex, "Unable to send chat message");
+                                    Plugin.Log.Error(ex, "Unable to send chat message");
                                 }
                             }
                         } else if(ImGui.MenuItem($"Add map manually##{playerMaps.Key.GetHashCode()}--NameAddMap")) {
-                            _plugin.DataQueue.QueueDataOperation(() => _plugin.MapManager.AddMap(playerMaps.Key, null, "Manually-added map", true));
+                            _plugin.DataQueue.QueueDataOperation(async () => {
+                                await _plugin.MapManager.AddMap(playerMaps.Key, null, "Manually-added map", true);
+                                await _plugin.Refresh();
+                            });
                         } else if(ImGui.MenuItem($"Restore last map link##{playerMaps.Key.GetHashCode()}--RestoreMapLink")) {
-                            _plugin.DataQueue.QueueDataOperation(() => {
+                            _plugin.DataQueue.QueueDataOperation(async () => {
                                 //I should make this value-type
                                 var prevLink = playerMaps.Key.PreviousMapLink;
                                 if(prevLink != null) {
                                     var prevLinkNew = new MPAMapLink(playerMaps.Key.PreviousMapLink!.TerritoryTypeId, playerMaps.Key.PreviousMapLink.MapId, playerMaps.Key.PreviousMapLink.RawX, playerMaps.Key.PreviousMapLink.RawY);
                                     playerMaps.Key.SetMapLink(prevLinkNew);
-                                    _plugin.StorageManager.UpdatePlayer(playerMaps.Key);
+                                    await _plugin.StorageManager.UpdatePlayer(playerMaps.Key);
+                                    await _plugin.Refresh();
                                 }
                             });
                         } else if(ImGui.MenuItem($"Clear map link##{playerMaps.Key.GetHashCode()}--ClearMapLink")) {
-                            _plugin.DataQueue.QueueDataOperation(() => {
+                            _plugin.DataQueue.QueueDataOperation(async () => {
                                 playerMaps.Key.SetMapLink(null);
-                                _plugin.StorageManager.UpdatePlayer(playerMaps.Key);
+                                await _plugin.StorageManager.UpdatePlayer(playerMaps.Key);
+                                await _plugin.Refresh();
                             });
                         }
                     }
@@ -352,10 +363,17 @@ internal class MainWindow : Window {
                     using(var popup = ImRaii.ContextPopupItem($"##{playerMaps.Key.GetHashCode()}--ExtraMapsContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
                         if(popup) {
                             if(ImGui.MenuItem($"Archive Last##{playerMaps.Key.GetHashCode()}--ExtraMapsArchive")) {
-                                _plugin.MapManager.ArchiveMaps([lastMap]);
+                                _plugin.DataQueue.QueueDataOperation(async () => {
+                                    await _plugin.MapManager.ArchiveMaps([lastMap]);
+                                    await _plugin.Refresh();
+                                });
+
                             }
                             if(ImGui.MenuItem($"Delete Last##{playerMaps.Key.GetHashCode()}--ExtraMapsDelete")) {
-                                _plugin.MapManager.DeleteMaps([lastMap]);
+                                _plugin.DataQueue.QueueDataOperation(async () => {
+                                    await _plugin.MapManager.DeleteMaps([lastMap]);
+                                    await _plugin.Refresh();
+                                });
                             }
                         }
                     }
@@ -396,10 +414,16 @@ internal class MainWindow : Window {
                 using(var popup = ImRaii.ContextPopupItem($"##UnknownExtraMapsContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
                     if(popup) {
                         if(ImGui.MenuItem($"Archive Last##UnknownExtraMapsArchive")) {
-                            _plugin.MapManager.ArchiveMaps([_unknownOwnerMaps.Last()]);
+                            _plugin.DataQueue.QueueDataOperation(async () => {
+                                await _plugin.MapManager.ArchiveMaps([_unknownOwnerMaps.Last()]);
+                                await _plugin.Refresh();
+                            });
                         }
                         if(ImGui.MenuItem($"Delete Last##UnknownExtraMapsDelete")) {
-                            _plugin.MapManager.DeleteMaps([_unknownOwnerMaps.Last()]);
+                            _plugin.DataQueue.QueueDataOperation(async () => {
+                                await _plugin.MapManager.DeleteMaps([_unknownOwnerMaps.Last()]);
+                                await _plugin.Refresh();
+                            });
                         }
                     }
                 }
@@ -423,19 +447,23 @@ internal class MainWindow : Window {
         using(var popup = ImRaii.ContextPopupItem($"##{map.GetHashCode()}--MapContextMenu", ImGuiPopupFlags.MouseButtonRight)) {
             if(popup) {
                 if(ImGui.MenuItem($"Archive##{map.GetHashCode()}--ArchiveMap")) {
-                    _plugin.DataQueue.QueueDataOperation(() => {
-                        _plugin.MapManager.ArchiveMaps([map]);
+                    _plugin.DataQueue.QueueDataOperation(async () => {
+                        await _plugin.MapManager.ArchiveMaps([map]);
+                        await _plugin.Refresh();
                     });
                 }
                 if(ImGui.MenuItem($"Delete##{map.GetHashCode()}--DeleteMap")) {
-                    _plugin.MapManager.DeleteMaps([map]);
+                    _plugin.DataQueue.QueueDataOperation(async () => {
+                        await _plugin.MapManager.DeleteMaps([map]);
+                        await _plugin.Refresh();
+                    });
                 }
             }
         }
     }
 
     private void MapTooltip(MPAMap map) {
-        string tooltip = map.Time.ToString() + "\n";
+        string tooltip = map.Time.ToLocalTime().ToString() + "\n";
         if(!map.Name.IsNullOrEmpty()) {
             tooltip += map.Name + "\n";
         }
@@ -459,7 +487,7 @@ internal class MainWindow : Window {
             byte[] data = new byte[12];
             Marshal.Copy((nint)ImGui.GetDragDropPayload().Data, data, 0, 12);
             if(data.SequenceEqual(map.Id.ToByteArray())) {
-                //_plugin.Log.Debug($"{currentMap.Id} is being dragged!");
+                //Plugin.Log.Debug($"{currentMap.Id} is being dragged!");
                 //using var style = ImRaii.PushColor(ImGuiCol.TableRowBg, ImGuiColors.DalamudViolet);
                 ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(ImGuiColors.DalamudYellow - new Vector4(0, 0, 0, 0.5f)));
             }
@@ -474,19 +502,21 @@ internal class MainWindow : Window {
         return drag.Success;
     }
 
-    private unsafe bool MapDragDropTarget(MPAMember player) {
+    private bool MapDragDropTarget(MPAMember player) {
         using var drag = ImRaii.DragDropTarget();
         if(drag) {
             ImGuiPayloadPtr acceptPayload = ImGui.AcceptDragDropPayload("map");
             if(!acceptPayload.IsNull) {
                 byte[] data = new byte[12];
-                Marshal.Copy((nint)acceptPayload.Data, data, 0, 12);
-
-                _plugin.Log.Debug($"Assigning map to {player.Key}");
-                _plugin.DataQueue.QueueDataOperation(() => {
+                unsafe {
+                    Marshal.Copy((nint)acceptPayload.Data, data, 0, 12);
+                }
+                Plugin.Log.Debug($"Assigning map to {player.Key}");
+                _plugin.DataQueue.QueueDataOperation(async () => {
                     var map = _plugin.StorageManager.Maps.Query().ToList().Where(x => x.Id.ToByteArray().SequenceEqual(data)).FirstOrDefault();
                     if(map != null) {
-                        _plugin.MapManager.ReassignMap(map, player);
+                        await _plugin.MapManager.ReassignMap(map, player);
+                        await _plugin.Refresh();
                     }
                 });
             }

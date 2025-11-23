@@ -1,5 +1,6 @@
 ﻿#pragma warning disable
 #if DEBUG
+using Dalamud.Bindings.ImGui;
 using Dalamud.Game;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
@@ -10,9 +11,9 @@ using Dalamud.Logging;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using Dalamud.Bindings.ImGui;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
+using MapPartyAssist.Services;
 using MapPartyAssist.Types;
 using MapPartyAssist.Types.REST.Universalis;
 using Newtonsoft.Json;
@@ -23,7 +24,6 @@ using System.Numerics;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using MapPartyAssist.Services;
 
 namespace MapPartyAssist.Windows {
     //for testing purposes only
@@ -82,13 +82,13 @@ namespace MapPartyAssist.Windows {
                 if(ImGui.BeginTabItem("Misc.")) {
                     if(ImGui.Button("Show all Duties")) {
                         foreach(var duty in _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()) {
-                            _plugin.Log.Debug($"id: {duty.RowId} name: {duty.Name}");
+                            Plugin.Log.Debug($"id: {duty.RowId} name: {duty.Name}");
                         }
                     }
 
                     if(ImGui.Button("Show all Zones")) {
                         foreach(var zone in _plugin.DataManager.GetExcelSheet<TerritoryType>()) {
-                            _plugin.Log.Debug($"id: {zone.RowId} name: {zone.PlaceName.Value.Name}");
+                            Plugin.Log.Debug($"id: {zone.RowId} name: {zone.PlaceName.Value.Name}");
                         }
                     }
 
@@ -96,7 +96,7 @@ namespace MapPartyAssist.Windows {
                     //    var row = _plugin.DataManager.GetExcelSheet<Addon>();
                     //    var x = _plugin.DataManager.GetExcelSheet<TreasureSpot>();
                     //    foreach(var spot in _plugin.DataManager.GetExcelSheet<TreasureSpot>()) {
-                    //        _plugin.Log.Debug($"id: {spot.RowId}.{spot.SubrowId} zone: {spot.Location.Value.Territory.Value.PlaceName.Value.Name} x: {spot.Location.Value.X} y: {spot.Location.Value.Y} z: {spot.Location.Value.Z}");
+                    //        Plugin.Log.Debug($"id: {spot.RowId}.{spot.SubrowId} zone: {spot.Location.Value.Territory.Value.PlaceName.Value.Name} x: {spot.Location.Value.X} y: {spot.Location.Value.Y} z: {spot.Location.Value.Z}");
                     //    }
                     //}
 
@@ -118,13 +118,13 @@ namespace MapPartyAssist.Windows {
 
                     if(ImGui.Button("Drop Price Table")) {
                         var prices = _plugin.StorageManager.GetPrices().DeleteAll();
-                        _plugin.Log.Debug($"Dropped {prices} records");
+                        Plugin.Log.Debug($"Dropped {prices} records");
                     }
 
                     if(ImGui.Button("Price Table")) {
                         var prices = _plugin.StorageManager.GetPrices().Query().ToList();
                         foreach(var price in prices) {
-                            _plugin.Log.Debug(String.Format("itemID: {0,-8} NQ: {1,-12} HQ: {4,-12} region: {3,-15} lastChecked: {2,-25}", price.ItemId, price.NQPrice, price.LastChecked, price.Region, price.HQPrice));
+                            Plugin.Log.Debug(String.Format("itemID: {0,-8} NQ: {1,-12} HQ: {4,-12} region: {3,-15} lastChecked: {2,-25}", price.ItemId, price.NQPrice, price.LastChecked, price.Region, price.HQPrice));
                         }
                     }
 
@@ -217,34 +217,34 @@ namespace MapPartyAssist.Windows {
 
                     if(ImGui.Button("Get Player Current Position")) {
                         Vector2 coords = WorldPosToMapCoords(_plugin.ClientState.LocalPlayer.Position);
-                        _plugin.Log.Debug($"X: {_plugin.ClientState.LocalPlayer.Position.X} Y: {_plugin.ClientState.LocalPlayer.Position.Y}");
-                        _plugin.Log.Debug($"coordsX: {coords.X} coordsY: {coords.Y}");
+                        Plugin.Log.Debug($"X: {_plugin.ClientState.LocalPlayer.Position.X} Y: {_plugin.ClientState.LocalPlayer.Position.Y}");
+                        Plugin.Log.Debug($"coordsX: {coords.X} coordsY: {coords.Y}");
                         //Plugin.ClientState.LocalPlayer.Position.
                     }
 
                     if(ImGui.Button("Get Map Position")) {
                         var map = _plugin.GameStateManager.CurrentPartyList.ElementAt(0).Value.MapLink;
-                        _plugin.Log.Debug($"XCoord: {map.GetMapLinkPayload().XCoord}");
-                        _plugin.Log.Debug($"YCoord: {map.GetMapLinkPayload().YCoord}");
-                        _plugin.Log.Debug($"RawX: {map.RawX}");
-                        _plugin.Log.Debug($"RawY: {map.RawY}");
-                        //_plugin.Log.Debug($"X: {Plugin.ClientState.LocalPlayer.Position.X} Y: {Plugin.ClientState.LocalPlayer.Position.Y}");
+                        Plugin.Log.Debug($"XCoord: {map.GetMapLinkPayload().XCoord}");
+                        Plugin.Log.Debug($"YCoord: {map.GetMapLinkPayload().YCoord}");
+                        Plugin.Log.Debug($"RawX: {map.RawX}");
+                        Plugin.Log.Debug($"RawY: {map.RawY}");
+                        //Plugin.Log.Debug($"X: {Plugin.ClientState.LocalPlayer.Position.X} Y: {Plugin.ClientState.LocalPlayer.Position.Y}");
                     }
 
                     if(ImGui.Button("Distance to Map Link")) {
                         var distance = _plugin.MapManager.GetDistanceToMapLink(_plugin.GameStateManager.CurrentPartyList.ElementAt(0).Value.MapLink);
-                        _plugin.Log.Debug($"Distance: {distance}");
+                        Plugin.Log.Debug($"Distance: {distance}");
                     }
 
                     if(ImGui.Button("Check closest link player")) {
-                        _plugin.Log.Debug($"{_plugin.MapManager.GetPlayerWithClosestMapLink(_plugin.GameStateManager.CurrentPartyList.Values.ToList()).Key} has the closest map link");
+                        Plugin.Log.Debug($"{_plugin.MapManager.GetPlayerWithClosestMapLink(_plugin.GameStateManager.CurrentPartyList.Values.ToList()).Key} has the closest map link");
                     }
 
                     if(ImGui.Button("Last Map loot")) {
                         var lastMap = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().Last();
                         if(lastMap != null && lastMap.LootResults != null) {
                             foreach(var lr in lastMap.LootResults) {
-                                _plugin.Log.Debug($"{lr.Quantity} {(lr.IsHQ ? "HQ" : "NQ")} {lr.ItemId} {lr.Recipient}");
+                                Plugin.Log.Debug($"{lr.Quantity} {(lr.IsHQ ? "HQ" : "NQ")} {lr.ItemId} {lr.Recipient}");
                             }
                         }
                     }
@@ -252,15 +252,15 @@ namespace MapPartyAssist.Windows {
 
                     //if(ImGui.Button("Check map and member nullability")) {
                     //    //var map = Plugin.StorageManager.GetMaps().Query().First();
-                    //    //_plugin.Log.Debug($"Checking validity of {map.Id}");
-                    //    //_plugin.Log.Debug($"Is valid? {map.IsValid()}");
+                    //    //Plugin.Log.Debug($"Checking validity of {map.Id}");
+                    //    //Plugin.Log.Debug($"Is valid? {map.IsValid()}");
 
                     //    //var dr = Plugin.StorageManager.GetDutyResults().Query().ToList().Last();
 
                     //    var dr = _plugin.StorageManager.GetDutyResults().Query().ToList();
                     //    foreach(var x in dr) {
-                    //        _plugin.Log.Debug($"Checking validity of {x.Id}....valid? {_plugin.StorageManager.ValidateDataType(x)}");
-                    //        //_plugin.Log.Debug($"Is valid? {Plugin.StorageManager.ValidateDataType(dr)}");
+                    //        Plugin.Log.Debug($"Checking validity of {x.Id}....valid? {_plugin.StorageManager.ValidateDataType(x)}");
+                    //        //Plugin.Log.Debug($"Is valid? {Plugin.StorageManager.ValidateDataType(dr)}");
                     //    }
                     //}
 
@@ -277,12 +277,12 @@ namespace MapPartyAssist.Windows {
                     if(ImGui.Button("check map version")) {
 
                         var map = _plugin.StorageManager.GetMaps().Query().Where(m => m.DutyName.Equals("the hidden canals of uznair", StringComparison.OrdinalIgnoreCase)).OrderByDescending(m => m.Time).FirstOrDefault();
-                        _plugin.Log.Debug($"map id: {map.Id.ToString()}");
+                        Plugin.Log.Debug($"map id: {map.Id.ToString()}");
                         _plugin.StorageManager.UpdateMap(map);
                     }
 
                     if(ImGui.Button("get circle regex")) {
-                        _plugin.Log.Debug($"{_plugin.DutyManager.CurrentDuty.CircleShiftsRegex[_plugin.ClientState.ClientLanguage].ToString()}");
+                        Plugin.Log.Debug($"{_plugin.DutyManager.CurrentDuty.CircleShiftsRegex[_plugin.ClientState.ClientLanguage].ToString()}");
                     }
 
                     if(ImGui.Button("test slots final summon")) {
@@ -293,16 +293,16 @@ namespace MapPartyAssist.Windows {
                             Owner = "Sarah Montcroix Siren",
                         };
 
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "The hypnoslot machine envisions a lesser notion! A hexapod appears!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "All enemies have been defeated!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "The hypnoslot machine envisions a greater fancy! A hexapod appears!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "All enemies have been defeated!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "The hypnoslot machine envisions an elder imagining! A hexapod appears!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "All enemies have been defeated!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "Grab 100 shining sacks in 90 seconds!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "You collected 100 shining sacks and receive a gold treasure coffer as your reward!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "The hypnoslot machine envisions its final fantasy! A hexapod appears!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "All enemies have been defeated!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "The hypnoslot machine envisions a lesser notion! A hexapod appears!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "All enemies have been defeated!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "The hypnoslot machine envisions a greater fancy! A hexapod appears!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "All enemies have been defeated!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "The hypnoslot machine envisions an elder imagining! A hexapod appears!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "All enemies have been defeated!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "Grab 100 shining sacks in 90 seconds!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "You collected 100 shining sacks and receive a gold treasure coffer as your reward!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "The hypnoslot machine envisions its final fantasy! A hexapod appears!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "All enemies have been defeated!"));
                         dutyResults.IsComplete = true;
                         _plugin.StorageManager.AddDutyResults(dutyResults);
                     }
@@ -310,7 +310,7 @@ namespace MapPartyAssist.Windows {
                     if(ImGui.Button("Get Wipes")) {
                         var maps = _plugin.StorageManager.GetDutyResults().Query().Where(x => x.DutyId == 276).ToList().Where(x => x.CheckpointResults.Count % 2 == 0);
                         foreach(var map in maps) {
-                            _plugin.Log.Debug(map.Time.ToString());
+                            Plugin.Log.Debug(map.Time.ToString());
                         }
                     }
 
@@ -381,7 +381,7 @@ namespace MapPartyAssist.Windows {
 
                     ImGui.Separator();
                     //if(ImGui.Button("test")) {
-                    //    _plugin.Log.Debug($"{typeof(Plugin).GetMethod(_toTranslateText) != null}");
+                    //    Plugin.Log.Debug($"{typeof(Plugin).GetMethod(_toTranslateText) != null}");
                     //}
                     ImGui.EndTabItem();
                 }
@@ -428,7 +428,7 @@ namespace MapPartyAssist.Windows {
                                     //_plugin.PriceHistory.QueryUniversalisHistory(intIDs.ToArray(), Region.NorthAmerica);
                                     ////var price = _plugin.PriceHistory.CheckPrice(intID, false);
                                     ////if(price != null) {
-                                    ////    _plugin.Log.Debug($"itemID: {id} price: {price}");
+                                    ////    Plugin.Log.Debug($"itemID: {id} price: {price}");
                                     ////}
                                 }
                             }
@@ -440,14 +440,14 @@ namespace MapPartyAssist.Windows {
                         string sale = "{ \"hq\": true, \"pricePerUnit\": 800,\"quantity\": 2,\"buyerName\": \"Jackie Caravella\",\"onMannequin\": false,\"timestamp\": 1704498382,\"worldName\": \"Seraph\",\"worldID\": 405}";
                         SaleEntry s = JsonConvert.DeserializeObject<SaleEntry>(sale);
 
-                        _plugin.Log.Debug($"price per unit: {s.PricePerUnit}");
+                        Plugin.Log.Debug($"price per unit: {s.PricePerUnit}");
                     }
 
                     if(ImGui.Button("Test JSON: Item History")) {
                         string history = "{\r\n      \"itemID\": 19981,\r\n      \"lastUploadTime\": 1704506463055,\r\n      \"entries\": [\r\n        {\r\n          \"hq\": true,\r\n          \"pricePerUnit\": 274,\r\n          \"quantity\": 1,\r\n          \"buyerName\": \"Johnnie Foreshin\",\r\n          \"onMannequin\": false,\r\n          \"timestamp\": 1704495551,\r\n          \"worldName\": \"Excalibur\",\r\n          \"worldID\": 93\r\n        },\r\n        {\r\n          \"hq\": false,\r\n          \"pricePerUnit\": 391,\r\n          \"quantity\": 1,\r\n          \"buyerName\": \"Rai Borel\",\r\n          \"onMannequin\": false,\r\n          \"timestamp\": 1704494227,\r\n          \"worldName\": \"Cactuar\",\r\n          \"worldID\": 79\r\n        },\r\n        {\r\n          \"hq\": true,\r\n          \"pricePerUnit\": 281,\r\n          \"quantity\": 27,\r\n          \"buyerName\": \"Bazelle Dromeda\",\r\n          \"onMannequin\": false,\r\n          \"timestamp\": 1704485002,\r\n          \"worldName\": \"Famfrit\",\r\n          \"worldID\": 35\r\n        }\r\n      ],\r\n      \"regionName\": \"North-America\",\r\n      \"stackSizeHistogram\": { \"1\": 11, \"2\": 3, \"3\": 2, \"4\": 1, \"27\": 1, \"40\": 1, \"53\": 1 },\r\n      \"stackSizeHistogramNQ\": { \"1\": 7, \"2\": 1, \"3\": 2, \"4\": 1, \"40\": 1, \"53\": 1 },\r\n      \"stackSizeHistogramHQ\": { \"1\": 4, \"2\": 2, \"27\": 1 },\r\n      \"regularSaleVelocity\": 21,\r\n      \"nqSaleVelocity\": 16,\r\n      \"hqSaleVelocity\": 5\r\n}";
                         ItemHistory s = JsonConvert.DeserializeObject<ItemHistory>(history);
 
-                        _plugin.Log.Debug($"2nd world id: {s.Entries[1].WorldID}");
+                        Plugin.Log.Debug($"2nd world id: {s.Entries[1].WorldID}");
                     }
 
                     ImGui.EndTabItem();
@@ -506,15 +506,15 @@ namespace MapPartyAssist.Windows {
         private void ShowMapsTable() {
             var maps = _plugin.StorageManager.GetMaps().Query().ToList();
             foreach(var map in maps) {
-                //_plugin.Log.Debug($"owner:{map.Owner} name: {map.Name} date: {map.Time} archived: {map.IsArchived} deleted: {map.IsDeleted}");
-                _plugin.Log.Debug(String.Format("Owner: {0,-35} Name: {1,-25} Time: {2,-23} IsPortal: {3,-5} IsArchived: {4,-5} IsDeleted: {5,-5}", map.Owner, map.Name, map.Time, map.IsPortal, map.IsArchived, map.IsDeleted));
+                //Plugin.Log.Debug($"owner:{map.Owner} name: {map.Name} date: {map.Time} archived: {map.IsArchived} deleted: {map.IsDeleted}");
+                Plugin.Log.Debug(String.Format("Owner: {0,-35} Name: {1,-25} Time: {2,-23} IsPortal: {3,-5} IsArchived: {4,-5} IsDeleted: {5,-5}", map.Owner, map.Name, map.Time, map.IsPortal, map.IsArchived, map.IsDeleted));
             }
         }
 
         private void ShowPlayerTable() {
             var players = _plugin.StorageManager.GetPlayers().Query().ToList();
             foreach(var player in players) {
-                _plugin.Log.Debug(String.Format("{0,-35} isSelf: {1,-8} lastJoined: {2,-10}", player.Key, player.IsSelf, player.LastJoined));
+                Plugin.Log.Debug(String.Format("{0,-35} isSelf: {1,-8} lastJoined: {2,-10}", player.Key, player.IsSelf, player.LastJoined));
             }
         }
 
@@ -528,14 +528,14 @@ namespace MapPartyAssist.Windows {
         private void ShowImportTable() {
             var imports = _plugin.StorageManager.GetDutyResultsImports().Query().ToList();
             foreach(var import in imports) {
-                _plugin.Log.Debug(String.Format("Time: {0,-23} DutyId: {1,-4} Runs: {2,-5} Clears: {3,-5} HasGil: {4, -5} HasCheckpoints: {5, -5} HasSequence: {6, -5} HasSummons: {7, -5}", import.Time, import.DutyId, import.TotalRuns, import.TotalClears, import.TotalGil != null, import.CheckpointTotals != null, import.ClearSequence != null, import.SummonTotals != null));
+                Plugin.Log.Debug(String.Format("Time: {0,-23} DutyId: {1,-4} Runs: {2,-5} Clears: {3,-5} HasGil: {4, -5} HasCheckpoints: {5, -5} HasSequence: {6, -5} HasSummons: {7, -5}", import.Time, import.DutyId, import.TotalRuns, import.TotalClears, import.TotalGil != null, import.CheckpointTotals != null, import.ClearSequence != null, import.SummonTotals != null));
             }
         }
 
         private void PrintDutyResults(DutyResults dr) {
-            _plugin.Log.Debug(String.Format("Time: {0,-23} Owner: {5,-35} Duty: {1,-40} CheckpointCount: {2,-2} isComplete: {3,-5} isPickup: {4, -5} totalGil: {6,-10}", dr.Time, dr.DutyName, dr.CheckpointResults.Count, dr.IsComplete, dr.IsPickup, dr.Owner, dr.TotalGil));
+            Plugin.Log.Debug(String.Format("Time: {0,-23} Owner: {5,-35} Duty: {1,-40} CheckpointCount: {2,-2} isComplete: {3,-5} isPickup: {4, -5} totalGil: {6,-10}", dr.Time, dr.DutyName, dr.CheckpointResults.Count, dr.IsComplete, dr.IsPickup, dr.Owner, dr.TotalGil));
             foreach(var checkpointResults in dr.CheckpointResults) {
-                _plugin.Log.Debug(String.Format("Name: {0,-20} isReached: {1,-5} isSaved: {2,-5}, Monster: {3,-20}, Type: {4, -9}", checkpointResults.Checkpoint.Name, checkpointResults.IsReached, checkpointResults.IsSaved, checkpointResults.MonsterName, checkpointResults.SummonType));
+                Plugin.Log.Debug(String.Format("Name: {0,-20} isReached: {1,-5} isSaved: {2,-5}, Monster: {3,-20}, Type: {4, -9}", checkpointResults.Checkpoint.Name, checkpointResults.IsReached, checkpointResults.IsSaved, checkpointResults.MonsterName, checkpointResults.SummonType));
             }
         }
 
@@ -545,7 +545,7 @@ namespace MapPartyAssist.Windows {
 
             bool sameMap = map.Equals(storageMap);
 
-            _plugin.Log.Debug($"{sameMap}");
+            Plugin.Log.Debug($"{sameMap}");
         }
 
         private void TestMapContains() {
@@ -557,12 +557,12 @@ namespace MapPartyAssist.Windows {
 
             bool sameMap = maps.Contains(storageMap);
 
-            _plugin.Log.Debug($"{sameMap}");
+            Plugin.Log.Debug($"{sameMap}");
         }
 
         private void ShowLastDR() {
             var dutyResults = _plugin.StorageManager.GetDutyResults().Query().ToList().Last();
-            _plugin.Log.Debug($"{dutyResults.Map.IsArchived}");
+            Plugin.Log.Debug($"{dutyResults.Map.IsArchived}");
         }
 
         private void FixRecords() {
@@ -612,8 +612,8 @@ namespace MapPartyAssist.Windows {
 
             var x = message.ToString();
             Task.Delay(1000).ContinueWith(t => {
-                _plugin.Log.Debug($"unref message: {messageUnref.ToString()}");
-                _plugin.Log.Debug($"unref message string: {x}");
+                Plugin.Log.Debug($"unref message: {messageUnref.ToString()}");
+                Plugin.Log.Debug($"unref message string: {x}");
             });
         }
     }

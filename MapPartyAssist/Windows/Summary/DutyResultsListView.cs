@@ -1,8 +1,8 @@
-﻿using Dalamud.Interface;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
-using Dalamud.Bindings.ImGui;
 using LiteDB;
 using Lumina.Excel.Sheets;
 using MapPartyAssist.Helper;
@@ -145,17 +145,17 @@ namespace MapPartyAssist.Windows.Summary {
                         ImGui.PopFont();
                     }
                     if(ImGui.Button("Save")) {
-                        _plugin.DataQueue.QueueDataOperation(() => {
-                            _plugin.StorageManager.UpdateDutyResults(_dutyResultsPage.Where(dr => dr.IsEdited));
-                            //_plugin.Save();
+                        _plugin.DataQueue.QueueDataOperation(async () => {
+                            await _plugin.StorageManager.UpdateDutyResults(_dutyResultsPage.Where(dr => dr.IsEdited));
+                            await _plugin.Refresh();
                         });
                     }
 
                     ImGui.SameLine();
                     if(ImGui.Button("Cancel")) {
-                        _plugin.DataQueue.QueueDataOperation(() => {
+                        _plugin.DataQueue.QueueDataOperation(async () => {
                             _plugin.AllowEdit = false;
-                            _statsWindow.Refresh();
+                            await _statsWindow.Refresh();
                         });
                     }
                 }
@@ -186,7 +186,7 @@ namespace MapPartyAssist.Windows.Summary {
 
                             float targetWidth1 = 150f * ImGuiHelpers.GlobalScale;
                             float targetWidth2 = 215f * ImGuiHelpers.GlobalScale;
-                            var text1 = results.Time.ToString();
+                            var text1 = results.Time.ToLocalTime().ToString();
                             var text2 = _plugin.DutyManager.Duties[results.DutyId].GetDisplayName();
                             while(ImGui.CalcTextSize(text1).X < targetWidth1) {
                                 text1 += " ";

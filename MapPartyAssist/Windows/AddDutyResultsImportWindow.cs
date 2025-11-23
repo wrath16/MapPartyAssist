@@ -1,10 +1,10 @@
-﻿using Dalamud.Interface;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
-using Dalamud.Bindings.ImGui;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using System;
@@ -71,12 +71,12 @@ namespace MapPartyAssist.Windows {
                         }
 
                         ImGui.TableNextColumn();
-                        var timeString = _model.Time.ToString();
+                        var timeString = _model.Time.ToLocalTime().ToString();
                         ImGui.SetNextItemWidth(_inputWidth);
                         if(ImGui.InputText($"##TimeInput", ref timeString, 30)) {
                             DateTime time;
                             if(DateTime.TryParse(timeString, out time)) {
-                                _model.Time = time;
+                                _model.Time = time.ToUniversalTime();
                             }
                         }
                         ImGui.TableNextColumn();
@@ -87,7 +87,7 @@ namespace MapPartyAssist.Windows {
                         //ImGui.TableNextColumn();
                         //ImGui.TableNextColumn();
                         //if(ImGui.Button("Now")) {
-                        //    _model.Time = DateTime.Now;
+                        //    _model.Time = DateTime.UtcNow;
                         //}
                         //ImGui.TableNextColumn();
 
@@ -256,7 +256,7 @@ namespace MapPartyAssist.Windows {
                             }
                         }
 
-                        if(_model.DutyId != 0 && 
+                        if(_model.DutyId != 0 &&
                             (_plugin.DutyManager.Duties[_model.DutyId].Structure == DutyStructure.Roulette || _plugin.DutyManager.Duties[_model.DutyId].Structure == DutyStructure.Slots)) {
                             bool hasSummons = _model.SummonTotals != null;
                             if(ImGui.Checkbox($"##HasSummons", ref hasSummons)) {
@@ -322,18 +322,23 @@ namespace MapPartyAssist.Windows {
             }
 
             if(ImGui.Button("Save")) {
-                _plugin.DataQueue.QueueDataOperation(() => {
-                    if(_plugin.ImportManager.ValidateImport(_model)) {
-                        //save
-                        _plugin.Log.Information("Valid Import");
-                        _plugin.ImportManager.AddorEditImport(_model, false);
-                        _statusMessage = "";
-                        IsOpen = false;
-                        //_plugin.Save();
-                    } else {
-                        _plugin.Log.Information("Invalid Import");
-                        _statusMessage = "Invalid data, check numbers.";
-                    }
+                _plugin.DataQueue.QueueDataOperation(async () => {
+                    Plugin.Log.Information("Saving Import");
+                    await _plugin.ImportManager.AddorEditImport(_model, false);
+                    _statusMessage = "";
+                    IsOpen = false;
+                    await _plugin.Refresh();
+                    //if(_plugin.ImportManager.ValidateImport(_model)) {
+                    //    //save
+                    //    Plugin.Log.Information("Valid Import");
+                    //    _plugin.ImportManager.AddorEditImport(_model, false);
+                    //    _statusMessage = "";
+                    //    IsOpen = false;
+                    //    //_plugin.Save();
+                    //} else {
+                    //    Plugin.Log.Information("Invalid Import");
+                    //    _statusMessage = "Invalid data, check numbers.";
+                    //}
                 });
             }
 

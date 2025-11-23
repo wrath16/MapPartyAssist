@@ -1,6 +1,6 @@
-﻿using Dalamud.Interface.Utility;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
-using Dalamud.Bindings.ImGui;
 using MapPartyAssist.Types;
 using System.Collections.Generic;
 using System.Linq;

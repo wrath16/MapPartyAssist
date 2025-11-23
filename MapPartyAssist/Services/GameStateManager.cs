@@ -29,11 +29,10 @@ namespace MapPartyAssist.Services {
             _plugin.ClientState.Logout += OnLogout;
             CurrentTerritory = _plugin.ClientState.TerritoryType;
 
-            _plugin.DataQueue.QueueDataOperation(() => {
+            _plugin.DataQueue.QueueDataOperation(async () => {
                 if(_plugin.ClientState.IsLoggedIn) {
-                    BuildPartyLists();
+                    await BuildPartyLists();
                 }
-                _plugin.Refresh();
             });
         }
 
@@ -57,11 +56,11 @@ namespace MapPartyAssist.Services {
             }
 
             if(!_plugin.Condition[ConditionFlag.BetweenAreas] && playerJob != null && currentPartySize != _lastPartySize) {
-                _plugin.Log.Debug($"Party size has changed: {_lastPartySize} to {currentPartySize}");
+                Plugin.Log.Debug($"Party size has changed: {_lastPartySize} to {currentPartySize}");
                 _lastPartySize = currentPartySize;
-                _plugin.DataQueue.QueueDataOperation(() => {
-                    BuildPartyLists();
-                    _plugin.Refresh();
+                _plugin.DataQueue.QueueDataOperation(async () => {
+                    await BuildPartyLists();
+                    await _plugin.Refresh();
                 });
             }
         }
@@ -74,20 +73,20 @@ namespace MapPartyAssist.Services {
 
         private void OnLogin() {
             Task.Delay(5000).ContinueWith(t => {
-                _plugin.DataQueue.QueueDataOperation(() => {
-                    _plugin.MapManager.CheckAndArchiveMaps();
+                _plugin.DataQueue.QueueDataOperation(async () => {
+                    await _plugin.MapManager.CheckAndArchiveMaps();
                     _plugin.PriceHistory.Initialize();
-                    BuildPartyLists();
-                    _plugin.Refresh();
+                    await BuildPartyLists();
+                    await _plugin.Refresh();
                 });
             });
         }
 
         private void OnLogout(int type, int code) {
-            _plugin.DataQueue.QueueDataOperation(() => {
+            _plugin.DataQueue.QueueDataOperation(async () => {
                 _plugin.PriceHistory.Shutdown();
                 CurrentPartyList = new();
-                _plugin.Refresh();
+                await _plugin.Refresh();
             });
         }
 
@@ -99,14 +98,14 @@ namespace MapPartyAssist.Services {
             return CurrentRegion ?? Region.Unknown;
         }
 
-        private void BuildPartyLists() {
-            BuildCurrentPartyList(_plugin.PartyList.ToArray());
+        private async Task BuildPartyLists() {
+            await BuildCurrentPartyList(_plugin.PartyList.ToArray());
             BuildRecentPartyList();
         }
 
         //builds current party list from scratch
-        private void BuildCurrentPartyList(IPartyMember[] partyMembers) {
-            _plugin.Log.Debug("Rebuilding current party list.");
+        private async Task BuildCurrentPartyList(IPartyMember[] partyMembers) {
+            Plugin.Log.Debug("Rebuilding current party list.");
             MPAMember currentPlayerKey = new MPAMember(GetCurrentPlayer());
             CurrentPartyList = new();
             var allPlayers = _plugin.StorageManager.GetPlayers();
@@ -117,11 +116,11 @@ namespace MapPartyAssist.Services {
                 if(currentPlayer == null) {
                     var newPlayer = new MPAMember(currentPlayerKey.Name, currentPlayerKey.HomeWorld, true);
                     CurrentPartyList.Add(currentPlayerKey.Key, newPlayer);
-                    _plugin.StorageManager.AddPlayer(newPlayer, false);
+                    await _plugin.StorageManager.AddPlayer(newPlayer);
                 } else {
-                    currentPlayer.LastJoined = DateTime.Now;
+                    currentPlayer.LastJoined = DateTime.UtcNow;
                     CurrentPartyList.Add(currentPlayerKey.Key, currentPlayer);
-                    _plugin.StorageManager.UpdatePlayer(currentPlayer, false);
+                    await _plugin.StorageManager.UpdatePlayer(currentPlayer);
                 }
             } else {
                 foreach(IPartyMember p in partyMembers) {
@@ -135,25 +134,25 @@ namespace MapPartyAssist.Services {
                     if(findPlayer == null) {
                         var newPlayer = new MPAMember(partyMemberName, partyMemberWorld, isCurrentPlayer);
                         CurrentPartyList.Add(key, newPlayer);
-                        _plugin.StorageManager.AddPlayer(newPlayer, false);
+                        await _plugin.StorageManager.AddPlayer(newPlayer);
                     } else {
                         //find existing player
-                        findPlayer.LastJoined = DateTime.Now;
+                        findPlayer.LastJoined = DateTime.UtcNow;
                         findPlayer.IsSelf = isCurrentPlayer;
                         CurrentPartyList.Add(key, findPlayer);
-                        _plugin.StorageManager.UpdatePlayer(findPlayer, false);
+                        await _plugin.StorageManager.UpdatePlayer(findPlayer);
                     }
                 }
             }
         }
 
         internal void BuildRecentPartyList() {
-            _plugin.Log.Debug("Rebuilding recent party list.");
+            Plugin.Log.Debug("Rebuilding recent party list.");
             RecentPartyList = new();
             var allPlayers = _plugin.StorageManager.GetPlayers().Query().ToList();
             var currentMaps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted).ToList();
             foreach(var player in allPlayers) {
-                TimeSpan timeSpan = DateTime.Now - player.LastJoined;
+                TimeSpan timeSpan = DateTime.UtcNow - player.LastJoined;
                 bool isRecent = timeSpan.TotalHours <= _plugin.Configuration.ArchiveThresholdHours;
                 bool hasMaps = currentMaps.Where(m => !m.Owner.IsNullOrEmpty() && m.Owner.Equals(player.Key)).Any();
                 bool notCurrent = !CurrentPartyList.ContainsKey(player.Key);
@@ -168,11 +167,11 @@ namespace MapPartyAssist.Services {
             foreach(var player in _plugin.GameStateManager.CurrentPartyList) {
                 //select first match
                 if(PlayerHelper.IsAliasMatch(player.Key, playerKey ?? "")) {
-                    _plugin.Log.Debug($"resolving {playerKey} to {player.Key}");
+                    Plugin.Log.Debug($"resolving {playerKey} to {player.Key}");
                     return player.Key;
                 }
             }
-            _plugin.Log.Warning($"Unable to match player alias: {playerKey}");
+            Plugin.Log.Warning($"Unable to match player alias: {playerKey}");
             return null;
         }
     }

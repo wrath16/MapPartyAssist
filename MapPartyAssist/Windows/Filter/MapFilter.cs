@@ -1,10 +1,11 @@
-﻿using Dalamud.Interface.Utility;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
-using Dalamud.Bindings.ImGui;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace MapPartyAssist.Windows.Filter {
     public class MapFilter : DataFilter {
@@ -17,7 +18,7 @@ namespace MapPartyAssist.Windows.Filter {
 
         public MapFilter() { }
 
-        internal MapFilter(Plugin plugin, Action action, MapFilter? filter = null) : base(plugin, action) {
+        internal MapFilter(Plugin plugin, Func<Task> action, MapFilter? filter = null) : base(plugin, action) {
             //AllSelected = true;
             FilterState = new() {
                 {TreasureMapCategory.ARealmReborn, true },
