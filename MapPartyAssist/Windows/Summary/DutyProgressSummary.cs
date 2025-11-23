@@ -453,7 +453,7 @@ namespace MapPartyAssist.Windows.Summary {
                                 }
                                 if(ImGui.IsItemHovered()) {
                                     ImGui.BeginTooltip();
-                                    ImGui.Text($"{dutyStat.ClearDuties[i].CompletionTime.ToString()}");
+                                    ImGui.Text($"{dutyStat.ClearDuties[i].CompletionTime.ToLocalTime().ToString()}");
                                     ImGui.Text($"{dutyStat.ClearDuties[i].Owner}");
                                     ImGui.EndTooltip();
                                 }

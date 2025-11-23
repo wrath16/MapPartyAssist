@@ -286,7 +286,7 @@ internal class MainWindow : Window {
                                     message = message.Replace("<name>", playerMaps.Key.Name);
                                     message = message.Replace("<fullname>", playerMaps.Key.Key);
                                     message = message.Replace("<firstname>", playerMaps.Key.FirstName);
-                                    _plugin.MapManager.AnnounceBlockUntil = DateTime.Now + TimeSpan.FromSeconds(1);
+                                    _plugin.MapManager.AnnounceBlockUntil = DateTime.UtcNow + TimeSpan.FromSeconds(1);
 #if DEBUG
                                     if(_plugin.GameStateManager.CurrentPartyList.Count <= 1) {
                                         _plugin.Functions.SendChatMessage($"/say {message}");
@@ -463,7 +463,7 @@ internal class MainWindow : Window {
     }
 
     private void MapTooltip(MPAMap map) {
-        string tooltip = map.Time.ToString() + "\n";
+        string tooltip = map.Time.ToLocalTime().ToString() + "\n";
         if(!map.Name.IsNullOrEmpty()) {
             tooltip += map.Name + "\n";
         }

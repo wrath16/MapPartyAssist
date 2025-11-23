@@ -71,12 +71,12 @@ namespace MapPartyAssist.Windows {
                         }
 
                         ImGui.TableNextColumn();
-                        var timeString = _model.Time.ToString();
+                        var timeString = _model.Time.ToLocalTime().ToString();
                         ImGui.SetNextItemWidth(_inputWidth);
                         if(ImGui.InputText($"##TimeInput", ref timeString, 30)) {
                             DateTime time;
                             if(DateTime.TryParse(timeString, out time)) {
-                                _model.Time = time;
+                                _model.Time = time.ToUniversalTime();
                             }
                         }
                         ImGui.TableNextColumn();
@@ -87,7 +87,7 @@ namespace MapPartyAssist.Windows {
                         //ImGui.TableNextColumn();
                         //ImGui.TableNextColumn();
                         //if(ImGui.Button("Now")) {
-                        //    _model.Time = DateTime.Now;
+                        //    _model.Time = DateTime.UtcNow;
                         //}
                         //ImGui.TableNextColumn();
 

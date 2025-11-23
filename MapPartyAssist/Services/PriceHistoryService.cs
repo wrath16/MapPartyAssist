@@ -207,7 +207,7 @@ namespace MapPartyAssist.Services {
 
             if(_priceCache.ContainsKey(itemKey)) {
                 if(IsInitialized) {
-                    if((DateTime.Now - _priceCacheUpdateTime[itemKey]).TotalHours > _staleDataHours && !_toCheck.Contains(itemKey.ItemId)) {
+                    if((DateTime.UtcNow - _priceCacheUpdateTime[itemKey]).TotalHours > _staleDataHours && !_toCheck.Contains(itemKey.ItemId)) {
                         Plugin.Log.Verbose($"Stale data! Adding {itemKey.ItemId} to price check queue.");
                         _toCheck.Add(itemKey.ItemId);
                     } else if(_priceCache[itemKey] == 0) {
@@ -227,7 +227,7 @@ namespace MapPartyAssist.Services {
 #if DEBUG
             Plugin.Log.Verbose($"checking price validity ...fail count: {_failCount} ...fail multiplier: {_failMultiplier}");
 #endif
-            if(_toCheck.Count > 0 && (DateTime.Now - _lastQuery).TotalMinutes > _queryThresholdMinutes * _failMultiplier && _plugin.ClientState.IsLoggedIn && _updateLock.Wait(0)) {
+            if(_toCheck.Count > 0 && (DateTime.UtcNow - _lastQuery).TotalMinutes > _queryThresholdMinutes * _failMultiplier && _plugin.ClientState.IsLoggedIn && _updateLock.Wait(0)) {
                 try {
                     Plugin.Log.Debug("Updating item prices from Universalis API.");
                     while(_toCheck.Count > 0) {
@@ -303,10 +303,10 @@ namespace MapPartyAssist.Services {
                             //averagePrice = normalTotal / normalCount;
                             if(_priceCache.ContainsKey(itemKey)) {
                                 _priceCache[itemKey] = normalMedian;
-                                _priceCacheUpdateTime[itemKey] = DateTime.Now;
+                                _priceCacheUpdateTime[itemKey] = DateTime.UtcNow;
                             } else {
                                 _priceCache.Add(itemKey, normalMedian);
-                                _priceCacheUpdateTime.Add(itemKey, DateTime.Now);
+                                _priceCacheUpdateTime.Add(itemKey, DateTime.UtcNow);
                             }
                             Plugin.Log.Verbose(string.Format("ID: {0,-8} HQ:{1,-5} Name: {2,-50} Median Price: {3,-9}", item.Key, itemKey.IsHQ, itemName, normalMedian));
                         }
@@ -319,10 +319,10 @@ namespace MapPartyAssist.Services {
                             //averagePrice = hqTotal / hqCount;
                             if(_priceCache.ContainsKey(itemKey)) {
                                 _priceCache[itemKey] = hqMedian;
-                                _priceCacheUpdateTime[itemKey] = DateTime.Now;
+                                _priceCacheUpdateTime[itemKey] = DateTime.UtcNow;
                             } else {
                                 _priceCache.Add(itemKey, hqMedian);
-                                _priceCacheUpdateTime.Add(itemKey, DateTime.Now);
+                                _priceCacheUpdateTime.Add(itemKey, DateTime.UtcNow);
                             }
                             Plugin.Log.Verbose(string.Format("ID: {0,-8} HQ:{1,-5} Name: {2,-50} Median Price: {3,-9}", item.Key, itemKey.IsHQ, itemName, hqMedian));
                         }
@@ -376,7 +376,7 @@ namespace MapPartyAssist.Services {
                 client.BaseAddress = new Uri(endpoint);
                 Plugin.Log.Debug($"Query: {endpoint}{searchParams}");
                 HttpResponseMessage response = await client.GetAsync(searchParams);
-                _lastQuery = DateTime.Now;
+                _lastQuery = DateTime.UtcNow;
 
                 if(!response.IsSuccessStatusCode) {
                     Plugin.Log.Error($"Failed to query Universalis API. {(int)response.StatusCode} {response.StatusCode}\n{response.ReasonPhrase}");

@@ -35,6 +35,10 @@ namespace MapPartyAssist.Services {
 
             //set mapper properties
             BsonMapper.Global.EmptyStringToNull = false;
+            BsonMapper.Global.RegisterType<DateTime>(
+                serialize: dt => new BsonValue(dt.ToUniversalTime()),
+                deserialize: v => v.AsDateTime.ToUniversalTime()
+            );
 
             //create indices
             var mapCollection = Database.GetCollection<MPAMap>(MapTable);

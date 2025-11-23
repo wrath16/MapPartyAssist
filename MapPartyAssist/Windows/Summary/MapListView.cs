@@ -170,7 +170,7 @@ namespace MapPartyAssist.Windows.Summary {
                             float targetWidth1 = 150f * ImGuiHelpers.GlobalScale;
                             float targetWidth2 = 200f * ImGuiHelpers.GlobalScale;
                             float targetWidth3 = 215f * ImGuiHelpers.GlobalScale;
-                            var text1 = map.Time.ToString();
+                            var text1 = map.Time.ToLocalTime().ToString();
                             var text2 = map.Zone;
                             _plugin.DutyManager.Duties.TryGetValue(map.DutyId ?? 0, out var duty);
                             var text3 = duty?.GetDisplayName() ?? map.DutyName ?? "";

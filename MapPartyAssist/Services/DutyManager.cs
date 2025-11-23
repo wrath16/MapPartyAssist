@@ -456,7 +456,7 @@ namespace MapPartyAssist.Services {
 
                 var lastMap = _plugin.MapManager.GetLastMap();
                 //check last map, 10 min fallback for linking to most recent map
-                if(lastMap != null && (DateTime.Now - lastMap.Time).TotalMinutes < 10) {
+                if(lastMap != null && (DateTime.UtcNow - lastMap.Time).TotalMinutes < 10) {
                     CurrentDutyResults.Map = lastMap;
                     CurrentDutyResults.Owner = lastMap.Owner;
                     lastMap.IsPortal = true;
@@ -480,7 +480,7 @@ namespace MapPartyAssist.Services {
             var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
             var lastDutyResults = _plugin.StorageManager.GetDutyResults().Query().OrderBy(dr => dr.Time).ToList().LastOrDefault();
             if(lastDutyResults != null) {
-                TimeSpan lastTimeDiff = DateTime.Now - lastDutyResults.Time;
+                TimeSpan lastTimeDiff = DateTime.UtcNow - lastDutyResults.Time;
                 //pickup if duty is valid, and matches the last duty which was not completed and not more than an hour has elapsed (fallback)
                 if(Duties.ContainsKey(dutyId) && Duties[dutyId].Checkpoints != null && lastDutyResults.DutyId == dutyId && !lastDutyResults.IsComplete && !_firstTerritoryChange && lastTimeDiff.TotalHours < 1) {
                     Plugin.Log.Information($"re-picking up last duty results id:{lastDutyResults.Id.ToString()}");
@@ -587,7 +587,7 @@ namespace MapPartyAssist.Services {
                     bool isHq = item is not null ? item.IsHQ : false;
                     var player = (PlayerPayload?)message.Payloads.FirstOrDefault(m => m is PlayerPayload);
                     string? playerKey = player is not null ? $"{player.PlayerName} {player.World.Value.Name}" : null;
-                    Message record = new(DateTime.Now, (int)type, messageText, itemId, isHq, playerKey);
+                    Message record = new(DateTime.UtcNow, (int)type, messageText, itemId, isHq, playerKey);
                     _plugin.DataQueue.QueueDataOperation(async () => {
                         if(IsDutyInProgress()) {
                             if(ProcessChatMessage(CurrentDutyResults!, record)) {
@@ -687,7 +687,7 @@ namespace MapPartyAssist.Services {
                 //check for failure
             } else if((message.Channel == 2233 || message.Channel == 2105) && duty.FailureCheckpoint!.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
                 results!.IsComplete = true;
-                results!.CompletionTime = DateTime.Now;
+                results!.CompletionTime = DateTime.UtcNow;
                 isChange = true;
             } else {
                 switch(duty.Structure) {
@@ -732,7 +732,7 @@ namespace MapPartyAssist.Services {
                     //if all checkpoints reached, set to duty complete
                     if(results.CheckpointResults.Where(cr => cr.IsReached).Count() == duty.Checkpoints!.Count) {
                         results.IsComplete = true;
-                        results.CompletionTime = DateTime.Now;
+                        results.CompletionTime = DateTime.UtcNow;
                     }
                     return true;
                 }
@@ -763,7 +763,7 @@ namespace MapPartyAssist.Services {
                     AddRouletteCheckpointResults(results, null);
                     if(results!.CheckpointResults.Where(cr => cr.IsReached).Count() == duty.Checkpoints!.Count) {
                         results.IsComplete = true;
-                        results.CompletionTime = DateTime.Now;
+                        results.CompletionTime = DateTime.UtcNow;
                     }
                     return true;
                 }
@@ -790,7 +790,7 @@ namespace MapPartyAssist.Services {
                     AddRouletteCheckpointResults(results, null);
                     if(results.CheckpointResults.Where(cr => cr.IsReached).Count() == duty.Checkpoints!.Count) {
                         results.IsComplete = true;
-                        results.CompletionTime = DateTime.Now;
+                        results.CompletionTime = DateTime.UtcNow;
                     }
                     return true;
                 }
@@ -825,7 +825,7 @@ namespace MapPartyAssist.Services {
                     AddRouletteCheckpointResults(results, null);
                     if(results.CheckpointResults.Count == duty.Checkpoints.Count) {
                         results.IsComplete = true;
-                        results.CompletionTime = DateTime.Now;
+                        results.CompletionTime = DateTime.UtcNow;
                     }
                     return true;
                 } else if(SlotsSpecialStartRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
@@ -864,7 +864,7 @@ namespace MapPartyAssist.Services {
             var matchingLootResults = results.GetMatchingLootResult(itemId, isHQ, quantity);
             if(matchingLootResults is null) {
                 LootResult lootResult = new() {
-                    Time = DateTime.Now,
+                    Time = DateTime.UtcNow,
                     ItemId = itemId,
                     IsHQ = isHQ,
                     Quantity = quantity,
@@ -885,7 +885,7 @@ namespace MapPartyAssist.Services {
                 Plugin.Log.Information($"Ending duty results id: {CurrentDutyResults!.Id}");
                 //CurrentDutyResults!.IsComplete = true;
                 //if(CurrentDutyResults.CompletionTime.Ticks == 0) {
-                //    CurrentDutyResults.CompletionTime = DateTime.Now;
+                //    CurrentDutyResults.CompletionTime = DateTime.UtcNow;
                 //}
                 //check for malformed/missing data
                 ValidateUpdateDutyResults(CurrentDutyResults);

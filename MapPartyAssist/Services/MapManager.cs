@@ -240,7 +240,7 @@ namespace MapPartyAssist.Services {
             var mapPayload = (MapLinkPayload?)message.Payloads.FirstOrDefault(p => p.Type == PayloadType.MapLink);
             MPAMapLink? mapLink = mapPayload is not null ? new(mapPayload) : null;
             _plugin.DataQueue.QueueDataOperation(async () => {
-                await ProcessChatMessage(type, messageText, playerKey, itemId, isHq, mapLink, DateTime.Now);
+                await ProcessChatMessage(type, messageText, playerKey, itemId, isHq, mapLink, DateTime.UtcNow);
             });
         }
 
@@ -335,7 +335,7 @@ namespace MapPartyAssist.Services {
                     ResetDigStatus();
                     //block portals from adding maps for a brief period to avoid double counting
                     //this can cause issues where someone opens a thief map immediately after, but whatever
-                    _portalBlockUntil = DateTime.Now.AddSeconds(_portalBlockSeconds);
+                    _portalBlockUntil = DateTime.UtcNow.AddSeconds(_portalBlockSeconds);
                 }
             } else if((int)type == 4139 || (int)type == 2091) {
                 if(SelfDigRegex[_plugin.ClientState.ClientLanguage].IsMatch(message)) {
@@ -472,7 +472,7 @@ namespace MapPartyAssist.Services {
 
         public async Task AddMap(MPAMember? player, string? zone = null, string? mapName = null, bool isManual = false, bool isPortal = false, bool isAmbiguous = false) {
             Plugin.Log.Information(string.Format("Adding new{0} map for {1}", isManual ? " manual" : "", player?.Key));
-            DateTime currentTime = DateTime.Now;
+            DateTime currentTime = DateTime.UtcNow;
 
             if(_plugin.IsLanguageSupported()) {
                 //have to do lookup on PlaceName sheet otherwise will not translate properly
@@ -575,7 +575,7 @@ namespace MapPartyAssist.Services {
 
         public async Task CheckAndArchiveMaps() {
             Plugin.Log.Information("Checking and archiving old maps...");
-            DateTime currentTime = DateTime.Now;
+            DateTime currentTime = DateTime.UtcNow;
             var storageMaps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived).ToList();
             foreach(var map in storageMaps) {
                 TimeSpan timeSpan = currentTime - map.Time;
@@ -724,7 +724,7 @@ namespace MapPartyAssist.Services {
             } else if(map.LootResults is null) {
                 throw new InvalidOperationException("Unable to add loot result to map!");
                 //10 minute fallback
-            } else if((DateTime.Now - map.Time).TotalMinutes > 10) {
+            } else if((DateTime.UtcNow - map.Time).TotalMinutes > 10) {
                 //throw new InvalidOperationException("");
                 Plugin.Log.Warning("Last map time exceeded loot threshold window.");
                 return;
@@ -733,7 +733,7 @@ namespace MapPartyAssist.Services {
             var matchingLootResults = map.GetMatchingLootResult(itemId, isHQ, quantity);
             if(matchingLootResults is null) {
                 LootResult lootResult = new() {
-                    Time = DateTime.Now,
+                    Time = DateTime.UtcNow,
                     ItemId = itemId,
                     IsHQ = isHQ,
                     Quantity = quantity,

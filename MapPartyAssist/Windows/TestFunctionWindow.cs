@@ -293,16 +293,16 @@ namespace MapPartyAssist.Windows {
                             Owner = "Sarah Montcroix Siren",
                         };
 
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "The hypnoslot machine envisions a lesser notion! A hexapod appears!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "All enemies have been defeated!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "The hypnoslot machine envisions a greater fancy! A hexapod appears!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "All enemies have been defeated!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "The hypnoslot machine envisions an elder imagining! A hexapod appears!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "All enemies have been defeated!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "Grab 100 shining sacks in 90 seconds!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "You collected 100 shining sacks and receive a gold treasure coffer as your reward!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "The hypnoslot machine envisions its final fantasy! A hexapod appears!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.Now, 2105, "All enemies have been defeated!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "The hypnoslot machine envisions a lesser notion! A hexapod appears!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "All enemies have been defeated!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "The hypnoslot machine envisions a greater fancy! A hexapod appears!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "All enemies have been defeated!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "The hypnoslot machine envisions an elder imagining! A hexapod appears!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "All enemies have been defeated!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "Grab 100 shining sacks in 90 seconds!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "You collected 100 shining sacks and receive a gold treasure coffer as your reward!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "The hypnoslot machine envisions its final fantasy! A hexapod appears!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "All enemies have been defeated!"));
                         dutyResults.IsComplete = true;
                         _plugin.StorageManager.AddDutyResults(dutyResults);
                     }

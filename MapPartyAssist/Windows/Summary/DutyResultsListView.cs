@@ -186,7 +186,7 @@ namespace MapPartyAssist.Windows.Summary {
 
                             float targetWidth1 = 150f * ImGuiHelpers.GlobalScale;
                             float targetWidth2 = 215f * ImGuiHelpers.GlobalScale;
-                            var text1 = results.Time.ToString();
+                            var text1 = results.Time.ToLocalTime().ToString();
                             var text2 = _plugin.DutyManager.Duties[results.DutyId].GetDisplayName();
                             while(ImGui.CalcTextSize(text1).X < targetWidth1) {
                                 text1 += " ";

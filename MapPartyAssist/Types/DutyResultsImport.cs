@@ -37,7 +37,7 @@ namespace MapPartyAssist.Types {
             CheckpointTotals = checkpointTotals;
             ClearSequence = clearSequence;
             RunsSinceLastClear = runsSinceLastClear;
-            CreationTime = DateTime.Now;
+            CreationTime = DateTime.UtcNow;
             Id = ObjectId.NewObjectId();
         }
 

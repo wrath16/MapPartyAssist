@@ -118,7 +118,7 @@ namespace MapPartyAssist.Services {
                     CurrentPartyList.Add(currentPlayerKey.Key, newPlayer);
                     await _plugin.StorageManager.AddPlayer(newPlayer);
                 } else {
-                    currentPlayer.LastJoined = DateTime.Now;
+                    currentPlayer.LastJoined = DateTime.UtcNow;
                     CurrentPartyList.Add(currentPlayerKey.Key, currentPlayer);
                     await _plugin.StorageManager.UpdatePlayer(currentPlayer);
                 }
@@ -137,7 +137,7 @@ namespace MapPartyAssist.Services {
                         await _plugin.StorageManager.AddPlayer(newPlayer);
                     } else {
                         //find existing player
-                        findPlayer.LastJoined = DateTime.Now;
+                        findPlayer.LastJoined = DateTime.UtcNow;
                         findPlayer.IsSelf = isCurrentPlayer;
                         CurrentPartyList.Add(key, findPlayer);
                         await _plugin.StorageManager.UpdatePlayer(findPlayer);
@@ -152,7 +152,7 @@ namespace MapPartyAssist.Services {
             var allPlayers = _plugin.StorageManager.GetPlayers().Query().ToList();
             var currentMaps = _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsArchived && !m.IsDeleted).ToList();
             foreach(var player in allPlayers) {
-                TimeSpan timeSpan = DateTime.Now - player.LastJoined;
+                TimeSpan timeSpan = DateTime.UtcNow - player.LastJoined;
                 bool isRecent = timeSpan.TotalHours <= _plugin.Configuration.ArchiveThresholdHours;
                 bool hasMaps = currentMaps.Where(m => !m.Owner.IsNullOrEmpty() && m.Owner.Equals(player.Key)).Any();
                 bool notCurrent = !CurrentPartyList.ContainsKey(player.Key);

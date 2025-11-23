@@ -41,7 +41,7 @@ namespace MapPartyAssist.Types {
         [BsonCtor]
         public DutyResults() {
             Id = ObjectId.NewObjectId();
-            Time = DateTime.Now;
+            Time = DateTime.UtcNow;
             DutyName = "";
             Owner = "";
             Players = new string[0];
@@ -50,7 +50,7 @@ namespace MapPartyAssist.Types {
         public DutyResults(int dutyId, string dutyName, Dictionary<string, MPAMember> players, string owner) {
             Players = players.Keys.ToArray();
             Owner = owner;
-            Time = DateTime.Now;
+            Time = DateTime.UtcNow;
             DutyId = dutyId;
             DutyName = dutyName.ToLower();
             Id = ObjectId.NewObjectId();
