@@ -66,7 +66,7 @@ namespace MapPartyAssist.Windows {
                 Plugin.Log.Debug("Refreshing stats window");
                 var dutyResults = _plugin.StorageManager.GetDutyResults().Query().Include(dr => dr.Map).OrderBy(dr => dr.Time).ToList();
                 var maps = _plugin.StorageManager.GetMaps().Query().OrderBy(m => m.Time).ToList();
-                var imports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted).OrderBy(i => i.Time).ToList();
+                var imports = _plugin.StorageManager.GetDutyResultsImports().Query().Where(i => !i.IsDeleted && i.DutyId != 0).OrderBy(i => i.Time).ToList();
 
                 //DateTime dt2 = DateTime.UtcNow;
                 //Plugin.Log.Debug($"from db: {(dt2 - dt).TotalMilliseconds}ms");

@@ -323,11 +323,13 @@ namespace MapPartyAssist.Windows {
 
             if(ImGui.Button("Save")) {
                 _plugin.DataQueue.QueueDataOperation(async () => {
-                    Plugin.Log.Information("Saving Import");
-                    await _plugin.ImportManager.AddorEditImport(_model, false);
-                    _statusMessage = "";
-                    IsOpen = false;
-                    await _plugin.Refresh();
+                    if(_plugin.DutyManager.Duties.ContainsKey(_model.DutyId)) {
+                        Plugin.Log.Information("Saving Import");
+                        await _plugin.ImportManager.AddorEditImport(_model, false);
+                        _statusMessage = "";
+                        IsOpen = false;
+                        await _plugin.Refresh();
+                    }
                     //if(_plugin.ImportManager.ValidateImport(_model)) {
                     //    //save
                     //    Plugin.Log.Information("Valid Import");

@@ -113,7 +113,9 @@ namespace MapPartyAssist.Windows {
         private void DrawImport(DutyResultsImport import) {
             ImGui.Text($"{import.Time.ToLocalTime().ToString()}");
             ImGui.TableNextColumn();
-            ImGui.Text($"{_plugin.DutyManager.Duties[import.DutyId].GetDisplayName()}");
+            if(import.DutyId != 0) {
+                ImGui.Text($"{_plugin.DutyManager.Duties[import.DutyId].GetDisplayName()}");
+            }
             ImGui.TableNextColumn();
             if(ImGui.Button($"Edit##{import.Id.ToString()}")) {
                 _addImportWindow.Open(import);
