@@ -1,5 +1,6 @@
 ﻿using Dalamud.Configuration;
 using Dalamud.Game;
+using Dalamud.Game.Chat;
 using Dalamud.Game.Command;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
@@ -55,6 +56,7 @@ namespace MapPartyAssist {
         private ICommandManager CommandManager { get; init; }
         internal IDataManager DataManager { get; init; }
         internal IClientState ClientState { get; init; }
+        internal IObjectTable ObjectTable { get; init; }
         internal ICondition Condition { get; init; }
         internal IDutyState DutyState { get; init; }
         internal IPartyList PartyList { get; init; }
@@ -100,6 +102,7 @@ namespace MapPartyAssist {
             ICondition condition,
             IDutyState dutyState,
             IPartyList partyList,
+            IObjectTable objectTable,
             IChatGui chatGui,
             IGameGui gameGui,
             IFramework framework,
@@ -111,6 +114,7 @@ namespace MapPartyAssist {
                 CommandManager = commandManager;
                 DataManager = dataManager;
                 ClientState = clientState;
+                ObjectTable = objectTable;
                 Condition = condition;
                 DutyState = dutyState;
                 PartyList = partyList;
@@ -288,12 +292,12 @@ namespace MapPartyAssist {
             StatsWindow.IsOpen = true;
         }
 
-        private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled) {
+        private void OnChatMessage(IHandleableChatMessage message) {
             //filter nuisance combat messages...
-            switch((int)type) {
+            switch((int)message.LogKind) {
                 case 2091:  //self actions
                 case 4139:  //party member actions
-                    if(Regex.IsMatch(message.ToString(), @"(Dig|Excavation|Ausgraben|ディグ)", RegexOptions.IgnoreCase)) {
+                    if(Regex.IsMatch(message.Message.ToString(), @"(Dig|Excavation|Ausgraben|ディグ)", RegexOptions.IgnoreCase)) {
                         goto case 2105;
                     }
                     goto default;
@@ -308,9 +312,9 @@ namespace MapPartyAssist {
                 case (int)XivChatType.Party:
                 case (int)XivChatType.SystemMessage:
                     //Log.Verbose($"Message received: {type} {message} from {sender}");
-                    Log.Debug(String.Format("type: {0,-6} sender: {1,-20} message: {2}", type, sender, message));
+                    Log.Debug(String.Format("type: {0,-6} sender: {1,-20} message: {2}", message.LogKind, message.Sender, message.Message));
                     if(PrintPayloads) {
-                        foreach(Payload payload in message.Payloads) {
+                        foreach(Payload payload in message.Message.Payloads) {
                             Log.Debug($"payload: {payload}");
                         }
                     }

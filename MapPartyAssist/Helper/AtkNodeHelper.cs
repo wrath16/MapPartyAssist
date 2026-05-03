@@ -176,15 +176,15 @@ namespace MapPartyAssist.Helper {
 
         internal static unsafe string ConvertAtkValueToString(AtkValue value) {
             switch(value.Type) {
-                case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.Int:
-                case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.UInt:
+                case FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType.Int:
+                case FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType.UInt:
                     return value.Int.ToString();
-                case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.Bool:
+                case FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType.Bool:
                     return (value.Int != 0).ToString();
-                case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.String:
-                case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.ManagedString:
-                case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.WideString:
-                case FFXIVClientStructs.FFXIV.Component.GUI.ValueType.String8:
+                case FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType.String:
+                case FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType.ManagedString:
+                case FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType.WideString:
+                case FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType.String8:
                     return value.String.AsDalamudSeString().TextValue ?? "";
                 default:
                     break;
@@ -205,7 +205,7 @@ namespace MapPartyAssist.Helper {
 
                 int internalCount = 0;
                 var internalArray = stringArray->StringArray[0];
-                while(internalArray != null) {
+                while(internalArray.HasValue) { //TODO: Not sure if this is correct
                     ////internalArray = stringArray[internalCount];
                     //int secondInternalCount = 0;
                     //var secondInternalArray = internalArray[0];

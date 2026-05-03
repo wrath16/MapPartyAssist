@@ -1,4 +1,6 @@
 ﻿using Dalamud.Game;
+using Dalamud.Game.Chat;
+using Dalamud.Game.DutyState;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
@@ -512,8 +514,8 @@ namespace MapPartyAssist.Services {
             return true;
         }
 
-        private void OnDutyStart(object? sender, ushort territoryId) {
-            Plugin.Log.Debug($"Duty has started with territory id: {territoryId} name: {_plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId).PlaceName.Value.Name} ");
+        private void OnDutyStart(IDutyStateEventArgs args) {
+            Plugin.Log.Debug($"Duty has started with territory id: {args.TerritoryType.RowId} name: {_plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(args.TerritoryType.RowId).PlaceName.Value.Name} ");
             var dutyId = _plugin.Functions.GetCurrentDutyId();
             Plugin.Log.Debug($"Current duty ID: {dutyId}");
             var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
@@ -523,22 +525,22 @@ namespace MapPartyAssist.Services {
             Plugin.Log.Debug($"Current duty ongoing? {CurrentDutyResults != null}");
         }
 
-        private void OnDutyCompleted(object? sender, ushort param1) {
+        private void OnDutyCompleted(IDutyStateEventArgs args) {
             Plugin.Log.Verbose("Duty completed!");
             //EndDuty();
         }
 
-        private void OnDutyWiped(object? sender, ushort param1) {
+        private void OnDutyWiped(IDutyStateEventArgs args) {
             Plugin.Log.Verbose("Duty wiped!");
             //EndDuty();
         }
 
-        private void OnDutyRecommenced(object? sender, ushort param1) {
+        private void OnDutyRecommenced(IDutyStateEventArgs args) {
             Plugin.Log.Verbose("Duty recommenced!");
             //EndDuty();
         }
 
-        private void OnTerritoryChanged(ushort territoryId) {
+        private void OnTerritoryChanged(uint territoryId) {
             var dutyId = _plugin.Functions.GetCurrentDutyId();
             _plugin.DataQueue.QueueDataOperation(async () => {
                 var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
@@ -566,14 +568,14 @@ namespace MapPartyAssist.Services {
             });
         }
 
-        private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled) {
+        private void OnChatMessage(IHandleableChatMessage message) {
 
             //refuse to process if not a supported language
             if(!_plugin.IsLanguageSupported()) {
                 return;
             }
 
-            switch((int)type) {
+            switch((int)message.LogKind) {
                 case 62:
                 case 2105:
                 case 2110:
@@ -581,13 +583,13 @@ namespace MapPartyAssist.Services {
                 case 4158:
                 case 8254:
                 case (int)XivChatType.SystemMessage:
-                    string messageText = message.ToString();
-                    var item = (ItemPayload?)message.Payloads.FirstOrDefault(m => m is ItemPayload);
+                    string messageText = message.Message.ToString();
+                    var item = (ItemPayload?)message.Message.Payloads.FirstOrDefault(m => m is ItemPayload);
                     uint? itemId = item?.ItemId;
                     bool isHq = item is not null ? item.IsHQ : false;
-                    var player = (PlayerPayload?)message.Payloads.FirstOrDefault(m => m is PlayerPayload);
+                    var player = (PlayerPayload?)message.Message.Payloads.FirstOrDefault(m => m is PlayerPayload);
                     string? playerKey = player is not null ? $"{player.PlayerName} {player.World.Value.Name}" : null;
-                    Message record = new(DateTime.UtcNow, (int)type, messageText, itemId, isHq, playerKey);
+                    Message record = new(DateTime.UtcNow, (int)message.LogKind, messageText, itemId, isHq, playerKey);
                     _plugin.DataQueue.QueueDataOperation(async () => {
                         if(IsDutyInProgress()) {
                             if(ProcessChatMessage(CurrentDutyResults!, record)) {

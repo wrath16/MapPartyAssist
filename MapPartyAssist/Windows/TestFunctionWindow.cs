@@ -216,8 +216,8 @@ namespace MapPartyAssist.Windows {
                     }
 
                     if(ImGui.Button("Get Player Current Position")) {
-                        Vector2 coords = WorldPosToMapCoords(_plugin.ClientState.LocalPlayer.Position);
-                        Plugin.Log.Debug($"X: {_plugin.ClientState.LocalPlayer.Position.X} Y: {_plugin.ClientState.LocalPlayer.Position.Y}");
+                        Vector2 coords = WorldPosToMapCoords(_plugin.ObjectTable.LocalPlayer.Position);
+                        Plugin.Log.Debug($"X: {_plugin.ObjectTable.LocalPlayer.Position.X} Y: {_plugin.ObjectTable.LocalPlayer.Position.Y}");
                         Plugin.Log.Debug($"coordsX: {coords.X} coordsY: {coords.Y}");
                         //Plugin.ClientState.LocalPlayer.Position.
                     }

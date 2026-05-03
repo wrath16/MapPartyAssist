@@ -15,7 +15,7 @@ namespace MapPartyAssist.Services {
         private Plugin _plugin;
         private int _lastPartySize = 0;
 
-        internal ushort CurrentTerritory { get; private set; } = 0;
+        internal uint CurrentTerritory { get; private set; } = 0;
         public Dictionary<string, MPAMember> CurrentPartyList { get; private set; } = new();
         public Dictionary<string, MPAMember> RecentPartyList { get; private set; } = new();
         public string? CurrentPlayer { get; private set; }
@@ -44,11 +44,11 @@ namespace MapPartyAssist.Services {
         }
 
         private void OnFrameworkUpdate(IFramework framework) {
-            var playerJob = _plugin.ClientState.LocalPlayer?.ClassJob.Value.Abbreviation;
+            var playerJob = _plugin.ObjectTable.LocalPlayer?.ClassJob.Value.Abbreviation;
             var currentPartySize = _plugin.PartyList.Length;
-            CurrentRegion = PlayerHelper.GetRegion(_plugin.ClientState.LocalPlayer?.CurrentWorld.Value.DataCenter.Value.Region);
-            string? currentPlayerName = _plugin.ClientState.LocalPlayer?.Name?.ToString();
-            string? currentPlayerWorld = _plugin.ClientState.LocalPlayer?.HomeWorld.Value.Name.ToString();
+            CurrentRegion = PlayerHelper.GetRegion((byte?)(_plugin.ObjectTable.LocalPlayer?.CurrentWorld.Value.DataCenter.Value.Region.RowId));
+            string? currentPlayerName = _plugin.ObjectTable.LocalPlayer?.Name?.ToString();
+            string? currentPlayerWorld = _plugin.ObjectTable.LocalPlayer?.HomeWorld.Value.Name.ToString();
             if(currentPlayerName != null && currentPlayerWorld != null) {
                 CurrentPlayer = $"{currentPlayerName} {currentPlayerWorld}";
             } else {
@@ -65,7 +65,7 @@ namespace MapPartyAssist.Services {
             }
         }
 
-        private void OnTerritoryChanged(ushort territoryId) {
+        private void OnTerritoryChanged(uint territoryId) {
             _plugin.DataQueue.QueueDataOperation(() => {
                 CurrentTerritory = territoryId;
             });

@@ -1,6 +1,7 @@
 ﻿using Dalamud.Game;
 using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
+using Dalamud.Game.Chat;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
@@ -152,7 +153,7 @@ namespace MapPartyAssist.Services {
             //_plugin.AddonLifecycle.UnregisterListener(CheckForTreasureHunt);
         }
 
-        private void OnTerritoryChanged(ushort territoryId) {
+        private void OnTerritoryChanged(uint territoryId) {
             _plugin.DataQueue.QueueDataOperation(() => {
                 ResetDigStatus();
                 _boundByMapDuty = false;
@@ -194,13 +195,13 @@ namespace MapPartyAssist.Services {
             }
         }
 
-        private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled) {
+        private void OnChatMessage(IHandleableChatMessage message) {
             //refuse to process if not a supported language
             if(!_plugin.IsLanguageSupported()) {
                 return;
             }
             string? playerKey = null;
-            switch((int)type) {
+            switch((int)message.LogKind) {
                 case 62:   //gil
                 case 2091: //self actions
                 case 2110: //self loot
@@ -211,7 +212,7 @@ namespace MapPartyAssist.Services {
                 case 4158: //party member loot
                 case 8254: //party member loot
                 case (int)XivChatType.SystemMessage:
-                    var playerPayload = (PlayerPayload?)message.Payloads.FirstOrDefault(m => m is PlayerPayload);
+                    var playerPayload = (PlayerPayload?)message.Message.Payloads.FirstOrDefault(m => m is PlayerPayload);
                     playerKey = playerPayload is not null ? $"{playerPayload.PlayerName} {playerPayload.World.Value.Name}" : null;
                     break;
                 case (int)XivChatType.Party:
@@ -220,11 +221,11 @@ namespace MapPartyAssist.Services {
                 case (int)XivChatType.Yell:
                 case (int)XivChatType.Shout:
                 case (int)XivChatType.TellIncoming:
-                    var senderPayload = (PlayerPayload?)sender.Payloads.FirstOrDefault(p => p.Type == PayloadType.Player);
+                    var senderPayload = (PlayerPayload?)message.Sender.Payloads.FirstOrDefault(p => p.Type == PayloadType.Player);
                     if(senderPayload is null) {
                         //from same world as player
-                        string matchName = Regex.Match(sender.TextValue, @"[A-Za-z-'\.]*\s[A-Za-z-'\.]*$").ToString();
-                        playerKey = $"{matchName} {_plugin.ClientState.LocalPlayer!.HomeWorld.Value.Name}";
+                        string matchName = Regex.Match(message.Sender.TextValue, @"[A-Za-z-'\.]*\s[A-Za-z-'\.]*$").ToString();
+                        playerKey = $"{matchName} {_plugin.ObjectTable.LocalPlayer!.HomeWorld.Value.Name}";
                     } else {
                         playerKey = $"{senderPayload.PlayerName} {senderPayload.World.Value.Name}";
                     }
@@ -233,14 +234,14 @@ namespace MapPartyAssist.Services {
                     return;
             }
 
-            string messageText = message.ToString();
-            var item = (ItemPayload?)message.Payloads.FirstOrDefault(m => m is ItemPayload);
+            string messageText = message.Message.ToString();
+            var item = (ItemPayload?)message.Message.Payloads.FirstOrDefault(m => m is ItemPayload);
             uint? itemId = item?.ItemId;
             bool isHq = item is not null ? item.IsHQ : false;
-            var mapPayload = (MapLinkPayload?)message.Payloads.FirstOrDefault(p => p.Type == PayloadType.MapLink);
+            var mapPayload = (MapLinkPayload?)message.Message.Payloads.FirstOrDefault(p => p.Type == PayloadType.MapLink);
             MPAMapLink? mapLink = mapPayload is not null ? new(mapPayload) : null;
             _plugin.DataQueue.QueueDataOperation(async () => {
-                await ProcessChatMessage(type, messageText, playerKey, itemId, isHq, mapLink, DateTime.UtcNow);
+                await ProcessChatMessage(message.LogKind, messageText, playerKey, itemId, isHq, mapLink, DateTime.UtcNow);
             });
         }
 
@@ -504,7 +505,7 @@ namespace MapPartyAssist.Services {
                 IsPortal = isPortal,
                 LootResults = new(),
                 Players = _plugin.GameStateManager.CurrentPartyList.Keys.ToArray(),
-                TerritoryId = _plugin.GameStateManager.CurrentTerritory,
+                TerritoryId = (int?)_plugin.GameStateManager.CurrentTerritory,
                 MapType = mapType,
                 EventItemId = rowId
             };
@@ -587,11 +588,11 @@ namespace MapPartyAssist.Services {
 
         //returns map coords
         public double? GetDistanceToMapLink(MPAMapLink mapLink) {
-            if(_plugin.ClientState.LocalPlayer == null || _plugin.GameStateManager.CurrentTerritory != mapLink.TerritoryTypeId) {
+            if(_plugin.ObjectTable.LocalPlayer == null || _plugin.GameStateManager.CurrentTerritory != mapLink.TerritoryTypeId) {
                 return null;
             }
 
-            Vector2 playerPosition = WorldPosToMapCoords(_plugin.ClientState.LocalPlayer.Position);
+            Vector2 playerPosition = WorldPosToMapCoords(_plugin.ObjectTable.LocalPlayer.Position);
             float xDistance = playerPosition.X - mapLink.RawX;
             float yDistance = playerPosition.Y - mapLink.RawY;
 
