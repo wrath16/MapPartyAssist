@@ -293,8 +293,16 @@ namespace MapPartyAssist {
         }
 
         private void OnChatMessage(IHandleableChatMessage message) {
+
+            int expandedChatType = (int)message.LogKind;
+            if(message.LogKind.AppliesRelationKind()) {
+                expandedChatType = (int)message.LogKind + ((int)message.SourceKind << 11) + ((int)message.TargetKind << 7);
+                Plugin.Log.Debug($"Plugin Log Source Target: {(int)message.LogKind} {(int)message.SourceKind << 11} {(int)message.TargetKind << 7}");
+                Plugin.Log.Debug($"Plugin LogKind: {expandedChatType}");
+            }
+
             //filter nuisance combat messages...
-            switch((int)message.LogKind) {
+            switch(expandedChatType) {
                 case 2091:  //self actions
                 case 4139:  //party member actions
                     if(Regex.IsMatch(message.Message.ToString(), @"(Dig|Excavation|Ausgraben|ディグ)", RegexOptions.IgnoreCase)) {
@@ -312,7 +320,7 @@ namespace MapPartyAssist {
                 case (int)XivChatType.Party:
                 case (int)XivChatType.SystemMessage:
                     //Log.Verbose($"Message received: {type} {message} from {sender}");
-                    Log.Debug(String.Format("type: {0,-6} sender: {1,-20} message: {2}", message.LogKind, message.Sender, message.Message));
+                    Log.Debug(String.Format("type: {0,-6} sender: {1,-20} message: {2}", expandedChatType, message.Sender.ToString(), message.Message));
                     if(PrintPayloads) {
                         foreach(Payload payload in message.Message.Payloads) {
                             Log.Debug($"payload: {payload}");

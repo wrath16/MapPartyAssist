@@ -201,7 +201,15 @@ namespace MapPartyAssist.Services {
                 return;
             }
             string? playerKey = null;
-            switch((int)message.LogKind) {
+
+            int expandedChatType = (int)message.LogKind;
+            if(message.LogKind.AppliesRelationKind()) {
+                expandedChatType = (int)message.LogKind + ((int)message.SourceKind << 11) + ((int)message.TargetKind << 7);
+                Plugin.Log.Debug($"Map Manager 1 Log Source Target: {(int)message.LogKind} {(int)message.SourceKind << 11} {(int)message.TargetKind << 7}");
+                Plugin.Log.Debug($"Map Manager 1 LogKind: {expandedChatType}");
+            }
+
+            switch(expandedChatType) {
                 case 62:   //gil
                 case 2091: //self actions
                 case 2110: //self loot
@@ -241,11 +249,11 @@ namespace MapPartyAssist.Services {
             var mapPayload = (MapLinkPayload?)message.Message.Payloads.FirstOrDefault(p => p.Type == PayloadType.MapLink);
             MPAMapLink? mapLink = mapPayload is not null ? new(mapPayload) : null;
             _plugin.DataQueue.QueueDataOperation(async () => {
-                await ProcessChatMessage(message.LogKind, messageText, playerKey, itemId, isHq, mapLink, DateTime.UtcNow);
+                await ProcessChatMessage(message, playerKey, itemId, isHq, mapLink, DateTime.UtcNow);
             });
         }
 
-        private async Task ProcessChatMessage(XivChatType type, string message, string? playerKey, uint? itemId, bool isHQ, MPAMapLink? mapLink, DateTime messageTime) {
+        private async Task ProcessChatMessage(IHandleableChatMessage message, string? playerKey, uint? itemId, bool isHQ, MPAMapLink? mapLink, DateTime messageTime) {
             bool isChange = false;
             bool newMapFound = false;
             bool isPortal = false;
@@ -258,9 +266,20 @@ namespace MapPartyAssist.Services {
                 playerKey = _plugin.GameStateManager.MatchAliasToPlayer(playerKey);
             }
 
-            if((int)type == 2361) {
+            int expandedChatType = (int)message.LogKind;
+            if (message.LogKind.AppliesRelationKind())
+            {
+                expandedChatType = (int)message.LogKind + ((int)message.SourceKind << 11) + ((int)message.TargetKind << 7);
+                Plugin.Log.Debug($"Map Manager 2 Log Source Target: {(int)message.LogKind} {(int)message.SourceKind << 11} {(int)message.TargetKind << 7}");
+                Plugin.Log.Debug($"Map Manager 2 LogKind: {expandedChatType}");
+            }
+
+            
+            
+
+            if(expandedChatType == 2361) {
                 //party member opens portal while not blocked
-                if(EnterPortalRegex[_plugin.ClientState.ClientLanguage].IsMatch(message)) {
+                if(EnterPortalRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Message.ToString())) {
                     Plugin.Log.Debug("Entering portal...");
                     if(_portalBlockUntil <= messageTime) {
                         //thief's maps
@@ -275,12 +294,12 @@ namespace MapPartyAssist.Services {
                         }
                     }
                 }
-            } else if((int)type == 2105 || (int)type == 2233) {
+            } else if(expandedChatType == 2105 || expandedChatType == 2233) {
                 //self map detection
-                if(ConsumedMapRegex[_plugin.ClientState.ClientLanguage].IsMatch(message)) {
+                if(ConsumedMapRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Message.ToString())) {
                     Plugin.Log.Debug("Map consumed...");
                     newMapFound = true;
-                    mapType = MapNameRegex[_plugin.ClientState.ClientLanguage].Match(message).ToString();
+                    mapType = MapNameRegex[_plugin.ClientState.ClientLanguage].Match(message.Message.ToString()).ToString();
                     if(!mapType.IsNullOrEmpty()) {
                         //this is bad!
                         try {
@@ -293,7 +312,7 @@ namespace MapPartyAssist.Services {
                     //_lastMapTime = messageTime;
                     //clear dig info just in case to prevent double-counting map if another player uses dig at the same time
                     ResetDigStatus();
-                } else if(DiscoverCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(message)) {
+                } else if(DiscoverCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Message.ToString())) {
                     Plugin.Log.Debug("Coffer discovered...");
                     //find (non-current PC) party member with the closest matching dig time and assume they are owner
                     _boundByMapDuty = true;
@@ -305,13 +324,14 @@ namespace MapPartyAssist.Services {
                     }
                     //LogMessage: 3756, 9361, 9363
                     //this can trigger in excitatron 6000
-                } else if(OpenCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(message) && _plugin.Functions.GetCurrentDutyId() == 0) {
+                } else if(OpenCofferRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Message.ToString()) && _plugin.Functions.GetCurrentDutyId() == 0) {
                     Plugin.Log.Debug("Coffer opened...");
                     //add delay because this message occurs before "crumbles into dust" to avoid double-counting with self-dig
                     _ = Task.Delay(_addMapDelaySeconds * 1000).ContinueWith(t => {
                         _plugin.DataQueue.QueueDataOperation(async () => {
                             if(!_lockedInDiggerKey.IsNullOrEmpty()) {
                                 bool isAmbiguous = _candidateCount > 1;
+                                Plugin.Log.Debug("AddMap via OpenCofferRegex");
                                 await AddMap(_plugin.GameStateManager.CurrentPartyList[_lockedInDiggerKey], null, null, false, false, isAmbiguous);
                                 await _plugin.Refresh();
                                 if(isAmbiguous) {
@@ -331,25 +351,25 @@ namespace MapPartyAssist.Services {
                         });
                     });
                     //LogMessage: 3765
-                } else if(DefeatAllRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
+                } else if(DefeatAllRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Message.ToString())) {
                     Plugin.Log.Debug("Enemies defeated...");
                     ResetDigStatus();
                     //block portals from adding maps for a brief period to avoid double counting
                     //this can cause issues where someone opens a thief map immediately after, but whatever
                     _portalBlockUntil = DateTime.UtcNow.AddSeconds(_portalBlockSeconds);
                 }
-            } else if((int)type == 4139 || (int)type == 2091) {
-                if(SelfDigRegex[_plugin.ClientState.ClientLanguage].IsMatch(message)) {
+            } else if(expandedChatType == 4139 || expandedChatType == 2091) {
+                if(SelfDigRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Message.ToString())) {
                     if(_diggers.ContainsKey(_plugin.GameStateManager.GetCurrentPlayer())) {
                         _diggers[_plugin.GameStateManager.GetCurrentPlayer()] = messageTime;
                     } else {
                         _diggers.Add(_plugin.GameStateManager.GetCurrentPlayer(), messageTime);
                     }
                     Plugin.Log.Debug($"You used Dig...");
-                } else if(PartyMemberDigRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.ToString())) {
+                } else if(PartyMemberDigRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Message.ToString())) {
                     //no payload on Japanese self-dig or maybe others from same world...?
                     if(playerKey is null) {
-                        var nominalAlias = DutyManager.PlayerAliasRegex[_plugin.ClientState.ClientLanguage].Match(message);
+                        var nominalAlias = DutyManager.PlayerAliasRegex[_plugin.ClientState.ClientLanguage].Match(message.Message.ToString());
                         playerKey = _plugin.GameStateManager.MatchAliasToPlayer(nominalAlias.Value);
                     }
 
@@ -361,8 +381,8 @@ namespace MapPartyAssist.Services {
                         _diggers.Add(diggerKey, messageTime);
                     }
                 }
-            } else if(type == XivChatType.Party || type == XivChatType.Say || type == XivChatType.Alliance || type == XivChatType.Shout || type == XivChatType.Yell || type == XivChatType.TellIncoming) {
-                if(type == XivChatType.Party && mapLink != null && !_plugin.GameStateManager.CurrentPartyList.ContainsKey(playerKey)) {
+            } else if(message.LogKind == XivChatType.Party || message.LogKind == XivChatType.Say || message.LogKind == XivChatType.Alliance || message.LogKind == XivChatType.Shout || message.LogKind == XivChatType.Yell || message.LogKind == XivChatType.TellIncoming) {
+                if(message.LogKind == XivChatType.Party && mapLink != null && !_plugin.GameStateManager.CurrentPartyList.ContainsKey(playerKey)) {
                     //special case for cross-world party members
                     _ = _plugin.DataQueue.QueueDataOperation(async () => {
                         var crossWorldPlayer = _plugin.StorageManager.GetPlayers().Query().Where(p => p.Key == playerKey).FirstOrDefault();
@@ -388,8 +408,8 @@ namespace MapPartyAssist.Services {
                 }
             } else if(_boundByMapDutyDelayed) {
                 //gil
-                if((int)type == 62) {
-                    Match m = DutyManager.GilObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message);
+                if(expandedChatType == 62) {
+                    Match m = DutyManager.GilObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.Message.ToString());
                     if(m.Success) {
                         string parsedGilString = m.Value.Replace(",", "").Replace(".", "").Replace(" ", "");
                         int gil = int.Parse(parsedGilString);
@@ -397,10 +417,10 @@ namespace MapPartyAssist.Services {
                         isChange = true;
                     }
                     //player loot obtained
-                } else if((int)type == 8254 || (int)type == 4158 || (int)type == 2110) {
+                } else if(expandedChatType == 8254 || expandedChatType == 4158 || expandedChatType == 2110) {
                     //check for self match
-                    Match selfQuantityMatch = DutyManager.SelfObtainedQuantityRegex[_plugin.ClientState.ClientLanguage].Match(message);
-                    Match selfItemMatch = DutyManager.SelfObtainedItemRegex[_plugin.ClientState.ClientLanguage].Match(message);
+                    Match selfQuantityMatch = DutyManager.SelfObtainedQuantityRegex[_plugin.ClientState.ClientLanguage].Match(message.Message.ToString());
+                    Match selfItemMatch = DutyManager.SelfObtainedItemRegex[_plugin.ClientState.ClientLanguage].Match(message.Message.ToString());
                     if(selfQuantityMatch.Success) {
                         bool isNumber = Regex.IsMatch(selfQuantityMatch.Value, @"\d+");
                         int quantity = isNumber ? int.Parse(selfQuantityMatch.Value.Replace(",", "").Replace(".", "")) : 1;
@@ -423,14 +443,14 @@ namespace MapPartyAssist.Services {
                             }
                         }
                     } else {
-                        Match m = DutyManager.PartyMemberObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                        Match m = DutyManager.PartyMemberObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.Message.ToString());
                         if(m.Success) {
                             bool isNumber = Regex.IsMatch(m.Value, @"\d+");
                             int quantity = isNumber ? int.Parse(m.Value.Replace(",", "").Replace(".", "")) : 1;
                             if(itemId is not null) {
                                 //chat log settings can make playerKey null
                                 if(playerKey is null) {
-                                    var nominalAlias = DutyManager.PlayerAliasRegex[_plugin.ClientState.ClientLanguage].Match(message);
+                                    var nominalAlias = DutyManager.PlayerAliasRegex[_plugin.ClientState.ClientLanguage].Match(message.Message.ToString());
                                     playerKey = _plugin.GameStateManager.MatchAliasToPlayer(nominalAlias.Value);
                                 }
                                 AddLootResults(lastMap, (uint)itemId, isHQ, quantity, playerKey);
@@ -443,8 +463,8 @@ namespace MapPartyAssist.Services {
                     }
 
                     //check for loot list
-                } else if(type == XivChatType.SystemMessage) {
-                    Match m = DutyManager.LootListRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                } else if(message.LogKind == XivChatType.SystemMessage) {
+                    Match m = DutyManager.LootListRegex[_plugin.ClientState.ClientLanguage].Match(message.Message.ToString());
                     if(m.Success) {
                         bool isNumber = Regex.IsMatch(m.Value, @"\d+");
                         int quantity = isNumber ? int.Parse(m.Value.Replace(",", "").Replace(".", "")) : 1;

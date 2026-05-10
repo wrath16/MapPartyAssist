@@ -467,6 +467,7 @@ namespace MapPartyAssist.Services {
                     await _plugin.StorageManager.UpdateMap(lastMap);
                 } else {
                     Plugin.Log.Warning("Unknown map owner for current duty.");
+                    Plugin.Log.Warning($"last map owner {lastMap?.Owner ?? "was null"}");
                     CurrentDutyResults.Map = null;
                     CurrentDutyResults.Owner = "";
                 }
@@ -575,7 +576,15 @@ namespace MapPartyAssist.Services {
                 return;
             }
 
-            switch((int)message.LogKind) {
+            int expandedChatType = (int)message.LogKind;
+            if(message.LogKind.AppliesRelationKind()) {
+                expandedChatType = (int)message.LogKind + ((int)message.SourceKind << 11) + ((int)message.TargetKind << 7);
+                Plugin.Log.Debug($"Duty Manager Log Source Target: {(int)message.LogKind} {(int)message.SourceKind << 11} {(int)message.TargetKind << 7}");
+                Plugin.Log.Debug($"Duty Manager LogKind: {expandedChatType}");
+            }
+
+
+            switch(expandedChatType) {
                 case 62:
                 case 2105:
                 case 2110:
@@ -589,7 +598,7 @@ namespace MapPartyAssist.Services {
                     bool isHq = item is not null ? item.IsHQ : false;
                     var player = (PlayerPayload?)message.Message.Payloads.FirstOrDefault(m => m is PlayerPayload);
                     string? playerKey = player is not null ? $"{player.PlayerName} {player.World.Value.Name}" : null;
-                    Message record = new(DateTime.UtcNow, (int)message.LogKind, messageText, itemId, isHq, playerKey);
+                    MPAMessage record = new(DateTime.UtcNow, expandedChatType, messageText, itemId, isHq, playerKey);
                     _plugin.DataQueue.QueueDataOperation(async () => {
                         if(IsDutyInProgress()) {
                             if(ProcessChatMessage(CurrentDutyResults!, record)) {
@@ -605,7 +614,7 @@ namespace MapPartyAssist.Services {
         }
 
         //return true if change occured
-        internal bool ProcessChatMessage(DutyResults results, Message message) {
+        internal bool ProcessChatMessage(DutyResults results, MPAMessage message) {
             bool isChange = false;
             var duty = Duties[results.DutyId];
 
@@ -613,6 +622,7 @@ namespace MapPartyAssist.Services {
             if(message.PlayerKey != null && message.PlayerKey.Contains('.')) {
                 message.PlayerKey = _plugin.GameStateManager.MatchAliasToPlayer(message.PlayerKey);
             }
+
 
             //check for gil obtained
             if(message.Channel == 62) {
@@ -715,7 +725,7 @@ namespace MapPartyAssist.Services {
         }
 
         //return true if updates made
-        private bool ProcessCheckpointsDoors(DutyResults results, Message message) {
+        private bool ProcessCheckpointsDoors(DutyResults results, MPAMessage message) {
             var duty = Duties[results.DutyId];
             if(results.CheckpointResults.Count < duty.Checkpoints!.Count) {
                 var nextCheckpoint = duty.Checkpoints![results.CheckpointResults.Count];
@@ -742,7 +752,7 @@ namespace MapPartyAssist.Services {
             return false;
         }
 
-        private bool ProcessCheckpointsRoulette(DutyResults results, Message message) {
+        private bool ProcessCheckpointsRoulette(DutyResults results, MPAMessage message) {
             var duty = Duties[results.DutyId];
             if(duty.Structure != DutyStructure.Roulette) {
                 throw new ArgumentException("Incorrect duty type.");
@@ -804,7 +814,7 @@ namespace MapPartyAssist.Services {
             return false;
         }
 
-        private bool ProcessCheckpointsSlots(DutyResults results, Message message) {
+        private bool ProcessCheckpointsSlots(DutyResults results, MPAMessage message) {
             var duty = Duties[results.DutyId];
             if(duty.Structure != DutyStructure.Slots) {
                 throw new ArgumentException("Incorrect duty type.");
