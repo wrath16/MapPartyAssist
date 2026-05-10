@@ -297,30 +297,27 @@ namespace MapPartyAssist {
             int expandedChatType = (int)message.LogKind;
             if(message.LogKind.AppliesRelationKind()) {
                 expandedChatType = (int)message.LogKind + ((int)message.SourceKind << 11) + ((int)message.TargetKind << 7);
-                Plugin.Log.Debug($"Plugin Log Source Target: {(int)message.LogKind} {(int)message.SourceKind << 11} {(int)message.TargetKind << 7}");
-                Plugin.Log.Debug($"Plugin LogKind: {expandedChatType}");
+                //Plugin.Log.Debug($"Plugin Log Source Target: {(int)message.LogKind} {(int)message.SourceKind << 11} {(int)message.TargetKind << 7}");
+                //Plugin.Log.Debug($"Plugin LogKind: {expandedChatType}");
             }
 
             //filter nuisance combat messages...
-            switch(expandedChatType) {
-                case 2091:  //self actions
-                case 4139:  //party member actions
+            switch(message.LogKind) {
+                case XivChatType.Action:  //party member actions
                     if(Regex.IsMatch(message.Message.ToString(), @"(Dig|Excavation|Ausgraben|ディグ)", RegexOptions.IgnoreCase)) {
-                        goto case 2105;
+                        goto case XivChatType.SystemMessage;
                     }
                     goto default;
-                case 2233:
-                case 2105:  //system messages of some kind
-                case 2361:
-                case 62:    //self gil
-                case 2110:  //self loot obtained
-                case 4158:  //party loot obtained
-                case 8254:  //alliance loot obtained
-                case (int)XivChatType.Say:
-                case (int)XivChatType.Party:
-                case (int)XivChatType.SystemMessage:
+                case XivChatType.SystemMessage:
+                case XivChatType.LootNotice:
+                case XivChatType.Party:
+                case XivChatType.Say:
+                case XivChatType.Alliance:
+                case XivChatType.Shout:
+                case XivChatType.Yell:
+                case XivChatType.TellIncoming:
                     //Log.Verbose($"Message received: {type} {message} from {sender}");
-                    Log.Debug(String.Format("type: {0,-6} sender: {1,-20} message: {2}", expandedChatType, message.Sender.ToString(), message.Message));
+                    Log.Debug(string.Format("type: {0,-6} sender: {1,-20} message: {2}", message.LogKind, message.Sender, message.Message));
                     if(PrintPayloads) {
                         foreach(Payload payload in message.Message.Payloads) {
                             Log.Debug($"payload: {payload}");
@@ -329,7 +326,7 @@ namespace MapPartyAssist {
                     break;
                 default:
                     if(PrintAllMessages) {
-                        goto case 2105;
+                        goto case XivChatType.SystemMessage;
                     }
                     break;
             }
