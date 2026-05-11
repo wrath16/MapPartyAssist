@@ -634,6 +634,24 @@ namespace MapPartyAssist.Services {
                                 break;
                         }
                     }
+
+
+                    //loot list
+                    Match lootListMatch = DutyManager.LootListRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                    if(lootListMatch.Success) {
+                        //todo make this work for all languages...
+                        bool isNumber = Regex.IsMatch(lootListMatch.Value, @"\d+");
+                        int quantity = isNumber ? int.Parse(lootListMatch.Value.Replace(",", "").Replace(".", "")) : 1;
+                        if(message.ItemId is not null) {
+                            AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity);
+                            isChange = true;
+#if DEBUG
+                            Plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", message.ItemId, message.IsHq, quantity));
+                            Plugin.Log.Debug($"value: {lootListMatch.Value} isNumber: {isNumber} quantity: {quantity}");
+#endif
+                        }
+                    }
+
                     break;
 
                 case XivChatType.LootNotice:
@@ -689,22 +707,6 @@ namespace MapPartyAssist.Services {
                             isChange = true;
 #if DEBUG
                             Plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", message.ItemId, message.IsHq, quantity, message.PlayerKey));
-#endif
-                        }
-                    }
-
-                    //loot list
-                    Match lootListMatch = DutyManager.LootListRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
-                    if(lootListMatch.Success) {
-                        //todo make this work for all languages...
-                        bool isNumber = Regex.IsMatch(lootListMatch.Value, @"\d+");
-                        int quantity = isNumber ? int.Parse(lootListMatch.Value.Replace(",", "").Replace(".", "")) : 1;
-                        if(message.ItemId is not null) {
-                            AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity);
-                            isChange = true;
-#if DEBUG
-                            Plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", message.ItemId, message.IsHq, quantity));
-                            Plugin.Log.Debug($"value: {lootListMatch.Value} isNumber: {isNumber} quantity: {quantity}");
 #endif
                         }
                     }
