@@ -216,8 +216,8 @@ namespace MapPartyAssist.Windows {
                     }
 
                     if(ImGui.Button("Get Player Current Position")) {
-                        Vector2 coords = WorldPosToMapCoords(_plugin.ClientState.LocalPlayer.Position);
-                        Plugin.Log.Debug($"X: {_plugin.ClientState.LocalPlayer.Position.X} Y: {_plugin.ClientState.LocalPlayer.Position.Y}");
+                        Vector2 coords = WorldPosToMapCoords(_plugin.ObjectTable.LocalPlayer.Position);
+                        Plugin.Log.Debug($"X: {_plugin.ObjectTable.LocalPlayer.Position.X} Y: {_plugin.ObjectTable.LocalPlayer.Position.Y}");
                         Plugin.Log.Debug($"coordsX: {coords.X} coordsY: {coords.Y}");
                         //Plugin.ClientState.LocalPlayer.Position.
                     }
@@ -293,16 +293,16 @@ namespace MapPartyAssist.Windows {
                             Owner = "Sarah Montcroix Siren",
                         };
 
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "The hypnoslot machine envisions a lesser notion! A hexapod appears!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "All enemies have been defeated!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "The hypnoslot machine envisions a greater fancy! A hexapod appears!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "All enemies have been defeated!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "The hypnoslot machine envisions an elder imagining! A hexapod appears!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "All enemies have been defeated!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "Grab 100 shining sacks in 90 seconds!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "You collected 100 shining sacks and receive a gold treasure coffer as your reward!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "The hypnoslot machine envisions its final fantasy! A hexapod appears!"));
-                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new Message(DateTime.UtcNow, 2105, "All enemies have been defeated!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new MPAMessage(DateTime.UtcNow, Dalamud.Game.Text.XivChatType.SystemMessage, "The hypnoslot machine envisions a lesser notion! A hexapod appears!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new MPAMessage(DateTime.UtcNow, Dalamud.Game.Text.XivChatType.SystemMessage, "All enemies have been defeated!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new MPAMessage(DateTime.UtcNow, Dalamud.Game.Text.XivChatType.SystemMessage, "The hypnoslot machine envisions a greater fancy! A hexapod appears!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new MPAMessage(DateTime.UtcNow, Dalamud.Game.Text.XivChatType.SystemMessage, "All enemies have been defeated!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new MPAMessage(DateTime.UtcNow, Dalamud.Game.Text.XivChatType.SystemMessage, "The hypnoslot machine envisions an elder imagining! A hexapod appears!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new MPAMessage(DateTime.UtcNow, Dalamud.Game.Text.XivChatType.SystemMessage, "All enemies have been defeated!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new MPAMessage(DateTime.UtcNow, Dalamud.Game.Text.XivChatType.SystemMessage, "Grab 100 shining sacks in 90 seconds!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new MPAMessage(DateTime.UtcNow, Dalamud.Game.Text.XivChatType.SystemMessage, "You collected 100 shining sacks and receive a gold treasure coffer as your reward!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new MPAMessage(DateTime.UtcNow, Dalamud.Game.Text.XivChatType.SystemMessage, "The hypnoslot machine envisions its final fantasy! A hexapod appears!"));
+                        _plugin.DutyManager.ProcessChatMessage(dutyResults, new MPAMessage(DateTime.UtcNow, Dalamud.Game.Text.XivChatType.SystemMessage, "All enemies have been defeated!"));
                         dutyResults.IsComplete = true;
                         _plugin.StorageManager.AddDutyResults(dutyResults);
                     }

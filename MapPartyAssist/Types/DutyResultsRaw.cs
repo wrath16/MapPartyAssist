@@ -13,7 +13,7 @@ namespace MapPartyAssist.Types {
         public bool IsComplete { get; set; }
         public bool IsParsed { get; set; }
         public ClientLanguage Language { get; set; }
-        public List<Message> Messages { get; set; }
+        public List<MPAMessage> Messages { get; set; }
         [BsonRef("map")]
         public MPAMap? Map { get; set; }
         public string? Owner { get; set; }

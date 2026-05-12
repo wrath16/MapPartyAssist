@@ -3,6 +3,7 @@ using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
+using Dalamud.Interface.Windowing;
 using Lumina.Excel.Sheets;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;

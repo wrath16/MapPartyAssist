@@ -1,5 +1,6 @@
 ﻿using Dalamud.Configuration;
 using Dalamud.Game;
+using Dalamud.Game.Chat;
 using Dalamud.Game.Command;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
@@ -55,6 +56,7 @@ namespace MapPartyAssist {
         private ICommandManager CommandManager { get; init; }
         internal IDataManager DataManager { get; init; }
         internal IClientState ClientState { get; init; }
+        internal IObjectTable ObjectTable { get; init; }
         internal ICondition Condition { get; init; }
         internal IDutyState DutyState { get; init; }
         internal IPartyList PartyList { get; init; }
@@ -100,6 +102,7 @@ namespace MapPartyAssist {
             ICondition condition,
             IDutyState dutyState,
             IPartyList partyList,
+            IObjectTable objectTable,
             IChatGui chatGui,
             IGameGui gameGui,
             IFramework framework,
@@ -111,6 +114,7 @@ namespace MapPartyAssist {
                 CommandManager = commandManager;
                 DataManager = dataManager;
                 ClientState = clientState;
+                ObjectTable = objectTable;
                 Condition = condition;
                 DutyState = dutyState;
                 PartyList = partyList;
@@ -288,36 +292,41 @@ namespace MapPartyAssist {
             StatsWindow.IsOpen = true;
         }
 
-        private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled) {
+        private void OnChatMessage(IHandleableChatMessage message) {
+
+            int expandedChatType = (int)message.LogKind;
+            if(message.LogKind.AppliesRelationKind()) {
+                expandedChatType = (int)message.LogKind + ((int)message.SourceKind << 11) + ((int)message.TargetKind << 7);
+                //Plugin.Log.Debug($"Plugin Log Source Target: {(int)message.LogKind} {(int)message.SourceKind << 11} {(int)message.TargetKind << 7}");
+                //Plugin.Log.Debug($"Plugin LogKind: {expandedChatType}");
+            }
+
             //filter nuisance combat messages...
-            switch((int)type) {
-                case 2091:  //self actions
-                case 4139:  //party member actions
-                    if(Regex.IsMatch(message.ToString(), @"(Dig|Excavation|Ausgraben|ディグ)", RegexOptions.IgnoreCase)) {
-                        goto case 2105;
+            switch(message.LogKind) {
+                case XivChatType.Action:  //party member actions
+                    if(Regex.IsMatch(message.Message.ToString(), @"(Dig|Excavation|Ausgraben|ディグ)", RegexOptions.IgnoreCase)) {
+                        goto case XivChatType.SystemMessage;
                     }
                     goto default;
-                case 2233:
-                case 2105:  //system messages of some kind
-                case 2361:
-                case 62:    //self gil
-                case 2110:  //self loot obtained
-                case 4158:  //party loot obtained
-                case 8254:  //alliance loot obtained
-                case (int)XivChatType.Say:
-                case (int)XivChatType.Party:
-                case (int)XivChatType.SystemMessage:
+                case XivChatType.SystemMessage:
+                case XivChatType.LootNotice:
+                case XivChatType.Party:
+                case XivChatType.Say:
+                case XivChatType.Alliance:
+                case XivChatType.Shout:
+                case XivChatType.Yell:
+                case XivChatType.TellIncoming:
                     //Log.Verbose($"Message received: {type} {message} from {sender}");
-                    Log.Debug(String.Format("type: {0,-6} sender: {1,-20} message: {2}", type, sender, message));
+                    Log.Debug(string.Format("type: {0,-6} sender: {1,-20} message: {2}", message.LogKind, message.Sender, message.Message));
                     if(PrintPayloads) {
-                        foreach(Payload payload in message.Payloads) {
+                        foreach(Payload payload in message.Message.Payloads) {
                             Log.Debug($"payload: {payload}");
                         }
                     }
                     break;
                 default:
                     if(PrintAllMessages) {
-                        goto case 2105;
+                        goto case XivChatType.SystemMessage;
                     }
                     break;
             }

@@ -1,4 +1,6 @@
 ﻿using Dalamud.Game;
+using Dalamud.Game.Chat;
+using Dalamud.Game.DutyState;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
@@ -465,6 +467,7 @@ namespace MapPartyAssist.Services {
                     await _plugin.StorageManager.UpdateMap(lastMap);
                 } else {
                     Plugin.Log.Warning("Unknown map owner for current duty.");
+                    Plugin.Log.Warning($"last map owner {lastMap?.Owner ?? "was null"}");
                     CurrentDutyResults.Map = null;
                     CurrentDutyResults.Owner = "";
                 }
@@ -512,8 +515,8 @@ namespace MapPartyAssist.Services {
             return true;
         }
 
-        private void OnDutyStart(object? sender, ushort territoryId) {
-            Plugin.Log.Debug($"Duty has started with territory id: {territoryId} name: {_plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(territoryId).PlaceName.Value.Name} ");
+        private void OnDutyStart(IDutyStateEventArgs args) {
+            Plugin.Log.Debug($"Duty has started with territory id: {args.TerritoryType.RowId} name: {_plugin.DataManager.GetExcelSheet<TerritoryType>()?.GetRow(args.TerritoryType.RowId).PlaceName.Value.Name} ");
             var dutyId = _plugin.Functions.GetCurrentDutyId();
             Plugin.Log.Debug($"Current duty ID: {dutyId}");
             var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
@@ -523,22 +526,22 @@ namespace MapPartyAssist.Services {
             Plugin.Log.Debug($"Current duty ongoing? {CurrentDutyResults != null}");
         }
 
-        private void OnDutyCompleted(object? sender, ushort param1) {
+        private void OnDutyCompleted(IDutyStateEventArgs args) {
             Plugin.Log.Verbose("Duty completed!");
             //EndDuty();
         }
 
-        private void OnDutyWiped(object? sender, ushort param1) {
+        private void OnDutyWiped(IDutyStateEventArgs args) {
             Plugin.Log.Verbose("Duty wiped!");
             //EndDuty();
         }
 
-        private void OnDutyRecommenced(object? sender, ushort param1) {
+        private void OnDutyRecommenced(IDutyStateEventArgs args) {
             Plugin.Log.Verbose("Duty recommenced!");
             //EndDuty();
         }
 
-        private void OnTerritoryChanged(ushort territoryId) {
+        private void OnTerritoryChanged(uint territoryId) {
             var dutyId = _plugin.Functions.GetCurrentDutyId();
             _plugin.DataQueue.QueueDataOperation(async () => {
                 var duty = _plugin.DataManager.GetExcelSheet<ContentFinderCondition>()?.GetRow((uint)dutyId);
@@ -566,28 +569,23 @@ namespace MapPartyAssist.Services {
             });
         }
 
-        private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled) {
+        private void OnChatMessage(IHandleableChatMessage message) {
 
             //refuse to process if not a supported language
             if(!_plugin.IsLanguageSupported()) {
                 return;
             }
 
-            switch((int)type) {
-                case 62:
-                case 2105:
-                case 2110:
-                case 2233:
-                case 4158:
-                case 8254:
-                case (int)XivChatType.SystemMessage:
-                    string messageText = message.ToString();
-                    var item = (ItemPayload?)message.Payloads.FirstOrDefault(m => m is ItemPayload);
+            switch(message.LogKind) {
+                case XivChatType.LootNotice:
+                case XivChatType.SystemMessage:
+                    string messageText = message.Message.ToString();
+                    var item = (ItemPayload?)message.Message.Payloads.FirstOrDefault(m => m is ItemPayload);
                     uint? itemId = item?.ItemId;
                     bool isHq = item is not null ? item.IsHQ : false;
-                    var player = (PlayerPayload?)message.Payloads.FirstOrDefault(m => m is PlayerPayload);
+                    var player = (PlayerPayload?)message.Message.Payloads.FirstOrDefault(m => m is PlayerPayload);
                     string? playerKey = player is not null ? $"{player.PlayerName} {player.World.Value.Name}" : null;
-                    Message record = new(DateTime.UtcNow, (int)type, messageText, itemId, isHq, playerKey);
+                    MPAMessage record = new(DateTime.UtcNow, message.LogKind, messageText, itemId, isHq, null, playerKey);
                     _plugin.DataQueue.QueueDataOperation(async () => {
                         if(IsDutyInProgress()) {
                             if(ProcessChatMessage(CurrentDutyResults!, record)) {
@@ -603,7 +601,7 @@ namespace MapPartyAssist.Services {
         }
 
         //return true if change occured
-        internal bool ProcessChatMessage(DutyResults results, Message message) {
+        internal bool ProcessChatMessage(DutyResults results, MPAMessage message) {
             bool isChange = false;
             var duty = Duties[results.DutyId];
 
@@ -612,47 +610,93 @@ namespace MapPartyAssist.Services {
                 message.PlayerKey = _plugin.GameStateManager.MatchAliasToPlayer(message.PlayerKey);
             }
 
-            //check for gil obtained
-            if(message.Channel == 62) {
-                Match m = GilObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
-                if(m.Success) {
-                    string parsedGilString = m.Value.Replace(",", "").Replace(".", "").Replace(" ", "");
-                    int gil = int.Parse(parsedGilString);
-                    results.TotalGil += gil;
-                    AddLootResults(results, 1, false, gil, _plugin.GameStateManager.GetCurrentPlayer());
-                    isChange = true;
-                }
-                //self loot obtained
-            } else if(message.Channel == 8254 || message.Channel == 4158 || message.Channel == 2110) {
-                //check for self match
-                Match selfQuantityMatch = SelfObtainedQuantityRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
-                Match selfItemMatch = SelfObtainedItemRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
-                if(selfQuantityMatch.Success) {
-                    bool isNumber = Regex.IsMatch(selfQuantityMatch.Value, @"\d+");
-                    int quantity = isNumber ? int.Parse(selfQuantityMatch.Value.Replace(",", "").Replace(".", "")) : 1;
-                    var currentPlayer = _plugin.GameStateManager.GetCurrentPlayer();
-                    if(message.ItemId is not null) {
-                        AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity, currentPlayer);
+            switch(message.Channel) {
+                case XivChatType.SystemMessage:
+                    //check for failure
+                    Match failedDutyMatch = duty.FailureCheckpoint!.LocalizedRegex![_plugin.ClientState.ClientLanguage].Match(message.Text);
+                    if(failedDutyMatch.Success) {
+                        results!.IsComplete = true;
+                        results!.CompletionTime = DateTime.UtcNow;
                         isChange = true;
-#if DEBUG
-                        Plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", message.ItemId, message.IsHq, quantity, currentPlayer));
-#endif
-                    } else if(selfItemMatch.Success) {
-                        //tomestones
-                        //Japanese has no plural...
-                        var rowId = quantity != 1 && _plugin.ClientState.ClientLanguage != ClientLanguage.Japanese ? _plugin.GetRowId<Item>(selfItemMatch.Value, "Plural", GrammarCase.Accusative) : _plugin.GetRowId<Item>(selfItemMatch.Value, "Singular", GrammarCase.Accusative);
-                        if(rowId is not null) {
-                            AddLootResults(results, (uint)rowId, false, quantity, currentPlayer);
-                            isChange = true;
-                        } else {
-                            Plugin.Log.Warning($"Cannot find rowId for {selfItemMatch.Value}");
+                    } else {
+                        //process message based on duty type
+                        switch(duty.Structure) {
+                            case DutyStructure.Doors:
+                                isChange = ProcessCheckpointsDoors(results, message);
+                                break;
+                            case DutyStructure.Roulette:
+                                isChange = ProcessCheckpointsRoulette(results, message);
+                                break;
+                            case DutyStructure.Slots:
+                                isChange = ProcessCheckpointsSlots(results, message);
+                                break;
+                            default:
+                                break;
                         }
                     }
-                } else {
-                    Match m = PartyMemberObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
-                    if(m.Success) {
-                        bool isNumber = Regex.IsMatch(m.Value, @"\d+");
-                        int quantity = isNumber ? int.Parse(m.Value.Replace(",", "").Replace(".", "")) : 1;
+
+
+                    //loot list
+                    Match lootListMatch = DutyManager.LootListRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                    if(lootListMatch.Success) {
+                        //todo make this work for all languages...
+                        bool isNumber = Regex.IsMatch(lootListMatch.Value, @"\d+");
+                        int quantity = isNumber ? int.Parse(lootListMatch.Value.Replace(",", "").Replace(".", "")) : 1;
+                        if(message.ItemId is not null) {
+                            AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity);
+                            isChange = true;
+#if DEBUG
+                            Plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", message.ItemId, message.IsHq, quantity));
+                            Plugin.Log.Debug($"value: {lootListMatch.Value} isNumber: {isNumber} quantity: {quantity}");
+#endif
+                        }
+                    }
+
+                    break;
+
+                case XivChatType.LootNotice:
+
+                    //gil
+                    Match gilMatch = GilObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
+                    if(gilMatch.Success) {
+                        string parsedGilString = gilMatch.Value.Replace(",", "").Replace(".", "").Replace(" ", "");
+                        int gil = int.Parse(parsedGilString);
+                        results.TotalGil += gil;
+                        AddLootResults(results, 1, false, gil, _plugin.GameStateManager.GetCurrentPlayer());
+                        isChange = true;
+                    }
+
+                    //self loot
+                    Match selfQuantityMatch = SelfObtainedQuantityRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
+                    Match selfItemMatch = SelfObtainedItemRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
+                    if(selfQuantityMatch.Success) {
+                        bool isNumber = Regex.IsMatch(selfQuantityMatch.Value, @"\d+");
+                        int quantity = isNumber ? int.Parse(selfQuantityMatch.Value.Replace(",", "").Replace(".", "")) : 1;
+                        var currentPlayer = _plugin.GameStateManager.GetCurrentPlayer();
+                        if(message.ItemId is not null) {
+                            AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity, currentPlayer);
+                            isChange = true;
+#if DEBUG
+                            Plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5} recipient: {3}", message.ItemId, message.IsHq, quantity, currentPlayer));
+#endif
+                        } else if(selfItemMatch.Success) {
+                            //tomestones
+                            //Japanese has no plural...
+                            var rowId = quantity != 1 && _plugin.ClientState.ClientLanguage != ClientLanguage.Japanese ? _plugin.GetRowId<Item>(selfItemMatch.Value, "Plural", GrammarCase.Accusative) : _plugin.GetRowId<Item>(selfItemMatch.Value, "Singular", GrammarCase.Accusative);
+                            if(rowId is not null) {
+                                AddLootResults(results, (uint)rowId, false, quantity, currentPlayer);
+                                isChange = true;
+                            } else {
+                                Plugin.Log.Warning($"Cannot find rowId for {selfItemMatch.Value}");
+                            }
+                        }
+                    }
+
+                    //party member loot
+                    Match partyMemberLootMatch = DutyManager.PartyMemberObtainedRegex[_plugin.ClientState.ClientLanguage].Match(message.ToString());
+                    if(partyMemberLootMatch.Success) {
+                        bool isNumber = Regex.IsMatch(partyMemberLootMatch.Value, @"\d+");
+                        int quantity = isNumber ? int.Parse(partyMemberLootMatch.Value.Replace(",", "").Replace(".", "")) : 1;
                         if(message.ItemId is not null) {
                             //chat log settings can make playerKey null
                             if(message.PlayerKey is null) {
@@ -666,44 +710,12 @@ namespace MapPartyAssist.Services {
 #endif
                         }
                     }
-                }
-                //check for loot list
-            } else if((XivChatType)message.Channel == XivChatType.SystemMessage) {
-                Match m = LootListRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
-                if(m.Success) {
-                    //todo make this work for all languages...
-                    bool isNumber = Regex.IsMatch(m.Value, @"\d+");
-                    int quantity = isNumber ? int.Parse(m.Value.Replace(",", "").Replace(".", "")) : 1;
-                    if(message.ItemId is not null) {
-                        AddLootResults(results, (uint)message.ItemId, (bool)message.IsHq, quantity);
-                        isChange = true;
-#if DEBUG
-                        Plugin.Log.Debug(string.Format("itemId: {0, -40} isHQ: {1, -6} quantity: {2, -5}", message.ItemId, message.IsHq, quantity));
-                        Plugin.Log.Debug($"value: {m.Value} isNumber: {isNumber} quantity: {quantity}");
-#endif
-                    }
-                }
+                    break;
 
-                //check for failure
-            } else if((message.Channel == 2233 || message.Channel == 2105) && duty.FailureCheckpoint!.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
-                results!.IsComplete = true;
-                results!.CompletionTime = DateTime.UtcNow;
-                isChange = true;
-            } else {
-                switch(duty.Structure) {
-                    case DutyStructure.Doors:
-                        isChange = ProcessCheckpointsDoors(results, message);
-                        break;
-                    case DutyStructure.Roulette:
-                        isChange = ProcessCheckpointsRoulette(results, message);
-                        break;
-                    case DutyStructure.Slots:
-                        isChange = ProcessCheckpointsSlots(results, message);
-                        break;
-                    default:
-                        break;
-                }
+                default:
+                    break;
             }
+
             ////save if changes discovered
             //if(isChange) {
             //    _plugin.StorageManager.UpdateDutyResults(CurrentDutyResults!);
@@ -713,11 +725,11 @@ namespace MapPartyAssist.Services {
         }
 
         //return true if updates made
-        private bool ProcessCheckpointsDoors(DutyResults results, Message message) {
+        private bool ProcessCheckpointsDoors(DutyResults results, MPAMessage message) {
             var duty = Duties[results.DutyId];
             if(results.CheckpointResults.Count < duty.Checkpoints!.Count) {
                 var nextCheckpoint = duty.Checkpoints![results.CheckpointResults.Count];
-                if((message.Channel == 2233 || message.Channel == 2105) && nextCheckpoint.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
+                if(nextCheckpoint.LocalizedRegex![_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
                     Plugin.Log.Information($"Adding new checkpoint: {nextCheckpoint.Name}");
                     results.CheckpointResults.Add(new() {
                         Checkpoint = nextCheckpoint,
@@ -740,101 +752,97 @@ namespace MapPartyAssist.Services {
             return false;
         }
 
-        private bool ProcessCheckpointsRoulette(DutyResults results, Message message) {
+        private bool ProcessCheckpointsRoulette(DutyResults results, MPAMessage message) {
             var duty = Duties[results.DutyId];
             if(duty.Structure != DutyStructure.Roulette) {
                 throw new ArgumentException("Incorrect duty type.");
             }
 
-            if(message.Channel == 2105 || message.Channel == 2233) {
-                //check for save
-                bool isSave = IsSavedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text);
-                //check for circles shift
-                Match shiftMatch = duty!.CircleShiftsRegex![_plugin.ClientState.ClientLanguage].Match(message.Text);
-                if(shiftMatch.Success) {
-                    AddRouletteCheckpointResults(results, Summon.Gold, _plugin.TranslateBNpcName(shiftMatch.Value, ClientLanguage.English), isSave);
-                    return true;
+            //check for save
+            bool isSave = IsSavedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text);
+            //check for circles shift
+            Match shiftMatch = duty!.CircleShiftsRegex![_plugin.ClientState.ClientLanguage].Match(message.Text);
+            if(shiftMatch.Success) {
+                AddRouletteCheckpointResults(results, Summon.Gold, _plugin.TranslateBNpcName(shiftMatch.Value, ClientLanguage.English), isSave);
+                return true;
+            }
+            //check for abomination
+            Match specialMatch = AbominationRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
+            if(specialMatch.Success) {
+                AddRouletteCheckpointResults(results, Summon.Silver, null, isSave);
+                //add next checkpoint as well
+                AddRouletteCheckpointResults(results, null);
+                if(results!.CheckpointResults.Where(cr => cr.IsReached).Count() == duty.Checkpoints!.Count) {
+                    results.IsComplete = true;
+                    results.CompletionTime = DateTime.UtcNow;
                 }
-                //check for abomination
-                Match specialMatch = AbominationRegex[_plugin.ClientState.ClientLanguage].Match(message.Text);
-                if(specialMatch.Success) {
-                    AddRouletteCheckpointResults(results, Summon.Silver, null, isSave);
-                    //add next checkpoint as well
-                    AddRouletteCheckpointResults(results, null);
-                    if(results!.CheckpointResults.Where(cr => cr.IsReached).Count() == duty.Checkpoints!.Count) {
-                        results.IsComplete = true;
-                        results.CompletionTime = DateTime.UtcNow;
-                    }
-                    return true;
+                return true;
+            }
+            //check for lesser summon
+            Match lesserMatch = duty.LesserSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message.Text);
+            if(lesserMatch.Success) {
+                AddRouletteCheckpointResults(results, Summon.Lesser, _plugin.TranslateBNpcName(lesserMatch.Value, ClientLanguage.English), isSave);
+                return true;
+            }
+            //check for greater summon
+            Match greaterMatch = duty.GreaterSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message.Text);
+            if(greaterMatch.Success) {
+                AddRouletteCheckpointResults(results, Summon.Greater, _plugin.TranslateBNpcName(greaterMatch.Value, ClientLanguage.English), isSave);
+                return true;
+            }
+            //check for elder summon
+            Match elderMatch = duty.ElderSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message.Text);
+            if(elderMatch.Success) {
+                AddRouletteCheckpointResults(results, Summon.Elder, _plugin.TranslateBNpcName(elderMatch.Value, ClientLanguage.English), isSave);
+                return true;
+            }
+            //enemy defeated
+            if(SummonDefeatedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
+                AddRouletteCheckpointResults(results, null);
+                if(results.CheckpointResults.Where(cr => cr.IsReached).Count() == duty.Checkpoints!.Count) {
+                    results.IsComplete = true;
+                    results.CompletionTime = DateTime.UtcNow;
                 }
-                //check for lesser summon
-                Match lesserMatch = duty.LesserSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message.Text);
-                if(lesserMatch.Success) {
-                    AddRouletteCheckpointResults(results, Summon.Lesser, _plugin.TranslateBNpcName(lesserMatch.Value, ClientLanguage.English), isSave);
-                    return true;
-                }
-                //check for greater summon
-                Match greaterMatch = duty.GreaterSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message.Text);
-                if(greaterMatch.Success) {
-                    AddRouletteCheckpointResults(results, Summon.Greater, _plugin.TranslateBNpcName(greaterMatch.Value, ClientLanguage.English), isSave);
-                    return true;
-                }
-                //check for elder summon
-                Match elderMatch = duty.ElderSummonRegex![_plugin.ClientState.ClientLanguage]!.Match(message.Text);
-                if(elderMatch.Success) {
-                    AddRouletteCheckpointResults(results, Summon.Elder, _plugin.TranslateBNpcName(elderMatch.Value, ClientLanguage.English), isSave);
-                    return true;
-                }
-                //enemy defeated
-                if(SummonDefeatedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
-                    AddRouletteCheckpointResults(results, null);
-                    if(results.CheckpointResults.Where(cr => cr.IsReached).Count() == duty.Checkpoints!.Count) {
-                        results.IsComplete = true;
-                        results.CompletionTime = DateTime.UtcNow;
-                    }
-                    return true;
-                }
+                return true;
+            }
 
                 //check for unknown enemy
                 //Match unknownMatch = Regex.Match(message.ToString(), ".*(?=,? appears?)", RegexOptions.IgnoreCase);
                 //(?<=\ban?\b ).*(?=,? appears\.*\!*$)
-            }
             return false;
         }
 
-        private bool ProcessCheckpointsSlots(DutyResults results, Message message) {
+        private bool ProcessCheckpointsSlots(DutyResults results, MPAMessage message) {
             var duty = Duties[results.DutyId];
             if(duty.Structure != DutyStructure.Slots) {
                 throw new ArgumentException("Incorrect duty type.");
             }
 
-            if(message.Channel == 2105 || message.Channel == 2233) {
-                if(SlotsLesserSummonRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
-                    AddRouletteCheckpointResults(results, Summon.Lesser);
-                    return true;
-                } else if(SlotsGreaterSummonRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
-                    AddRouletteCheckpointResults(results, Summon.Greater);
-                    return true;
-                } else if(SlotsElderSummonRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
-                    AddRouletteCheckpointResults(results, Summon.Elder);
-                    return true;
-                } else if(SlotsFinalSummonRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
-                    AddRouletteCheckpointResults(results, Summon.Gold);
-                    return true;
-                } else if(SummonDefeatedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
-                    AddRouletteCheckpointResults(results, null);
-                    if(results.CheckpointResults.Count == duty.Checkpoints.Count) {
-                        results.IsComplete = true;
-                        results.CompletionTime = DateTime.UtcNow;
-                    }
-                    return true;
-                } else if(SlotsSpecialStartRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
-                    AddRouletteCheckpointResults(results, Summon.Silver);
-                    return true;
-                } else if(SlotsSpecialEndedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
-                    AddRouletteCheckpointResults(results, null);
-                    return true;
+            if(SlotsLesserSummonRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
+                AddRouletteCheckpointResults(results, Summon.Lesser);
+                return true;
+            } else if(SlotsGreaterSummonRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
+                AddRouletteCheckpointResults(results, Summon.Greater);
+                return true;
+            } else if(SlotsElderSummonRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
+                AddRouletteCheckpointResults(results, Summon.Elder);
+                return true;
+            } else if(SlotsFinalSummonRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
+                AddRouletteCheckpointResults(results, Summon.Gold);
+                return true;
+            } else if(SummonDefeatedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
+                AddRouletteCheckpointResults(results, null);
+                if(results.CheckpointResults.Count == duty.Checkpoints.Count) {
+                    results.IsComplete = true;
+                    results.CompletionTime = DateTime.UtcNow;
                 }
+                return true;
+            } else if(SlotsSpecialStartRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
+                AddRouletteCheckpointResults(results, Summon.Silver);
+                return true;
+            } else if(SlotsSpecialEndedRegex[_plugin.ClientState.ClientLanguage].IsMatch(message.Text)) {
+                AddRouletteCheckpointResults(results, null);
+                return true;
             }
             return false;
         }
