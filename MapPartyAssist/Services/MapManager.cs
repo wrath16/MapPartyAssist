@@ -233,8 +233,8 @@ namespace MapPartyAssist.Services {
             bool isHq = item is not null ? item.IsHQ : false;
             var mapPayload = (MapLinkPayload?)message.Message.Payloads.FirstOrDefault(p => p.Type == PayloadType.MapLink);
             MPAMapLink? mapLink = mapPayload is not null ? new(mapPayload) : null;
+            MPAMessage record = new(DateTime.UtcNow, message.LogKind, messageText, itemId, isHq, mapLink, playerKey);
             _plugin.DataQueue.QueueDataOperation(async () => {
-                MPAMessage record = new(DateTime.UtcNow, message.LogKind, messageText, itemId, isHq, mapLink, playerKey);
                 await ProcessChatMessage(record);
             });
         }
