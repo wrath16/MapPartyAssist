@@ -7,6 +7,7 @@ using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using LiteDB;
 using Lumina.Excel.Sheets;
 using MapPartyAssist.Helper;
 using MapPartyAssist.Types;
@@ -37,7 +38,13 @@ namespace MapPartyAssist.Services {
         //}
 
         internal MPAMap? GetLastMap() {
-            return _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().LastOrDefault();
+            //walk the Time index from the newest map instead of loading and sorting every map
+            var newestMaps = _plugin.StorageManager.GetMaps().Query().OrderByDescending(m => m.Time).ToDocuments().Where(m => m["IsDeleted"] == false).Take(2).ToList();
+            //maps sharing the newest time use the full query so ties resolve exactly as before
+            if(newestMaps.Count == 2 && newestMaps[0]["Time"] == newestMaps[1]["Time"]) {
+                return _plugin.StorageManager.GetMaps().Query().Where(m => !m.IsDeleted).OrderBy(m => m.Time).ToList().LastOrDefault();
+            }
+            return newestMaps.Count > 0 ? BsonMapper.Global.ToObject<MPAMap>(newestMaps[0]) : null;
         }
 
         public string StatusMessage { get; set; } = "";
@@ -203,6 +210,12 @@ namespace MapPartyAssist.Services {
             string? playerKey = null;
             switch(message.LogKind) {
                 case XivChatType.Action:
+                    //dig is the only action processed, skip the rest of the combat log
+                    string actionText = message.Message.ToString();
+                    if(!SelfDigRegex[_plugin.ClientState.ClientLanguage].IsMatch(actionText) && !PartyMemberDigRegex[_plugin.ClientState.ClientLanguage].IsMatch(actionText)) {
+                        return;
+                    }
+                    goto case XivChatType.SystemMessage;
                 case XivChatType.LootNotice:
                 case XivChatType.SystemMessage:
                     var playerPayload = (PlayerPayload?)message.Message.Payloads.FirstOrDefault(m => m is PlayerPayload);
