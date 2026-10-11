@@ -1,5 +1,4 @@
 ﻿using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.ClientState.Party;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using MapPartyAssist.Helper;
@@ -99,12 +98,18 @@ namespace MapPartyAssist.Services {
         }
 
         private async Task BuildPartyLists() {
-            await BuildCurrentPartyList(_plugin.PartyList.ToArray());
+            var partyMembers = _plugin.Framework.RunOnFrameworkThread(GetPartyMembers).Result;
+            await BuildCurrentPartyList(partyMembers);
             BuildRecentPartyList();
         }
 
+        //party member properties can only be read on the framework thread
+        private (string Name, string World)[] GetPartyMembers() {
+            return _plugin.PartyList.Select(p => (p.Name.ToString(), p.World.Value.Name.ToString())).ToArray();
+        }
+
         //builds current party list from scratch
-        private async Task BuildCurrentPartyList(IPartyMember[] partyMembers) {
+        private async Task BuildCurrentPartyList((string Name, string World)[] partyMembers) {
             Plugin.Log.Debug("Rebuilding current party list.");
             MPAMember currentPlayerKey = new MPAMember(GetCurrentPlayer());
             CurrentPartyList = new();
@@ -123,9 +128,9 @@ namespace MapPartyAssist.Services {
                     await _plugin.StorageManager.UpdatePlayer(currentPlayer);
                 }
             } else {
-                foreach(IPartyMember p in partyMembers) {
-                    string partyMemberName = p.Name.ToString();
-                    string partyMemberWorld = p.World.Value.Name.ToString();
+                foreach(var p in partyMembers) {
+                    string partyMemberName = p.Name;
+                    string partyMemberWorld = p.World;
                     var key = $"{partyMemberName} {partyMemberWorld}";
                     bool isCurrentPlayer = partyMemberName.Equals(currentPlayerKey.Name) && partyMemberWorld.Equals(currentPlayerKey.HomeWorld);
                     var findPlayer = allPlayers.Query().Where(p => p.Key == key).FirstOrDefault();
